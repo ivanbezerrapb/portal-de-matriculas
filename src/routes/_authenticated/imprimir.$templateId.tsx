@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { z } from "zod";
 import { getPrintData } from "@/lib/ext/impressao.functions";
@@ -37,6 +37,21 @@ function PrintPage() {
       }),
     enabled: submissionIds.length > 0,
   });
+
+  const updatePageStatus = useCallback(
+    (key: string, status: { ready: boolean; overflow: boolean }) => {
+      setPageStatus((current) => {
+        const previous = current[key];
+        if (
+          previous?.ready === status.ready &&
+          previous.overflow === status.overflow
+        )
+          return current;
+        return { ...current, [key]: status };
+      });
+    },
+    [],
+  );
 
   if (isLoading) {
     return (
