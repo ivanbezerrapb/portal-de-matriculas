@@ -753,6 +753,74 @@ function DestinationTab({ formId, schoolId }: { formId: string; schoolId: string
             </div>
           ))}
         </div>
+
+        <div className="mt-6 flex items-center justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-semibold text-foreground">Informações adicionais</h3>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Outras respostas que aparecem ao abrir o cartão no Pipeline.
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => setExtras((prev) => [...prev, { field_id: "", label: "" }])}
+          >
+            Adicionar informação
+          </Button>
+        </div>
+
+        {extras.length === 0 ? (
+          <p className="mt-3 text-sm text-muted-foreground">Nenhuma informação adicional.</p>
+        ) : (
+          <div className="mt-3 flex flex-col gap-2">
+            {extras.map((extra, i) => (
+              <div key={i} className="flex flex-wrap items-center gap-2">
+                <Select
+                  className="max-w-56"
+                  value={extra.field_id}
+                  onChange={(e) =>
+                    setExtras((prev) =>
+                      prev.map((x, j) => (j === i ? { ...x, field_id: e.target.value } : x)),
+                    )
+                  }
+                >
+                  <option value="">Campo...</option>
+                  {fields
+                    .filter((f) => f.id === extra.field_id || !extras.some((x) => x.field_id === f.id))
+                    .map((f) => (
+                      <option key={f.id} value={f.id}>
+                        {f.label}
+                      </option>
+                    ))}
+                </Select>
+                <Input
+                  className="max-w-56"
+                  value={extra.label}
+                  placeholder="Rótulo (opcional)"
+                  onChange={(e) =>
+                    setExtras((prev) =>
+                      prev.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)),
+                    )
+                  }
+                />
+                <Button type="button" variant="ghost" onClick={() => moveExtra(i, -1)}>
+                  ↑
+                </Button>
+                <Button type="button" variant="ghost" onClick={() => moveExtra(i, 1)}>
+                  ↓
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setExtras((prev) => prev.filter((_, j) => j !== i))}
+                >
+                  ✕
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
       </Card>
 
       <Card>
