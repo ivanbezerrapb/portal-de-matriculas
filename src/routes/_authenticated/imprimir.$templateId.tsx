@@ -137,7 +137,7 @@ function PrintPage() {
         <div id="print-area">
           {submissions.map((sub) => {
             const ctx: PrintContext = {
-              fields: typedFields,
+              fields: layoutFields,
               values: sub.values,
               publicId: sub.public_id,
               schoolName: school?.name ?? "",
