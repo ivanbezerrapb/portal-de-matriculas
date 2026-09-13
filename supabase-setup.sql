@@ -313,3 +313,34 @@ insert into public.schools (name, id_prefix, id_digits) values
   ('Escola D', 'ESCD', 4);
 
 -- Pronto! O primeiro usuário que se cadastrar no app será Administrador automaticamente.
+
+-- ============================================================
+-- 11) Biblioteca de templates de impressão (reutilizáveis entre escolas)
+-- ============================================================
+create table if not exists public.print_template_library (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  title text not null,
+  header_text text,
+  footer_text text,
+  show_logo boolean not null default false,
+  columns integer not null default 1 check (columns in (1,2)),
+  page_size text not null default 'A4' check (page_size in ('A4','A5')),
+  show_signature boolean not null default false,
+  layout jsonb,
+  field_labels jsonb not null default '[]',
+  school_ids uuid[] not null default '{}',
+  created_by uuid,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+grant select, insert, update, delete on public.print_template_library to authenticated;
+grant all on public.print_template_library to service_role;
+
+alter table public.print_template_library enable row level security;
+
+create policy ptl_select on public.print_template_library for select to authenticated using (true);
+create policy ptl_insert on public.print_template_library for insert to authenticated with check (public.has_role(auth.uid(), 'admin'));
+create policy ptl_update on public.print_template_library for update to authenticated using (public.has_role(auth.uid(), 'admin'));
+create policy ptl_delete on public.print_template_library for delete to authenticated using (public.has_role(auth.uid(), 'admin'));

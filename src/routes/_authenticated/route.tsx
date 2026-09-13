@@ -14,6 +14,7 @@ import {
   School,
   Users,
   FileText,
+  LayoutTemplate,
 } from "lucide-react";
 import { getSupabase } from "@/lib/ext/browser";
 import { getMyPermissions } from "@/lib/ext/cadastros.functions";
@@ -61,6 +62,12 @@ function AuthenticatedLayout() {
       to: "/formularios",
       label: "Formulários",
       icon: FileText,
+      show: perms?.isAdmin ?? false,
+    },
+    {
+      to: "/templates",
+      label: "Templates",
+      icon: LayoutTemplate,
       show: perms?.isAdmin ?? false,
     },
     {

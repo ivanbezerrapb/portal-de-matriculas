@@ -256,6 +256,90 @@ export function childrenOf(
   return parseChildren(ctx.values[fieldId] ?? "");
 }
 
+// ---------- Reaproveitamento de layouts entre formulários ----------
+
+export function normalizeLabel(raw: string): string {
+  return raw
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
+}
+
+// IDs de campos usados dentro de um layout (ignora fontes especiais "__").
+export function collectLayoutFieldIds(layout: PrintLayout | null): string[] {
+  const ids = new Set<string>();
+  for (const page of layout?.pages ?? []) {
+    for (const block of page.blocks) {
+      if (block.type === "field" && block.source && !block.source.startsWith("__")) {
+        ids.add(block.source);
+      }
+      if (block.type === "children" && block.fieldId) ids.add(block.fieldId);
+      if (block.type === "table") {
+        for (const row of block.rows) {
+          for (const c of row) {
+            if (c.source && !c.source.startsWith("__")) ids.add(c.source);
+          }
+        }
+      }
+    }
+  }
+  return [...ids];
+}
+
+// Troca os IDs de campos do layout usando um mapa antigo -> novo.
+// IDs sem correspondência são mantidos (aparecem como "Campo removido").
+export function remapLayoutFields(
+  layout: PrintLayout | null,
+  map: Record<string, string | undefined>,
+): PrintLayout | null {
+  if (!layout) return null;
+  const fix = (id: string) => (id && map[id] ? map[id]! : id);
+  return {
+    ...layout,
+    pages: layout.pages.map((p) => ({
+      ...p,
+      blocks: p.blocks.map((b) => {
+        if (b.type === "field" && b.source && !b.source.startsWith("__")) {
+          return { ...b, source: fix(b.source) };
+        }
+        if (b.type === "children" && b.fieldId) {
+          return { ...b, fieldId: fix(b.fieldId) };
+        }
+        if (b.type === "table") {
+          return {
+            ...b,
+            rows: b.rows.map((row) =>
+              row.map((c) =>
+                c.source && !c.source.startsWith("__")
+                  ? { ...c, source: fix(c.source) }
+                  : c,
+              ),
+            ),
+          };
+        }
+        return b;
+      }),
+    })),
+  };
+}
+
+// Monta o mapa antigo -> novo casando campos pelo rótulo (sem acentos/maiúsculas).
+export function mapFieldsByLabel(
+  sourceLabels: { id: string; label: string }[],
+  targetFields: { id: string; label: string }[],
+): Record<string, string | undefined> {
+  const byLabel = new Map(
+    targetFields.map((f) => [normalizeLabel(f.label), f.id]),
+  );
+  const map: Record<string, string | undefined> = {};
+  for (const s of sourceLabels) {
+    const hit = byLabel.get(normalizeLabel(s.label));
+    if (hit) map[s.id] = hit;
+  }
+  return map;
+}
+
 export function formatDateTimeBR(raw: string): string {
   const d = new Date(raw);
   if (Number.isNaN(d.getTime())) return raw;
