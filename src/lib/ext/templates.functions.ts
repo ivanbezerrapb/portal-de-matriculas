@@ -60,20 +60,36 @@ async function applyToForm(
     show_signature: lib.show_signature,
     field_ids: mapped.length > 0 ? mapped : target.map((f) => f.id),
     layout,
+    library_id: lib.id ?? null,
   };
 
-  const { data: existing } = await supabase
-    .from("print_templates")
-    .select("id")
-    .eq("form_id", formId)
-    .eq("name", lib.name)
-    .maybeSingle();
+  // Procura primeiro pelo vínculo com o template; senão, por nome (registros antigos).
+  let existingId: string | null = null;
+  if (lib.id) {
+    const { data: linked } = await supabase
+      .from("print_templates")
+      .select("id")
+      .eq("form_id", formId)
+      .eq("library_id", lib.id)
+      .maybeSingle();
+    existingId = linked?.id ?? null;
+  }
+  if (!existingId) {
+    const { data: byName } = await supabase
+      .from("print_templates")
+      .select("id")
+      .eq("form_id", formId)
+      .eq("name", lib.name)
+      .is("library_id", null)
+      .maybeSingle();
+    existingId = byName?.id ?? null;
+  }
 
-  if (existing?.id) {
+  if (existingId) {
     const { error } = await supabase
       .from("print_templates")
       .update(payload)
-      .eq("id", existing.id);
+      .eq("id", existingId);
     if (error) throw new Error(error.message);
   } else {
     const { error } = await supabase.from("print_templates").insert(payload);
@@ -81,21 +97,45 @@ async function applyToForm(
   }
 }
 
-async function applyToSchools(
+// Formulários que já usam este template da biblioteca.
+async function linkedFormIds(supabase: Supa, libId: string): Promise<string[]> {
+  const { data, error } = await supabase
+    .from("print_templates")
+    .select("form_id")
+    .eq("library_id", libId);
+  if (error) throw new Error(error.message);
+  return [...new Set(((data ?? []) as { form_id: string }[]).map((r) => r.form_id))];
+}
+
+async function schoolFormIds(
   supabase: Supa,
-  lib: any,
   schoolIds: string[],
-): Promise<number> {
-  if (schoolIds.length === 0) return 0;
-  const { data: forms, error } = await supabase
+): Promise<string[]> {
+  if (schoolIds.length === 0) return [];
+  const { data, error } = await supabase
     .from("forms")
     .select("id")
     .in("school_id", schoolIds);
   if (error) throw new Error(error.message);
-  for (const f of (forms ?? []) as { id: string }[]) {
-    await applyToForm(supabase, lib, f.id);
+  return ((data ?? []) as { id: string }[]).map((f) => f.id);
+}
+
+// Reaplica o template em todos os formulários vinculados + escolas marcadas.
+async function propagate(
+  supabase: Supa,
+  lib: any,
+  schoolIds: string[],
+): Promise<number> {
+  const ids = [
+    ...new Set([
+      ...(await linkedFormIds(supabase, lib.id)),
+      ...(await schoolFormIds(supabase, schoolIds)),
+    ]),
+  ];
+  for (const formId of ids) {
+    await applyToForm(supabase, lib, formId);
   }
-  return (forms ?? []).length;
+  return ids.length;
 }
 
 export const listTemplates = createServerFn({ method: "GET" })
@@ -153,7 +193,7 @@ export const saveTemplate = createServerFn({ method: "POST" })
       saved = row;
     }
 
-    const applied = await applyToSchools(
+    const applied = await propagate(
       context.supabase as unknown as Supa,
       saved,
       data.school_ids,
@@ -278,5 +318,12 @@ export const saveFormTemplateAsLibrary = createServerFn({ method: "POST" })
       .select()
       .single();
     if (insErr) throw new Error(insErr.message);
+
+    // Vincula o modelo de origem ao template criado, para receber atualizações.
+    await context.supabase
+      .from("print_templates")
+      .update({ library_id: created.id })
+      .eq("id", data.print_template_id);
+
     return created;
   });
