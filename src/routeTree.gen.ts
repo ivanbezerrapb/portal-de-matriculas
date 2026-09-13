@@ -21,6 +21,7 @@ import { Route as FSlugRouteImport } from './routes/f/$slug'
 import { Route as AuthenticatedCadastrosSubmissionIdRouteImport } from './routes/_authenticated/cadastros.$submissionId'
 import { Route as AuthenticatedFormulariosFormIdRouteImport } from './routes/_authenticated/formularios.$formId'
 import { Route as AuthenticatedImprimirTemplateIdRouteImport } from './routes/_authenticated/imprimir.$templateId'
+import { Route as ApiPublicConfigRouteImport } from './routes/api/public/config'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -85,6 +86,11 @@ const AuthenticatedImprimirTemplateIdRoute =
     path: '/imprimir/$templateId',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const ApiPublicConfigRoute = ApiPublicConfigRouteImport.update({
+  id: '/api/public/config',
+  path: '/api/public/config',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -98,6 +104,7 @@ export interface FileRoutesByFullPath {
   '/cadastros/$submissionId': typeof AuthenticatedCadastrosSubmissionIdRoute
   '/formularios/$formId': typeof AuthenticatedFormulariosFormIdRoute
   '/imprimir/$templateId': typeof AuthenticatedImprimirTemplateIdRoute
+  '/api/public/config': typeof ApiPublicConfigRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -111,6 +118,7 @@ export interface FileRoutesByTo {
   '/cadastros/$submissionId': typeof AuthenticatedCadastrosSubmissionIdRoute
   '/formularios/$formId': typeof AuthenticatedFormulariosFormIdRoute
   '/imprimir/$templateId': typeof AuthenticatedImprimirTemplateIdRoute
+  '/api/public/config': typeof ApiPublicConfigRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -126,6 +134,7 @@ export interface FileRoutesById {
   '/_authenticated/cadastros/$submissionId': typeof AuthenticatedCadastrosSubmissionIdRoute
   '/_authenticated/formularios/$formId': typeof AuthenticatedFormulariosFormIdRoute
   '/_authenticated/imprimir/$templateId': typeof AuthenticatedImprimirTemplateIdRoute
+  '/api/public/config': typeof ApiPublicConfigRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -141,6 +150,7 @@ export interface FileRouteTypes {
     | '/cadastros/$submissionId'
     | '/formularios/$formId'
     | '/imprimir/$templateId'
+    | '/api/public/config'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -154,6 +164,7 @@ export interface FileRouteTypes {
     | '/cadastros/$submissionId'
     | '/formularios/$formId'
     | '/imprimir/$templateId'
+    | '/api/public/config'
   id:
     | '__root__'
     | '/'
@@ -168,6 +179,7 @@ export interface FileRouteTypes {
     | '/_authenticated/cadastros/$submissionId'
     | '/_authenticated/formularios/$formId'
     | '/_authenticated/imprimir/$templateId'
+    | '/api/public/config'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -175,6 +187,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   FSlugRoute: typeof FSlugRoute
+  ApiPublicConfigRoute: typeof ApiPublicConfigRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -263,6 +276,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedImprimirTemplateIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/api/public/config': {
+      id: '/api/public/config'
+      path: '/api/public/config'
+      fullPath: '/api/public/config'
+      preLoaderRoute: typeof ApiPublicConfigRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -321,6 +341,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   FSlugRoute: FSlugRoute,
+  ApiPublicConfigRoute: ApiPublicConfigRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
