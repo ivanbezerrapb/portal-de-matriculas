@@ -4,8 +4,9 @@ import { useState } from "react";
 import { toast } from "sonner";
 import {
   createForm,
-  listAdminForms,
-  updateForm,
+  deleteForm,
+  listForms,
+  setFormStatus,
 } from "@/lib/ext/formularios.functions";
 import { listSchools } from "@/lib/ext/escolas.functions";
 import {
@@ -23,20 +24,22 @@ export const Route = createFileRoute("/_authenticated/formularios")({
   component: FormsPage,
 });
 
-function slugify(text: string) {
-  return text
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "");
-}
+const STATUS_LABEL: Record<string, string> = {
+  draft: "Rascunho",
+  published: "Publicado",
+  closed: "Encerrado",
+};
+const STATUS_COLOR: Record<string, "amber" | "green" | "muted"> = {
+  draft: "amber",
+  published: "green",
+  closed: "muted",
+};
 
 function FormsPage() {
   const queryClient = useQueryClient();
   const { data: forms, isLoading } = useQuery({
     queryKey: ["admin-forms"],
-    queryFn: () => listAdminForms(),
+    queryFn: () => listForms(),
   });
   const { data: schools } = useQuery({
     queryKey: ["schools"],
@@ -46,25 +49,33 @@ function FormsPage() {
   const [title, setTitle] = useState("");
   const [schoolId, setSchoolId] = useState("");
 
+  const invalidate = () =>
+    queryClient.invalidateQueries({ queryKey: ["admin-forms"] });
+
   const createMut = useMutation({
-    mutationFn: () => {
-      const base = slugify(title) || "formulario";
-      const slug = `${base}-${Math.random().toString(36).slice(2, 6)}`;
-      return createForm({ data: { title, schoolId, slug } });
-    },
+    mutationFn: () =>
+      createForm({ data: { title, school_id: schoolId } }),
     onSuccess: () => {
-      toast.success("Formulário criado.");
+      toast.success("Formulário criado. Agora adicione os campos.");
       setTitle("");
-      queryClient.invalidateQueries({ queryKey: ["admin-forms"] });
+      invalidate();
     },
     onError: (e) => toast.error(e.message),
   });
 
-  const toggleMut = useMutation({
-    mutationFn: (vars: { formId: string; published: boolean }) =>
-      updateForm({ data: { formId: vars.formId, published: vars.published } }),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ["admin-forms"] }),
+  const statusMut = useMutation({
+    mutationFn: (vars: { id: string; status: "draft" | "published" | "closed" }) =>
+      setFormStatus({ data: vars }),
+    onSuccess: invalidate,
+    onError: (e) => toast.error(e.message),
+  });
+
+  const deleteMut = useMutation({
+    mutationFn: (id: string) => deleteForm({ data: { id } }),
+    onSuccess: () => {
+      toast.success("Formulário excluído.");
+      invalidate();
+    },
     onError: (e) => toast.error(e.message),
   });
 
@@ -130,41 +141,39 @@ function FormsPage() {
       ) : (
         <div className="mt-6 flex flex-col gap-3">
           {forms.map((f) => {
-            const school = f.schools as unknown as {
-              name: string;
-              id_prefix: string;
-            } | null;
+            const school = f.schools as unknown as { name: string } | null;
             return (
-              <Card key={f.id} className="flex flex-wrap items-center gap-4">
+              <Card key={f.id} className="flex flex-wrap items-center gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <p className="font-medium text-foreground">{f.title}</p>
-                    {f.published ? (
-                      <Badge className="bg-emerald-100 text-emerald-800">
-                        Publicado
-                      </Badge>
-                    ) : (
-                      <Badge className="bg-amber-100 text-amber-800">
-                        Rascunho
-                      </Badge>
-                    )}
+                    <Badge color={STATUS_COLOR[f.status] ?? "muted"}>
+                      {STATUS_LABEL[f.status] ?? f.status}
+                    </Badge>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    {school?.name ?? "—"} · link:{" "}
-                    <span className="font-mono">/f/{f.slug}</span>
+                    {school?.name ?? "—"}
                   </p>
                 </div>
-                <Button
-                  variant="secondary"
-                  onClick={() =>
-                    toggleMut.mutate({
-                      formId: f.id,
-                      published: !f.published,
-                    })
-                  }
-                >
-                  {f.published ? "Despublicar" : "Publicar"}
-                </Button>
+                {f.status !== "published" ? (
+                  <Button
+                    variant="secondary"
+                    onClick={() =>
+                      statusMut.mutate({ id: f.id, status: "published" })
+                    }
+                  >
+                    Publicar
+                  </Button>
+                ) : (
+                  <Button
+                    variant="secondary"
+                    onClick={() =>
+                      statusMut.mutate({ id: f.id, status: "closed" })
+                    }
+                  >
+                    Encerrar
+                  </Button>
+                )}
                 <Link
                   to="/formularios/$formId"
                   params={{ formId: f.id }}
@@ -172,6 +181,20 @@ function FormsPage() {
                 >
                   Configurar
                 </Link>
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    if (
+                      window.confirm(
+                        `Excluir o formulário "${f.title}"? Todos os cadastros dele serão removidos.`,
+                      )
+                    ) {
+                      deleteMut.mutate(f.id);
+                    }
+                  }}
+                >
+                  Excluir
+                </Button>
               </Card>
             );
           })}

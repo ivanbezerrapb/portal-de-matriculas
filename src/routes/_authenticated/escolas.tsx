@@ -4,14 +4,25 @@ import { useState } from "react";
 import { toast } from "sonner";
 import {
   createSchool,
+  deleteSchool,
   listSchools,
   updateSchool,
 } from "@/lib/ext/escolas.functions";
-import { Button, Card, EmptyState, Input, Label, Spinner } from "@/components/ui";
+import type { School } from "@/lib/ext/model";
+import {
+  Button,
+  Card,
+  EmptyState,
+  Input,
+  Label,
+  Spinner,
+} from "@/components/ui";
 
 export const Route = createFileRoute("/_authenticated/escolas")({
   component: SchoolsPage,
 });
+
+const emptyForm = { name: "", id_prefix: "", id_digits: 4, id_next_number: 1 };
 
 function SchoolsPage() {
   const queryClient = useQueryClient();
@@ -19,30 +30,47 @@ function SchoolsPage() {
     queryKey: ["schools"],
     queryFn: () => listSchools(),
   });
-  const [name, setName] = useState("");
-  const [prefix, setPrefix] = useState("");
-  const [digits, setDigits] = useState(4);
+  const [form, setForm] = useState(emptyForm);
+  const [editing, setEditing] = useState<School | null>(null);
+
+  const invalidate = () =>
+    queryClient.invalidateQueries({ queryKey: ["schools"] });
 
   const createMut = useMutation({
-    mutationFn: () =>
-      createSchool({
-        data: { name, idPrefix: prefix, idDigits: digits },
-      }),
+    mutationFn: () => createSchool({ data: form }),
     onSuccess: () => {
       toast.success("Escola criada.");
-      setName("");
-      setPrefix("");
-      queryClient.invalidateQueries({ queryKey: ["schools"] });
+      setForm(emptyForm);
+      invalidate();
     },
     onError: (e) => toast.error(e.message),
   });
 
-  const resetSeqMut = useMutation({
-    mutationFn: (vars: { schoolId: string; next: number }) =>
-      updateSchool({ data: { schoolId: vars.schoolId, idNextNumber: vars.next } }),
+  const updateMut = useMutation({
+    mutationFn: (school: School) =>
+      updateSchool({
+        data: {
+          id: school.id,
+          name: school.name,
+          logo_url: school.logo_url,
+          id_prefix: school.id_prefix,
+          id_digits: school.id_digits,
+          id_next_number: school.id_next_number,
+        },
+      }),
     onSuccess: () => {
-      toast.success("Sequência atualizada.");
-      queryClient.invalidateQueries({ queryKey: ["schools"] });
+      toast.success("Escola atualizada.");
+      setEditing(null);
+      invalidate();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const deleteMut = useMutation({
+    mutationFn: (id: string) => deleteSchool({ data: { id } }),
+    onSuccess: () => {
+      toast.success("Escola excluída.");
+      invalidate();
     },
     onError: (e) => toast.error(e.message),
   });
@@ -66,8 +94,8 @@ function SchoolsPage() {
             <Label htmlFor="school-name">Nome</Label>
             <Input
               id="school-name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
               placeholder="Ex.: E.M. Monteiro Lobato"
               required
             />
@@ -76,10 +104,12 @@ function SchoolsPage() {
             <Label htmlFor="school-prefix">Prefixo do ID</Label>
             <Input
               id="school-prefix"
-              value={prefix}
-              onChange={(e) => setPrefix(e.target.value.toUpperCase())}
+              value={form.id_prefix}
+              onChange={(e) =>
+                setForm({ ...form, id_prefix: e.target.value.toUpperCase() })
+              }
               placeholder="ESCA"
-              maxLength={8}
+              maxLength={10}
               required
             />
           </div>
@@ -90,8 +120,10 @@ function SchoolsPage() {
               type="number"
               min={2}
               max={8}
-              value={digits}
-              onChange={(e) => setDigits(Number(e.target.value))}
+              value={form.id_digits}
+              onChange={(e) =>
+                setForm({ ...form, id_digits: Number(e.target.value) })
+              }
               required
             />
           </div>
@@ -100,9 +132,11 @@ function SchoolsPage() {
           </Button>
         </form>
         <p className="mt-2 text-xs text-muted-foreground">
-          Exemplo de ID com prefixo {prefix || "ESCA"} e {digits} dígitos:{" "}
+          Exemplo de ID:{" "}
           <span className="font-mono">
-            {(prefix || "ESCA") + "-" + "1".padStart(digits, "0")}
+            {(form.id_prefix || "ESCA") +
+              "-" +
+              "1".padStart(form.id_digits, "0")}
           </span>
         </p>
       </Card>
@@ -118,41 +152,118 @@ function SchoolsPage() {
         />
       ) : (
         <div className="mt-6 flex flex-col gap-3">
-          {schools.map((s) => (
-            <Card key={s.id} className="flex flex-wrap items-center gap-4">
-              <div className="min-w-0 flex-1">
-                <p className="font-medium text-foreground">{s.name}</p>
-                <p className="text-xs text-muted-foreground">
-                  Prefixo <span className="font-mono">{s.id_prefix}</span> ·
-                  próximo número: {s.id_next_number}
+          {schools.map((s) =>
+            editing?.id === s.id ? (
+              <Card key={s.id}>
+                <form
+                  className="flex flex-wrap items-end gap-3"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    updateMut.mutate(editing);
+                  }}
+                >
+                  <div className="min-w-48 flex-1">
+                    <Label>Nome</Label>
+                    <Input
+                      value={editing.name}
+                      onChange={(e) =>
+                        setEditing({ ...editing, name: e.target.value })
+                      }
+                      required
+                    />
+                  </div>
+                  <div className="w-28">
+                    <Label>Prefixo</Label>
+                    <Input
+                      value={editing.id_prefix}
+                      onChange={(e) =>
+                        setEditing({
+                          ...editing,
+                          id_prefix: e.target.value.toUpperCase(),
+                        })
+                      }
+                      required
+                    />
+                  </div>
+                  <div className="w-24">
+                    <Label>Dígitos</Label>
+                    <Input
+                      type="number"
+                      min={2}
+                      max={8}
+                      value={editing.id_digits}
+                      onChange={(e) =>
+                        setEditing({
+                          ...editing,
+                          id_digits: Number(e.target.value),
+                        })
+                      }
+                      required
+                    />
+                  </div>
+                  <div className="w-32">
+                    <Label>Próximo número</Label>
+                    <Input
+                      type="number"
+                      min={1}
+                      value={editing.id_next_number}
+                      onChange={(e) =>
+                        setEditing({
+                          ...editing,
+                          id_next_number: Number(e.target.value),
+                        })
+                      }
+                      required
+                    />
+                  </div>
+                  <Button type="submit" disabled={updateMut.isPending}>
+                    Salvar
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => setEditing(null)}
+                  >
+                    Cancelar
+                  </Button>
+                </form>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Atenção: reduzir o próximo número pode gerar IDs duplicados.
                 </p>
-              </div>
-              <Button
-                variant="ghost"
-                onClick={() => {
-                  const input = window.prompt(
-                    `Próximo número da sequência de ${s.name} (atual: ${s.id_next_number})`,
-                    String(s.id_next_number),
-                  );
-                  if (!input) return;
-                  const next = Number(input);
-                  if (!Number.isInteger(next) || next < 1) {
-                    toast.error("Número inválido.");
-                    return;
-                  }
-                  if (
-                    window.confirm(
-                      `Reiniciar a sequência de ${s.name} para ${next}? Isso pode gerar IDs duplicados se houver cadastros anteriores.`,
-                    )
-                  ) {
-                    resetSeqMut.mutate({ schoolId: s.id, next });
-                  }
-                }}
-              >
-                Ajustar sequência
-              </Button>
-            </Card>
-          ))}
+              </Card>
+            ) : (
+              <Card key={s.id} className="flex flex-wrap items-center gap-4">
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-foreground">{s.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Prefixo <span className="font-mono">{s.id_prefix}</span> ·
+                    próximo ID:{" "}
+                    <span className="font-mono">
+                      {s.id_prefix}-
+                      {String(s.id_next_number).padStart(s.id_digits, "0")}
+                    </span>
+                  </p>
+                </div>
+                <Button variant="secondary" onClick={() => setEditing(s)}>
+                  Editar
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    if (
+                      window.confirm(
+                        `Excluir a escola "${s.name}"? Os cadastros vinculados também serão removidos.`,
+                      )
+                    ) {
+                      deleteMut.mutate(s.id);
+                    }
+                  }}
+                >
+                  Excluir
+                </Button>
+              </Card>
+            ),
+          )}
         </div>
       )}
     </div>
