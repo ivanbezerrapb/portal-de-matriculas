@@ -4,6 +4,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { getPublicForm, submitPublicForm } from "@/lib/ext/publico.functions";
 import type { FormField } from "@/lib/ext/model";
+import { parseChildren } from "@/lib/ext/model";
 import { FieldRenderer } from "@/components/FieldRenderer";
 import { Button, Card } from "@/components/ui";
 
@@ -106,6 +107,16 @@ function PublicFormPage() {
         !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)
       ) {
         newErrors[field.id] = "E-mail inválido";
+      }
+      if (field.type === "children" && !empty && typeof v === "string") {
+        const list = parseChildren(v);
+        const incomplete = list.findIndex(
+          (c) => !c.nome.trim() || !c.nascimento || !c.serie || !c.turno,
+        );
+        if (field.required && incomplete >= 0) {
+          newErrors[field.id] =
+            `Preencha todos os dados da criança ${incomplete + 1}`;
+        }
       }
     }
     setErrors(newErrors);
