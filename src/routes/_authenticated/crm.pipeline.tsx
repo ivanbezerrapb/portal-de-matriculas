@@ -430,3 +430,173 @@ function PipelinePage() {
     </div>
   );
 }
+
+function OpportunityTasks({ opportunityId }: { opportunityId: string }) {
+  const queryClient = useQueryClient();
+  const [title, setTitle] = useState("");
+  const [due, setDue] = useState("");
+
+  const { data: tasks } = useQuery({
+    queryKey: ["crm-tasks", "opp", opportunityId],
+    queryFn: () => listTasks({ data: { opportunity_id: opportunityId } }),
+  });
+
+  function refresh() {
+    void queryClient.invalidateQueries({ queryKey: ["crm-tasks"] });
+  }
+
+  const createM = useMutation({
+    mutationFn: () =>
+      createTask({ data: { opportunity_id: opportunityId, title, due_date: due || null } }),
+    onSuccess: () => {
+      setTitle("");
+      setDue("");
+      refresh();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  const doneM = useMutation({
+    mutationFn: (d: { id: string; done: boolean }) => setTaskDone({ data: d }),
+    onSuccess: refresh,
+    onError: (e: Error) => toast.error(e.message),
+  });
+  const deleteM = useMutation({
+    mutationFn: (d: { id: string }) => deleteTask({ data: d }),
+    onSuccess: refresh,
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <section className="mt-6 border-t border-border pt-4">
+      <h3 className="text-sm font-semibold text-foreground">Tarefas</h3>
+      <ul className="mt-2 space-y-2">
+        {(tasks ?? []).map((t) => (
+          <li key={t.id} className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="accent-[var(--color-primary)]"
+              checked={t.done}
+              onChange={(e) => doneM.mutate({ id: t.id, done: e.target.checked })}
+              aria-label={t.done ? "Reabrir tarefa" : "Concluir tarefa"}
+            />
+            <span
+              className={`flex-1 ${
+                t.done ? "text-muted-foreground line-through" : "text-foreground"
+              }`}
+            >
+              {t.title}
+              {t.due_date && (
+                <span className="ml-1 text-xs text-muted-foreground">
+                  ({new Date(`${t.due_date}T00:00:00`).toLocaleDateString("pt-BR")})
+                </span>
+              )}
+            </span>
+            <button
+              type="button"
+              aria-label="Excluir tarefa"
+              className="rounded p-1 text-muted-foreground hover:text-destructive"
+              onClick={() => deleteM.mutate({ id: t.id })}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </li>
+        ))}
+        {(tasks ?? []).length === 0 && (
+          <li className="text-xs text-muted-foreground">Nenhuma tarefa ainda.</li>
+        )}
+      </ul>
+      <form
+        className="mt-3 flex flex-col gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (!title.trim()) return;
+          createM.mutate();
+        }}
+      >
+        <Input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Nova tarefa…"
+        />
+        <div className="flex gap-2">
+          <Input type="date" value={due} onChange={(e) => setDue(e.target.value)} />
+          <Button type="submit" disabled={createM.isPending || !title.trim()}>
+            Adicionar
+          </Button>
+        </div>
+      </form>
+    </section>
+  );
+}
+
+function CloseDialog(props: {
+  result: "won" | "lost";
+  saving: boolean;
+  onCancel: () => void;
+  onConfirm: (reasonId: string, note: string) => void;
+}) {
+  const [reasonId, setReasonId] = useState("");
+  const [note, setNote] = useState("");
+  const { data: reasons, isLoading } = useQuery({
+    queryKey: ["close-reasons", "active"],
+    queryFn: () => listCloseReasons({ data: { activeOnly: true } }),
+  });
+  const options = (reasons ?? []).filter((r) => r.kind === props.result);
+  const isWon = props.result === "won";
+
+  return (
+    <div
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-foreground/40 p-4"
+      onClick={props.onCancel}
+    >
+      <div
+        className="w-full max-w-sm rounded-xl border border-border bg-card p-5 shadow-lg"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="font-display text-lg font-semibold text-foreground">
+          {isWon ? "Marcar como ganha" : "Marcar como perdida"}
+        </h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Escolha o motivo {isWon ? "do ganho" : "da perda"}.
+        </p>
+        {isLoading ? (
+          <div className="mt-4 flex justify-center">
+            <Spinner />
+          </div>
+        ) : options.length === 0 ? (
+          <p className="mt-4 text-sm text-muted-foreground">
+            Nenhum motivo ativo. Cadastre em CRM › Motivos.
+          </p>
+        ) : (
+          <div className="mt-4 space-y-3">
+            <Select value={reasonId} onChange={(e) => setReasonId(e.target.value)}>
+              <option value="">Selecione o motivo…</option>
+              {options.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.label}
+                </option>
+              ))}
+            </Select>
+            <Textarea
+              rows={2}
+              placeholder="Observação (opcional)"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+            />
+          </div>
+        )}
+        <div className="mt-4 flex justify-end gap-2">
+          <Button variant="ghost" onClick={props.onCancel}>
+            Cancelar
+          </Button>
+          <Button
+            disabled={!reasonId || props.saving}
+            onClick={() => props.onConfirm(reasonId, note)}
+          >
+            Confirmar
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
