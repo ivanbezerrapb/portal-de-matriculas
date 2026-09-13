@@ -488,9 +488,48 @@ function TemplatesTab({
     onError: (e) => toast.error(e.message),
   });
 
+  const { data: library } = useQuery({
+    queryKey: ["template-library"],
+    queryFn: () => listTemplates(),
+  });
+  const [libraryId, setLibraryId] = useState("");
+
+  const applyMut = useMutation({
+    mutationFn: (templateId: string) =>
+      applyTemplateToForm({
+        data: { template_id: templateId, form_id: formId },
+      }),
+    onSuccess: () => {
+      toast.success("Template aplicado a este formulário.");
+      setLibraryId("");
+      queryClient.invalidateQueries({ queryKey: ["form", formId] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const dupMut = useMutation({
+    mutationFn: (v: { id: string; name: string }) =>
+      duplicatePrintTemplate({ data: v }),
+    onSuccess: () => {
+      toast.success("Modelo duplicado.");
+      queryClient.invalidateQueries({ queryKey: ["form", formId] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const toLibraryMut = useMutation({
+    mutationFn: (v: { print_template_id: string; name: string }) =>
+      saveFormTemplateAsLibrary({ data: v }),
+    onSuccess: () => {
+      toast.success("Salvo na biblioteca de templates.");
+      queryClient.invalidateQueries({ queryKey: ["template-library"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   return (
     <div className="mt-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">
           Monte como a ficha impressa vai sair: quais campos, em qual ordem e
           com qual layout.
@@ -507,6 +546,31 @@ function TemplatesTab({
           + Novo modelo
         </Button>
       </div>
+
+      <Card className="mt-4 flex flex-wrap items-end gap-3">
+        <div className="min-w-[240px] flex-1">
+          <Label>Usar um template pronto</Label>
+          <Select
+            value={libraryId}
+            onChange={(e) => setLibraryId(e.target.value)}
+          >
+            <option value="">Selecione um template…</option>
+            {(library ?? []).map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name}
+              </option>
+            ))}
+          </Select>
+        </div>
+        <Button
+          variant="secondary"
+          disabled={!libraryId || applyMut.isPending}
+          onClick={() => applyMut.mutate(libraryId)}
+        >
+          Aplicar a este formulário
+        </Button>
+      </Card>
+
 
       <div className="mt-4 flex flex-col gap-3">
         {templates.length === 0 && !editing && (
