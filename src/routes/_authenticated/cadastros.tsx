@@ -98,7 +98,7 @@ function SubmissionsPage() {
               id="q"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Ex.: ESCA-0001"
+              placeholder="Ex.: 0001/ESCA"
             />
           </div>
           <div>

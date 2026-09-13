@@ -171,7 +171,7 @@ begin
   if v_prefix is null then
     raise exception 'Escola não encontrada';
   end if;
-  return v_prefix || '-' || lpad(v_number::text, v_digits, '0');
+  return lpad(v_number::text, v_digits, '0') || '/' || v_prefix;
 end;
 $$;
 
