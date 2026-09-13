@@ -12,9 +12,7 @@ async function requireAdmin(supabase: unknown, userId: string) {
 // Leitura para todos os autenticados (RLS permite SELECT).
 export const listCloseReasons = createServerFn({ method: "GET" })
   .middleware([requireAuth])
-  .inputValidator((data) =>
-    z.object({ activeOnly: z.boolean().optional() }).parse(data ?? {}),
-  )
+  .inputValidator((data) => z.object({ activeOnly: z.boolean().optional() }).parse(data ?? {}))
   .handler(async ({ data, context }) => {
     let q = context.supabase
       .from("crm_close_reasons")
@@ -102,8 +100,14 @@ export const moveCloseReason = createServerFn({ method: "POST" })
     if (index < 0 || target < 0 || target >= list.length) return { ok: true };
     const a = list[index]!;
     const b = list[target]!;
-    await context.supabase.from("crm_close_reasons").update({ position: b.position }).eq("id", a.id);
-    await context.supabase.from("crm_close_reasons").update({ position: a.position }).eq("id", b.id);
+    await context.supabase
+      .from("crm_close_reasons")
+      .update({ position: b.position })
+      .eq("id", a.id);
+    await context.supabase
+      .from("crm_close_reasons")
+      .update({ position: a.position })
+      .eq("id", b.id);
     return { ok: true };
   });
 
@@ -112,10 +116,7 @@ export const deleteCloseReason = createServerFn({ method: "POST" })
   .inputValidator((data) => z.object({ id: z.string().uuid() }).parse(data))
   .handler(async ({ data, context }) => {
     await requireAdmin(context.supabase, context.userId);
-    const { error } = await context.supabase
-      .from("crm_close_reasons")
-      .delete()
-      .eq("id", data.id);
+    const { error } = await context.supabase.from("crm_close_reasons").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });

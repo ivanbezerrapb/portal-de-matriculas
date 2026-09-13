@@ -72,8 +72,7 @@ function PipelinePage() {
 
   const pipelineQuery = useQuery({
     queryKey: ["pipeline", selected, statusFilter],
-    queryFn: () =>
-      listPipeline({ data: { funnel_id: selected!, status: statusFilter } }),
+    queryFn: () => listPipeline({ data: { funnel_id: selected!, status: statusFilter } }),
     enabled: Boolean(selected),
   });
 
@@ -299,31 +298,31 @@ function PipelinePage() {
                 {statusFilter === "open" ? (
                   newIn === stage.id ? (
                     <form
-                    className="mt-2 space-y-2 rounded-lg border border-border bg-card p-3"
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      const fd = new FormData(e.currentTarget as HTMLFormElement);
-                      createM.mutate({
-                        stage_id: stage.id,
-                        name: String(fd.get("name") ?? ""),
-                        phone: String(fd.get("phone") ?? ""),
-                        email: String(fd.get("email") ?? ""),
-                        notes: String(fd.get("notes") ?? ""),
-                      });
-                    }}
-                  >
-                    <Input name="name" placeholder="Nome" required />
-                    <Input name="phone" placeholder="Telefone" />
-                    <Input name="email" placeholder="E-mail" />
-                    <Textarea name="notes" rows={2} placeholder="Observação" />
-                    <div className="flex gap-2">
-                      <Button type="submit" disabled={createM.isPending}>
-                        Salvar
-                      </Button>
-                      <Button type="button" variant="outline" onClick={() => setNewIn(null)}>
-                        Cancelar
-                      </Button>
-                    </div>
+                      className="mt-2 space-y-2 rounded-lg border border-border bg-card p-3"
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        const fd = new FormData(e.currentTarget as HTMLFormElement);
+                        createM.mutate({
+                          stage_id: stage.id,
+                          name: String(fd.get("name") ?? ""),
+                          phone: String(fd.get("phone") ?? ""),
+                          email: String(fd.get("email") ?? ""),
+                          notes: String(fd.get("notes") ?? ""),
+                        });
+                      }}
+                    >
+                      <Input name="name" placeholder="Nome" required />
+                      <Input name="phone" placeholder="Telefone" />
+                      <Input name="email" placeholder="E-mail" />
+                      <Textarea name="notes" rows={2} placeholder="Observação" />
+                      <div className="flex gap-2">
+                        <Button type="submit" disabled={createM.isPending}>
+                          Salvar
+                        </Button>
+                        <Button type="button" variant="outline" onClick={() => setNewIn(null)}>
+                          Cancelar
+                        </Button>
+                      </div>
                     </form>
                   ) : (
                     <Button
@@ -421,16 +420,12 @@ function PipelinePage() {
                         }`}
                       >
                         {card.status === "won" ? "Ganha" : "Perdida"}
-                        {card.crm_close_reasons?.label
-                          ? ` · ${card.crm_close_reasons.label}`
-                          : ""}
+                        {card.crm_close_reasons?.label ? ` · ${card.crm_close_reasons.label}` : ""}
                       </dd>
                     </div>
                     {card.close_note && (
                       <div>
-                        <dt className="text-xs text-muted-foreground">
-                          Observação do fechamento
-                        </dt>
+                        <dt className="text-xs text-muted-foreground">Observação do fechamento</dt>
                         <dd className="whitespace-pre-line text-foreground">{card.close_note}</dd>
                       </div>
                     )}

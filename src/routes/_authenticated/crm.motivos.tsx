@@ -82,9 +82,7 @@ function MotivosPage() {
   return (
     <div className="mx-auto max-w-4xl">
       <p className="text-sm font-medium text-primary">CRM</p>
-      <h1 className="font-display text-2xl font-bold text-foreground">
-        Motivos de ganho e perda
-      </h1>
+      <h1 className="font-display text-2xl font-bold text-foreground">Motivos de ganho e perda</h1>
       <p className="mt-1 text-sm text-muted-foreground">
         Estes motivos aparecem na hora de marcar uma oportunidade como ganha ou perdida.
         {!isAdmin && " Somente administradores podem alterar."}

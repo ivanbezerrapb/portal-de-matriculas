@@ -57,9 +57,7 @@ export const createTask = createServerFn({ method: "POST" })
 
 export const setTaskDone = createServerFn({ method: "POST" })
   .middleware([requireAuth])
-  .inputValidator((data) =>
-    z.object({ id: z.string().uuid(), done: z.boolean() }).parse(data),
-  )
+  .inputValidator((data) => z.object({ id: z.string().uuid(), done: z.boolean() }).parse(data))
   .handler(async ({ data, context }) => {
     const { error } = await context.supabase
       .from("crm_tasks")
