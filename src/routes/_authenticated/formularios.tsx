@@ -49,6 +49,9 @@ function FormsPage() {
 
   const [title, setTitle] = useState("");
   const [schoolId, setSchoolId] = useState("");
+  const [dup, setDup] = useState<
+    { id: string; title: string; schoolId: string } | null
+  >(null);
 
   const invalidate = () =>
     queryClient.invalidateQueries({ queryKey: ["admin-forms"] });
