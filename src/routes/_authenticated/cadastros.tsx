@@ -1,7 +1,11 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { toast } from "sonner";
+import {
+  PrintSheets,
+  type PrintSheetsState,
+} from "@/components/print/PrintSheets";
 import { listSubmissions } from "@/lib/ext/cadastros.functions";
 import { listSchools } from "@/lib/ext/escolas.functions";
 import { listForms } from "@/lib/ext/formularios.functions";
@@ -33,6 +37,10 @@ function SubmissionsPage() {
   const [picker, setPicker] = useState<{
     submissionId: string;
     formId: string;
+  } | null>(null);
+  const [printJob, setPrintJob] = useState<{
+    templateId: string;
+    submissionId: string;
   } | null>(null);
 
   const { data: perms } = useQuery({
@@ -80,13 +88,17 @@ function SubmissionsPage() {
   });
 
   function openPrint(templateId: string, submissionId: string) {
-    window.open(
-      `/imprimir/${templateId}?ids=${submissionId}`,
-      "_blank",
-      "noopener",
-    );
+    setPrintJob({ templateId, submissionId });
     setPicker(null);
   }
+
+  const closePrint = useCallback(() => setPrintJob(null), []);
+  const handlePrintState = useCallback((state: PrintSheetsState) => {
+    if (state.status === "error") {
+      toast.error(state.message);
+      setPrintJob(null);
+    }
+  }, []);
 
   function printRow(submissionId: string, rowFormId: string) {
     const list = (allTemplates ?? []).filter((t) => t.form_id === rowFormId);
@@ -358,6 +370,25 @@ function SubmissionsPage() {
             </Button>
           </div>
         </div>
+      )}
+
+      {printJob && (
+        <>
+          <div className="no-print fixed inset-0 z-50 grid place-items-center bg-background/70">
+            <div className="flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3 text-sm text-foreground shadow-lg">
+              <Spinner />
+              Preparando impressão...
+            </div>
+          </div>
+          <PrintSheets
+            templateId={printJob.templateId}
+            submissionIds={[printJob.submissionId]}
+            autoPrint
+            offscreen
+            onStateChange={handlePrintState}
+            onDone={closePrint}
+          />
+        </>
       )}
     </div>
   );
