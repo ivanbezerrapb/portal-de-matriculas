@@ -368,51 +368,7 @@ function PipelinePage() {
                   Fechar
                 </Button>
               </div>
-
-              {stage && (
-                <span
-                  className="mt-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium"
-                  style={{ backgroundColor: `${stage.color}1a`, color: stage.color }}
-                >
-                  <span
-                    className="h-1.5 w-1.5 rounded-full"
-                    style={{ backgroundColor: stage.color }}
-                  />
-                  {stage.name}
-                </span>
-              )}
-
-              <dl className="mt-4 space-y-3 text-sm">
-                {card.phone && (
-                  <div>
-                    <dt className="text-xs text-muted-foreground">Telefone</dt>
-                    <dd className="text-foreground">{card.phone}</dd>
-                  </div>
-                )}
-                {card.email && (
-                  <div>
-                    <dt className="text-xs text-muted-foreground">E-mail</dt>
-                    <dd className="text-foreground">{card.email}</dd>
-                  </div>
-                )}
-                {details.map((d, i) => (
-                  <div key={i}>
-                    <dt className="text-xs text-muted-foreground">{d.label}</dt>
-                    <dd className="whitespace-pre-line text-foreground">{d.value}</dd>
-                  </div>
-                ))}
-                {card.notes && (
-                  <div>
-                    <dt className="text-xs text-muted-foreground">Observação</dt>
-                    <dd className="whitespace-pre-line text-foreground">{card.notes}</dd>
-                  </div>
-                )}
-                <div>
-                  <dt className="text-xs text-muted-foreground">Entrada</dt>
-                  <dd className="text-foreground">{formatDate(card.created_at)}</dd>
-                </div>
-              </dl>
-
+...
               {card.submission_id && (
                 <Link
                   to="/cadastros/$submissionId"
@@ -422,10 +378,55 @@ function PipelinePage() {
                   Abrir cadastro
                 </Link>
               )}
+
+              <OpportunityTasks opportunityId={card.id} />
+
+              {card.status === "open"
+                ? canClose && (
+                    <div className="mt-6 flex gap-2 border-t border-border pt-4">
+                      <Button
+                        variant="outline"
+                        className="flex-1 border-emerald-600/40 text-emerald-700 hover:bg-emerald-50"
+                        onClick={() => setClosing({ id: card.id, result: "won" })}
+                      >
+                        Marcar como ganha
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="flex-1 border-destructive/40 text-destructive hover:bg-destructive/10"
+                        onClick={() => setClosing({ id: card.id, result: "lost" })}
+                      >
+                        Marcar como perdida
+                      </Button>
+                    </div>
+                  )
+                : canClose && (
+                    <div className="mt-6 border-t border-border pt-4">
+                      <Button
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => reopenM.mutate({ id: card.id })}
+                        disabled={reopenM.isPending}
+                      >
+                        Reabrir oportunidade
+                      </Button>
+                    </div>
+                  )}
             </div>
           </div>
         );
       })()}
+
+      {closing && (
+        <CloseDialog
+          result={closing.result}
+          saving={closeM.isPending}
+          onCancel={() => setClosing(null)}
+          onConfirm={(reasonId, note) =>
+            closeM.mutate({ id: closing.id, result: closing.result, reason_id: reasonId, note })
+          }
+        />
+      )}
     </div>
   );
 }
