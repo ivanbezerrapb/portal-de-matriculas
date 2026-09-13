@@ -116,7 +116,7 @@ function TemplatesLibraryPage() {
     onSuccess: (res) => {
       toast.success(
         res.applied > 0
-          ? `Template salvo e aplicado em ${res.applied} formulário(s).`
+          ? `Template salvo e atualizado em ${res.applied} formulário(s).`
           : "Template salvo.",
       );
       setEditing(null);
