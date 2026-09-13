@@ -119,7 +119,7 @@ export const submitPublicForm = createServerFn({ method: "POST" })
         const value = Array.isArray(data.values[f.id])
           ? JSON.stringify(data.values[f.id])
           : String(data.values[f.id]).trim();
-        const main = { submission_id: submission.id, field_id: f.id, value };
+        const main = { submission_id: submission.id, field_id: f.id, part: "", value };
         // Endereço: grava também cada parte (CEP, Rua, Número...) separadamente.
         if (f.type === "address" && value) {
           return [main, ...addressPartRows(submission.id, f.id, value)];
