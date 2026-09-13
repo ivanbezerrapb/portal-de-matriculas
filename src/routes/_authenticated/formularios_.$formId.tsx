@@ -359,6 +359,46 @@ function FieldsTab({
                   />
                 </div>
               )}
+              {field.type === "children" && (
+                <>
+                  <div className="min-w-48 flex-1">
+                    <Label>Séries (uma por linha)</Label>
+                    <Textarea
+                      rows={3}
+                      value={splitChildOptions(field.options).series.join("\n")}
+                      onChange={(e) =>
+                        updateField(field.id, {
+                          options: joinChildOptions(
+                            e.target.value
+                              .split("\n")
+                              .map((s) => s.trim())
+                              .filter(Boolean),
+                            splitChildOptions(field.options).turnos,
+                          ),
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="min-w-48 flex-1">
+                    <Label>Turnos (um por linha)</Label>
+                    <Textarea
+                      rows={3}
+                      value={splitChildOptions(field.options).turnos.join("\n")}
+                      onChange={(e) =>
+                        updateField(field.id, {
+                          options: joinChildOptions(
+                            splitChildOptions(field.options).series,
+                            e.target.value
+                              .split("\n")
+                              .map((s) => s.trim())
+                              .filter(Boolean),
+                          ),
+                        })
+                      }
+                    />
+                  </div>
+                </>
+              )}
             </div>
           </Card>
         ))}
