@@ -150,6 +150,7 @@ export type Funnel = {
   school_id: string;
   name: string;
   description: string | null;
+  is_default: boolean;
   created_at: string;
 };
 
@@ -160,4 +161,18 @@ export type FunnelStage = {
   description: string | null;
   color: string;
   position: number;
+};
+
+export type Opportunity = {
+  id: string;
+  funnel_id: string;
+  stage_id: string;
+  school_id: string;
+  submission_id: string | null;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  notes: string | null;
+  position: number;
+  created_at: string;
 };
