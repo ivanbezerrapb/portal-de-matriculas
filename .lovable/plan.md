@@ -18,6 +18,8 @@ Plataforma com login, criação de formulários personalizados, links públicos 
 As permissões valem tanto na tela (botões que somem) quanto no servidor, para que ninguém contorne pela URL.
 
 ### 3. Escolas e o ID do cadastro
+- O sistema nasce com 4 escolas já cadastradas (nomes confirmáveis depois, com o Administrador).
+- **Restrição por escola:** Gestor de escola e Operador de impressão são vinculados a uma única escola e só veem, editam ou imprimem cadastros dessa escola. Administrador e Editor de cadastros acessam todas as escolas (o editor, apenas se preferir, também pode ser limitado por escola).
 - Cadastro de escolas com nome e configuração do ID: prefixo (ex.: `ESC01`), número inicial e quantidade de dígitos.
 - Cada envio recebe automaticamente um ID único no formato `ESC01-0001`, sem repetição mesmo com envios simultâneos.
 - O ID é a chave de busca em todo o sistema.
