@@ -9,7 +9,7 @@ import {
   updateSubmission,
 } from "@/lib/ext/cadastros.functions";
 import { listPrintTemplates } from "@/lib/ext/impressao.functions";
-import type { FormField } from "@/lib/ext/model";
+import { isChildrenCountField, type FormField } from "@/lib/ext/model";
 import { FieldRenderer, formatValue } from "@/components/FieldRenderer";
 import { Button, Card, Select, Spinner } from "@/components/ui";
 
@@ -45,6 +45,8 @@ function SubmissionDetailPage() {
   const [printTemplateId, setPrintTemplateId] = useState("");
 
   const fields = (data?.fields ?? []) as FormField[];
+  // O campo automático de quantidade de crianças não é editável à mão.
+  const editableFields = fields.filter((f) => !isChildrenCountField(f));
 
   useEffect(() => {
     if (!data) return;
