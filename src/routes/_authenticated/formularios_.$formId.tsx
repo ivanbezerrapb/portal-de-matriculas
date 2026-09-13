@@ -61,7 +61,7 @@ function FormConfigPage() {
     queryKey: ["form", formId],
     queryFn: () => getForm({ data: { id: formId } }),
   });
-  const [tab, setTab] = useState<"campos" | "impressao" | "publicar">("campos");
+  const [tab, setTab] = useState<"campos" | "impressao" | "publicar" | "destino">("campos");
 
   if (isLoading || !data) {
     return (
@@ -92,6 +92,7 @@ function FormConfigPage() {
             ["campos", "Campos"],
             ["impressao", "Modelos de impressão"],
             ["publicar", "Publicar"],
+            ["destino", "Destino"],
           ] as const
         ).map(([key, label]) => (
           <button
@@ -118,6 +119,9 @@ function FormConfigPage() {
           form={data.form}
           onChanged={() => queryClient.invalidateQueries({ queryKey: ["form", formId] })}
         />
+      )}
+      {tab === "destino" && (
+        <DestinationTab formId={formId} schoolId={data.form.school_id as string} />
       )}
     </div>
   );
