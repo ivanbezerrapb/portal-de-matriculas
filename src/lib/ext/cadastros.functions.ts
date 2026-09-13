@@ -65,6 +65,7 @@ export const listSubmissions = createServerFn({ method: "GET" })
       const { data: vals } = await context.supabase
         .from("submission_values")
         .select("submission_id, field_id, value")
+        .eq("part", "")
         .in(
           "submission_id",
           rows.map((r) => r.id),
@@ -101,7 +102,11 @@ export const getSubmission = createServerFn({ method: "GET" })
         .select("*")
         .eq("form_id", submission.form_id)
         .order("position"),
-      context.supabase.from("submission_values").select("*").eq("submission_id", data.id),
+      context.supabase
+        .from("submission_values")
+        .select("*")
+        .eq("submission_id", data.id)
+        .eq("part", ""),
       context.supabase
         .from("audit_log")
         .select("*")
@@ -149,7 +154,8 @@ export const updateSubmission = createServerFn({ method: "POST" })
     const { data: current } = await context.supabase
       .from("submission_values")
       .select("field_id, value")
-      .eq("submission_id", data.id);
+      .eq("submission_id", data.id)
+      .eq("part", "");
     const currentMap = new Map((current ?? []).map((v) => [v.field_id, v.value ?? ""]));
 
     const { data: fields } = await context.supabase
@@ -182,9 +188,30 @@ export const updateSubmission = createServerFn({ method: "POST" })
         .from("submission_values")
         .upsert(
           { submission_id: data.id, field_id: fieldId, value: after },
-          { onConflict: "submission_id,field_id" },
+          { onConflict: "submission_id,field_id,part" },
         );
       if (upsertError) throw new Error(upsertError.message);
+
+      // Endereço: sincroniza as partes gravadas separadamente.
+      const fieldType = (fields ?? []).find((f) => f.id === fieldId)?.type;
+      if (fieldType === "address") {
+        await context.supabase
+          .from("submission_values")
+          .delete()
+          .eq("submission_id", data.id)
+          .eq("field_id", fieldId)
+          .neq("part", "");
+        if (after) {
+          const { addressPartRows } = await import("./model");
+          const partRows = addressPartRows(data.id, fieldId, after);
+          if (partRows.length > 0) {
+            const { error: partsError } = await context.supabase
+              .from("submission_values")
+              .insert(partRows);
+            if (partsError) throw new Error(partsError.message);
+          }
+        }
+      }
     }
 
     // Recalcula a coluna children_count a partir dos campos "N Filhos" enviados.

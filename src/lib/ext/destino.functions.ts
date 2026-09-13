@@ -106,7 +106,7 @@ const ruleSchema = z.object({
   stage_id: uuidOrNull,
   conditions: z.array(
     z.object({
-      field_id: z.string().uuid(),
+      field_id: z.string().min(1),
       op: z.enum(["eq", "neq", "contains", "empty", "not_empty", "in", "gt", "lt"]),
       value: z.string(),
     }),
@@ -171,7 +171,8 @@ export const reprocessSubmissions = createServerFn({ method: "POST" })
       const { data: values } = await supabase
         .from("submission_values")
         .select("field_id, value")
-        .eq("submission_id", sub.id);
+        .eq("submission_id", sub.id)
+        .eq("part", "");
       const map: Record<string, string> = {};
       for (const v of (values ?? []) as { field_id: string; value: string }[]) {
         map[v.field_id] = v.value;

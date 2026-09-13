@@ -112,7 +112,7 @@ export async function writeChildrenCountValue(
       value: count == null ? "" : String(count),
       value_number: count,
     },
-    { onConflict: "submission_id,field_id" },
+    { onConflict: "submission_id,field_id,part" },
   );
 }
 

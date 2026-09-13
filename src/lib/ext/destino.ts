@@ -1,6 +1,6 @@
 // Regras de destino: decidem se um cadastro vira oportunidade no CRM
 // e em qual funil/etapa ele entra. Módulo puro (usado no servidor).
-import { formatAddress, parseAddress } from "./model";
+import { formatAddress, parseAddress, parseAddressPartFieldId } from "./model";
 
 export type ConditionOp = "eq" | "neq" | "contains" | "empty" | "not_empty" | "in" | "gt" | "lt";
 
@@ -114,11 +114,24 @@ function norm(s: string): string {
     .trim();
 }
 
+// Resolve o valor de um campo, incluindo ids sintéticos de parte de endereço.
+export function valueByFieldId(
+  values: Record<string, string | string[] | null | undefined>,
+  fieldId: string,
+): string | string[] | null | undefined {
+  const syn = parseAddressPartFieldId(fieldId);
+  if (syn) {
+    const raw = values[syn.fieldId];
+    return parseAddress(typeof raw === "string" ? raw : "")[syn.part];
+  }
+  return values[fieldId];
+}
+
 export function matchCondition(
   condition: DestinationCondition,
   values: Record<string, string | string[] | null | undefined>,
 ): boolean {
-  const text = asText(values[condition.field_id]);
+  const text = asText(valueByFieldId(values, condition.field_id));
   const target = condition.value ?? "";
   switch (condition.op) {
     case "empty":

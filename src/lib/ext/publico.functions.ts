@@ -112,15 +112,20 @@ export const submitPublicForm = createServerFn({ method: "POST" })
       .single();
     if (subError) throw new Error(subError.message);
 
+    const { addressPartRows } = await import("./model");
     const rows = publicFields
       .filter((f) => data.values[f.id] != null)
-      .map((f) => ({
-        submission_id: submission.id,
-        field_id: f.id,
-        value: Array.isArray(data.values[f.id])
+      .flatMap((f) => {
+        const value = Array.isArray(data.values[f.id])
           ? JSON.stringify(data.values[f.id])
-          : String(data.values[f.id]).trim(),
-      }));
+          : String(data.values[f.id]).trim();
+        const main = { submission_id: submission.id, field_id: f.id, value };
+        // Endereço: grava também cada parte (CEP, Rua, Número...) separadamente.
+        if (f.type === "address" && value) {
+          return [main, ...addressPartRows(submission.id, f.id, value)];
+        }
+        return [main];
+      });
     if (rows.length > 0) {
       const { error: valuesError } = await supabase.from("submission_values").insert(rows);
       if (valuesError) throw new Error(valuesError.message);

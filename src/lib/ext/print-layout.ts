@@ -1,5 +1,11 @@
 // Modelo de layout visual da impressão (arrastar e soltar).
-import { parseChildren, type ChildEntry, type FormField } from "./model";
+import {
+  ADDRESS_PART_LABELS,
+  parseAddressPartFieldId,
+  parseChildren,
+  type ChildEntry,
+  type FormField,
+} from "./model";
 
 export type PageSizeName = "A4" | "A5";
 
@@ -242,22 +248,21 @@ export type PrintContext = {
 export function sourceLabel(source: string, fields: FormField[]): string {
   const special = SPECIAL_SOURCES.find((s) => s.value === source);
   if (special) return special.label;
+  const syn = parseAddressPartFieldId(source);
+  if (syn) {
+    const parent = fields.find((f) => f.id === syn.fieldId)?.label ?? "Endereço";
+    return `${parent} — ${ADDRESS_PART_LABELS[syn.part]}`;
+  }
   return fields.find((f) => f.id === source)?.label ?? "Campo removido";
 }
 
-export function childrenOf(
-  block: ChildrenBlock,
-  ctx: PrintContext,
-): ChildEntry[] {
-  const fallback = ctx.fields.find(
-    (f) => f.type === "children" && !f.internal,
-  )?.id ?? "";
+export function childrenOf(block: ChildrenBlock, ctx: PrintContext): ChildEntry[] {
+  const fallback = ctx.fields.find((f) => f.type === "children" && !f.internal)?.id ?? "";
   // O template pode vir de outro formulário: se o campo indicado não existir
   // ou não for do tipo "N Filhos", usamos o campo de crianças deste formulário.
   let fieldId = block.fieldId || fallback;
   const configuredField = ctx.fields.find((f) => f.id === fieldId);
-  const validChildrenField =
-    configuredField?.type === "children" && !configuredField.internal;
+  const validChildrenField = configuredField?.type === "children" && !configuredField.internal;
   if (!validChildrenField || !(ctx.values[fieldId] ?? "").trim()) {
     if (fallback && (ctx.values[fallback] ?? "").trim()) fieldId = fallback;
   }
@@ -320,9 +325,7 @@ export function remapLayoutFields(
             ...b,
             rows: b.rows.map((row) =>
               row.map((c) =>
-                c.source && !c.source.startsWith("__")
-                  ? { ...c, source: fix(c.source) }
-                  : c,
+                c.source && !c.source.startsWith("__") ? { ...c, source: fix(c.source) } : c,
               ),
             ),
           };
@@ -354,9 +357,8 @@ export function mapFieldsByLabel(
       (f) => normalizeLabel(f.label) === normalizeLabel(s.label),
     );
     const sameType = s.type
-      ? candidates.find(
-          (f) => f.type === s.type && Boolean(f.internal) === Boolean(s.internal),
-        ) ?? candidates.find((f) => f.type === s.type && !f.internal)
+      ? (candidates.find((f) => f.type === s.type && Boolean(f.internal) === Boolean(s.internal)) ??
+        candidates.find((f) => f.type === s.type && !f.internal))
       : undefined;
     const visible = candidates.find((f) => !f.internal);
     const hit = sameType ?? visible ?? candidates[0];
