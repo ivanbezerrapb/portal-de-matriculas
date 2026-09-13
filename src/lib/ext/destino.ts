@@ -31,6 +31,9 @@ export type DestinationRule = {
   conditions: DestinationCondition[];
 };
 
+// Sentinela usada nas informações adicionais para o ID do cadastro.
+export const SUBMISSION_ID_FIELD = "submission_id";
+
 // Campo extra levado para o cartão do CRM.
 export type ExtraField = {
   field_id: string;
