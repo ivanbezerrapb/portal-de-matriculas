@@ -56,6 +56,7 @@ export function answerText(raw: string | string[] | null | undefined): string {
   if (raw == null) return "";
   if (Array.isArray(raw)) return raw.join(", ");
   const s = String(raw).trim();
+  if (s.startsWith("{")) return formatAddress(parseAddress(s));
   if (s.startsWith("[")) {
     try {
       const arr = JSON.parse(s);
