@@ -8,7 +8,11 @@ import {
 } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  ChevronDown,
   ClipboardList,
+  Filter,
+  Kanban,
+  Settings,
   LayoutDashboard,
   LogOut,
   School,
@@ -298,7 +302,7 @@ function AuthenticatedLayout() {
             </Button>
             <div className="min-w-0">
               <p className="truncate font-display text-base font-semibold text-foreground">
-                {activeItem?.label ?? "Grupo Inter"}
+                {breadcrumb}
               </p>
               <p className="hidden text-xs text-muted-foreground sm:block">
                 Gestão de formulários escolares
