@@ -27,7 +27,7 @@ import {
   Textarea,
 } from "@/components/ui";
 
-export const Route = createFileRoute("/_authenticated/formularios/$formId")({
+export const Route = createFileRoute("/_authenticated/formularios_/$formId")({
   component: FormConfigPage,
 });
 

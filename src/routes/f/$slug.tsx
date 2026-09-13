@@ -1,11 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { queryOptions, useQuery } from "@tanstack/react-query";
+import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 import { getPublicForm, submitPublicForm } from "@/lib/ext/publico.functions";
 import type { FormField } from "@/lib/ext/model";
 import { FieldRenderer } from "@/components/FieldRenderer";
-import { Button, Card, Spinner } from "@/components/ui";
+import { Button, Card } from "@/components/ui";
 
 const publicFormQuery = (slug: string) =>
   queryOptions({
@@ -40,19 +40,12 @@ export const Route = createFileRoute("/f/$slug")({
 
 function PublicFormPage() {
   const { slug } = Route.useParams();
-  const { data, isLoading } = useQuery(publicFormQuery(slug));
+  const { data } = useSuspenseQuery(publicFormQuery(slug));
   const [values, setValues] = useState<Record<string, string | string[]>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [confirmedId, setConfirmedId] = useState<string | null>(null);
 
-  if (isLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Spinner />
-      </div>
-    );
-  }
 
   if (!data) {
     return (

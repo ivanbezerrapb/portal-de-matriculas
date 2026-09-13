@@ -18,7 +18,7 @@ export function FieldRenderer({
 
   return (
     <div>
-      <Label>
+      <Label htmlFor={field.id}>
         {field.label}
         {field.required && <span className="ml-1 text-destructive">*</span>}
       </Label>
@@ -27,10 +27,15 @@ export function FieldRenderer({
       )}
 
       {field.type === "short_text" && (
-        <Input value={strValue} onChange={(e) => onChange(e.target.value)} />
+        <Input
+          id={field.id}
+          value={strValue}
+          onChange={(e) => onChange(e.target.value)}
+        />
       )}
       {field.type === "long_text" && (
         <Textarea
+          id={field.id}
           rows={4}
           value={strValue}
           onChange={(e) => onChange(e.target.value)}
@@ -38,6 +43,7 @@ export function FieldRenderer({
       )}
       {field.type === "number" && (
         <Input
+          id={field.id}
           type="number"
           value={strValue}
           onChange={(e) => onChange(e.target.value)}
@@ -45,6 +51,7 @@ export function FieldRenderer({
       )}
       {field.type === "date" && (
         <Input
+          id={field.id}
           type="date"
           value={strValue}
           onChange={(e) => onChange(e.target.value)}
@@ -52,6 +59,7 @@ export function FieldRenderer({
       )}
       {field.type === "email" && (
         <Input
+          id={field.id}
           type="email"
           value={strValue}
           onChange={(e) => onChange(e.target.value)}
@@ -59,6 +67,7 @@ export function FieldRenderer({
       )}
       {field.type === "phone" && (
         <Input
+          id={field.id}
           type="tel"
           placeholder="(00) 00000-0000"
           value={strValue}

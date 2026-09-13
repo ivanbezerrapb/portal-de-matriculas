@@ -13,7 +13,7 @@ import type { FormField } from "@/lib/ext/model";
 import { FieldRenderer, formatValue } from "@/components/FieldRenderer";
 import { Button, Card, Select, Spinner } from "@/components/ui";
 
-export const Route = createFileRoute("/_authenticated/cadastros/$submissionId")(
+export const Route = createFileRoute("/_authenticated/cadastros_/$submissionId")(
   {
     component: SubmissionDetailPage,
   },
