@@ -140,9 +140,9 @@ export type PrintTemplate = {
 
 export const ROLE_LABELS: Record<string, string> = {
   admin: "Administrador",
-  school_manager: "Gestor de escola",
-  print_operator: "Operador de impressão",
-  submission_editor: "Editor de cadastros",
+  school_manager: "Gerente",
+  print_operator: "Secretaria",
+  info_center: "Central de Informações",
 };
 
 export type Funnel = {

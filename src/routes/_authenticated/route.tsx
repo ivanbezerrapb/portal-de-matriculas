@@ -94,22 +94,45 @@ function AuthenticatedLayout() {
   type NavEntry = NavLeaf | NavGroup;
 
   const isAdmin = perms?.isAdmin ?? false;
+  const isManager = (perms?.managerSchools.length ?? 0) > 0;
+  const isInfo = (perms?.infoSchools.length ?? 0) > 0;
+  const isSecretary = !isAdmin && !isManager && !isInfo;
 
+  const roleLabel = isAdmin
+    ? "Administrador"
+    : isManager
+      ? "Gerente"
+      : isInfo
+        ? "Central de Informações"
+        : "Secretaria";
+
+  // Cada perfil enxerga apenas as telas que pode usar.
   const navEntries: NavEntry[] = [
-    { to: "/dashboard", label: "Início", icon: LayoutDashboard },
-    { to: "/cadastros", label: "Cadastros", icon: ClipboardList },
-    {
-      key: "crm",
-      label: "CRM",
-      icon: Kanban,
-
-      children: [
-        { to: "/crm/pipeline", label: "Pipeline", icon: Kanban },
-        { to: "/crm/funil", label: "Funil", icon: Filter },
-        { to: "/crm/tarefas", label: "Tarefas", icon: ListTodo },
-        { to: "/crm/motivos", label: "Motivos", icon: Trophy },
-      ],
-    },
+    ...(isAdmin || isManager
+      ? [{ to: "/dashboard", label: "Início", icon: LayoutDashboard } as NavLeaf]
+      : []),
+    ...(isAdmin || isManager || isSecretary
+      ? [{ to: "/cadastros", label: "Cadastros", icon: ClipboardList } as NavLeaf]
+      : []),
+    ...(isAdmin || isInfo
+      ? [
+          {
+            key: "crm",
+            label: "CRM",
+            icon: Kanban,
+            children: [
+              { to: "/crm/pipeline", label: "Pipeline", icon: Kanban },
+              ...(isAdmin
+                ? [
+                    { to: "/crm/funil", label: "Funil", icon: Filter },
+                    { to: "/crm/tarefas", label: "Tarefas", icon: ListTodo },
+                    { to: "/crm/motivos", label: "Motivos", icon: Trophy },
+                  ]
+                : [{ to: "/crm/tarefas", label: "Tarefas", icon: ListTodo }]),
+            ],
+          } as NavGroup,
+        ]
+      : []),
     ...(isAdmin
       ? [
           {
@@ -128,6 +151,19 @@ function AuthenticatedLayout() {
   ];
 
   const isGroup = (entry: NavEntry): entry is NavGroup => "children" in entry;
+
+  // Endereço fora do perfil: leva para a primeira tela permitida.
+  const allowedPaths = navEntries.flatMap((e) =>
+    isGroup(e) ? e.children.map((c) => c.to) : [e.to],
+  );
+  const firstAllowed = allowedPaths[0];
+  useEffect(() => {
+    if (!perms || !firstAllowed) return;
+    if (!allowedPaths.some((p) => pathname.startsWith(p))) {
+      navigate({ to: firstAllowed, replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [perms, pathname, firstAllowed]);
 
   const openGroups = navEntries
     .filter(isGroup)
@@ -273,15 +309,7 @@ function AuthenticatedLayout() {
               <p className="truncate text-sm font-semibold text-sidebar-foreground">
                 {perms.fullName || perms.email}
               </p>
-              <p className="mt-0.5 text-xs text-sidebar-foreground/60">
-                {perms.isAdmin
-                  ? "Administrador"
-                  : perms.isEditor
-                    ? "Editor de cadastros"
-                    : perms.managerSchools.length > 0
-                      ? "Gestor de escola"
-                      : "Operador de impressão"}
-              </p>
+              <p className="mt-0.5 text-xs text-sidebar-foreground/60">{roleLabel}</p>
             </div>
           ) : (
             <Spinner className="h-4 w-4" />

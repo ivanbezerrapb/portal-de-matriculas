@@ -74,7 +74,7 @@ function PipelinePage() {
     queryKey: ["my-permissions"],
     queryFn: () => getMyPermissions(),
   });
-  const canClose = perms?.isAdmin || (perms?.managerSchools.length ?? 0) > 0;
+  const canClose = perms?.isAdmin ?? false;
 
   const funnelsQuery = useQuery({ queryKey: ["funnels"], queryFn: () => listFunnels() });
   const funnels = funnelsQuery.data?.funnels ?? [];
