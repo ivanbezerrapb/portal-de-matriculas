@@ -8,7 +8,11 @@ import {
 } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  ChevronDown,
   ClipboardList,
+  Filter,
+  Kanban,
+  Settings,
   LayoutDashboard,
   LogOut,
   School,
@@ -59,41 +63,79 @@ function AuthenticatedLayout() {
     navigate({ to: "/auth", replace: true });
   }
 
-  const navItems = [
-    { to: "/dashboard", label: "Início", icon: LayoutDashboard, show: true },
-    {
-      to: "/cadastros",
-      label: "Cadastros",
-      icon: ClipboardList,
-      show: true,
-    },
-    {
-      to: "/formularios",
-      label: "Formulários",
-      icon: FileText,
-      show: perms?.isAdmin ?? false,
-    },
-    {
-      to: "/templates",
-      label: "Templates",
-      icon: LayoutTemplate,
-      show: perms?.isAdmin ?? false,
-    },
-    {
-      to: "/escolas",
-      label: "Escolas",
-      icon: School,
-      show: perms?.isAdmin ?? false,
-    },
-    {
-      to: "/usuarios",
-      label: "Usuários",
-      icon: Users,
-      show: perms?.isAdmin ?? false,
-    },
-  ].filter((i) => i.show);
+  type NavLeaf = { to: string; label: string; icon: typeof LayoutDashboard };
+  type NavGroup = {
+    key: string;
+    label: string;
+    icon: typeof LayoutDashboard;
+    badge?: string;
+    children: NavLeaf[];
+  };
+  type NavEntry = NavLeaf | NavGroup;
 
-  const activeItem = navItems.find(({ to }) => pathname.startsWith(to));
+  const isAdmin = perms?.isAdmin ?? false;
+
+  const navEntries: NavEntry[] = [
+    { to: "/dashboard", label: "Início", icon: LayoutDashboard },
+    { to: "/cadastros", label: "Cadastros", icon: ClipboardList },
+    {
+      key: "crm",
+      label: "CRM",
+      icon: Kanban,
+      badge: "Em breve",
+      children: [
+        { to: "/crm/pipeline", label: "Pipeline", icon: Kanban },
+        { to: "/crm/funil", label: "Funil", icon: Filter },
+      ],
+    },
+    ...(isAdmin
+      ? [
+          {
+            key: "config",
+            label: "Configurações",
+            icon: Settings,
+            children: [
+              { to: "/formularios", label: "Formulários", icon: FileText },
+              { to: "/templates", label: "Templates", icon: LayoutTemplate },
+              { to: "/escolas", label: "Escolas", icon: School },
+              { to: "/usuarios", label: "Usuários", icon: Users },
+            ],
+          } as NavGroup,
+        ]
+      : []),
+  ];
+
+  const isGroup = (entry: NavEntry): entry is NavGroup => "children" in entry;
+
+  const openGroups = navEntries
+    .filter(isGroup)
+    .filter((g) => g.children.some((c) => pathname.startsWith(c.to)))
+    .map((g) => g.key);
+
+  const [manualGroups, setManualGroups] = useState<Record<string, boolean>>({});
+  const groupIsOpen = (key: string) => manualGroups[key] ?? openGroups.includes(key);
+
+  function toggleGroup(key: string) {
+    if (collapsed) setCollapsed(false);
+    setManualGroups((prev) => ({ ...prev, [key]: !groupIsOpen(key) }));
+  }
+
+  let breadcrumb = "Grupo Inter";
+  for (const entry of navEntries) {
+    if (isGroup(entry)) {
+      const child = entry.children.find((c) => pathname.startsWith(c.to));
+      if (child) breadcrumb = `${entry.label} › ${child.label}`;
+    } else if (pathname.startsWith(entry.to)) {
+      breadcrumb = entry.label;
+    }
+  }
+
+  const leafClass = (active: boolean) =>
+    `mb-1 flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+      active
+        ? "bg-sidebar-primary text-sidebar-primary-foreground"
+        : "text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+    }`;
 
   return (
     <div className="flex min-h-screen w-full bg-background">
@@ -129,27 +171,80 @@ function AuthenticatedLayout() {
             <X className="h-5 w-5" />
           </Button>
         </div>
-        <nav className="flex-1 px-3 py-5" aria-label="Navegação principal">
-          {navItems.map(({ to, label, icon: Icon }) => {
-            const active = pathname.startsWith(to);
+        <nav className="flex-1 overflow-y-auto px-3 py-5" aria-label="Navegação principal">
+          {navEntries.map((entry) => {
+            if (!isGroup(entry)) {
+              const Icon = entry.icon;
+              const active = pathname.startsWith(entry.to);
+              return (
+                <Link
+                  key={entry.to}
+                  to={entry.to}
+                  onClick={() => setMobileOpen(false)}
+                  className={leafClass(active)}
+                  title={collapsed ? entry.label : undefined}
+                >
+                  <Icon className="h-5 w-5 shrink-0" />
+                  {!collapsed && <span>{entry.label}</span>}
+                </Link>
+              );
+            }
+
+            const Icon = entry.icon;
+            const open = groupIsOpen(entry.key);
+            const hasActiveChild = entry.children.some((c) => pathname.startsWith(c.to));
             return (
-              <Link
-                key={to}
-                to={to}
-                onClick={() => setMobileOpen(false)}
-                className={`mb-1 flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                  active
-                    ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                    : "text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                }`}
-                title={collapsed ? label : undefined}
-              >
-                <Icon className="h-5 w-5 shrink-0" />
-                {!collapsed && <span>{label}</span>}
-              </Link>
+              <div key={entry.key} className="mb-1">
+                <button
+                  type="button"
+                  onClick={() => toggleGroup(entry.key)}
+                  className={`flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                    hasActiveChild
+                      ? "text-sidebar-foreground"
+                      : "text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                  }`}
+                  title={collapsed ? entry.label : undefined}
+                  aria-expanded={open}
+                >
+                  <Icon className="h-5 w-5 shrink-0" />
+                  {!collapsed && (
+                    <>
+                      <span className="flex-1 text-left">{entry.label}</span>
+                      {entry.badge && (
+                        <span className="rounded-full bg-sidebar-accent px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sidebar-accent-foreground">
+                          {entry.badge}
+                        </span>
+                      )}
+                      <ChevronDown
+                        className={`h-4 w-4 shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
+                      />
+                    </>
+                  )}
+                </button>
+                {!collapsed && open && (
+                  <div className="mt-1 ml-4 border-l border-sidebar-border pl-3">
+                    {entry.children.map((child) => {
+                      const ChildIcon = child.icon;
+                      const active = pathname.startsWith(child.to);
+                      return (
+                        <Link
+                          key={child.to}
+                          to={child.to}
+                          onClick={() => setMobileOpen(false)}
+                          className={leafClass(active)}
+                        >
+                          <ChildIcon className="h-4 w-4 shrink-0" />
+                          <span>{child.label}</span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             );
           })}
         </nav>
+
         <div className="border-t border-sidebar-border px-3 py-4">
           {perms ? (
             <div className={collapsed ? "sr-only" : "px-2"}>
@@ -207,7 +302,7 @@ function AuthenticatedLayout() {
             </Button>
             <div className="min-w-0">
               <p className="truncate font-display text-base font-semibold text-foreground">
-                {activeItem?.label ?? "Grupo Inter"}
+                {breadcrumb}
               </p>
               <p className="hidden text-xs text-muted-foreground sm:block">
                 Gestão de formulários escolares

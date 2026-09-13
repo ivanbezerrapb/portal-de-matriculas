@@ -20,6 +20,8 @@ import { Route as AuthenticatedTemplatesRouteImport } from './routes/_authentica
 import { Route as AuthenticatedUsuariosRouteImport } from './routes/_authenticated/usuarios'
 import { Route as FSlugRouteImport } from './routes/f/$slug'
 import { Route as AuthenticatedCadastrosSubmissionIdRouteImport } from './routes/_authenticated/cadastros_.$submissionId'
+import { Route as AuthenticatedCrmFunilRouteImport } from './routes/_authenticated/crm.funil'
+import { Route as AuthenticatedCrmPipelineRouteImport } from './routes/_authenticated/crm.pipeline'
 import { Route as AuthenticatedFormulariosFormIdRouteImport } from './routes/_authenticated/formularios_.$formId'
 import { Route as AuthenticatedImprimirTemplateIdRouteImport } from './routes/_authenticated/imprimir.$templateId'
 import { Route as ApiPublicConfigRouteImport } from './routes/api/public/config'
@@ -80,6 +82,17 @@ const AuthenticatedCadastrosSubmissionIdRoute =
     path: '/cadastros/$submissionId',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedCrmFunilRoute = AuthenticatedCrmFunilRouteImport.update({
+  id: '/crm/funil',
+  path: '/crm/funil',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedCrmPipelineRoute =
+  AuthenticatedCrmPipelineRouteImport.update({
+    id: '/crm/pipeline',
+    path: '/crm/pipeline',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedFormulariosFormIdRoute =
   AuthenticatedFormulariosFormIdRouteImport.update({
     id: '/formularios_/$formId',
@@ -109,6 +122,8 @@ export interface FileRoutesByFullPath {
   '/usuarios': typeof AuthenticatedUsuariosRoute
   '/f/$slug': typeof FSlugRoute
   '/cadastros/$submissionId': typeof AuthenticatedCadastrosSubmissionIdRoute
+  '/crm/funil': typeof AuthenticatedCrmFunilRoute
+  '/crm/pipeline': typeof AuthenticatedCrmPipelineRoute
   '/formularios/$formId': typeof AuthenticatedFormulariosFormIdRoute
   '/imprimir/$templateId': typeof AuthenticatedImprimirTemplateIdRoute
   '/api/public/config': typeof ApiPublicConfigRoute
@@ -124,6 +139,8 @@ export interface FileRoutesByTo {
   '/usuarios': typeof AuthenticatedUsuariosRoute
   '/f/$slug': typeof FSlugRoute
   '/cadastros/$submissionId': typeof AuthenticatedCadastrosSubmissionIdRoute
+  '/crm/funil': typeof AuthenticatedCrmFunilRoute
+  '/crm/pipeline': typeof AuthenticatedCrmPipelineRoute
   '/formularios/$formId': typeof AuthenticatedFormulariosFormIdRoute
   '/imprimir/$templateId': typeof AuthenticatedImprimirTemplateIdRoute
   '/api/public/config': typeof ApiPublicConfigRoute
@@ -141,6 +158,8 @@ export interface FileRoutesById {
   '/_authenticated/usuarios': typeof AuthenticatedUsuariosRoute
   '/f/$slug': typeof FSlugRoute
   '/_authenticated/cadastros_/$submissionId': typeof AuthenticatedCadastrosSubmissionIdRoute
+  '/_authenticated/crm/funil': typeof AuthenticatedCrmFunilRoute
+  '/_authenticated/crm/pipeline': typeof AuthenticatedCrmPipelineRoute
   '/_authenticated/formularios_/$formId': typeof AuthenticatedFormulariosFormIdRoute
   '/_authenticated/imprimir/$templateId': typeof AuthenticatedImprimirTemplateIdRoute
   '/api/public/config': typeof ApiPublicConfigRoute
@@ -158,6 +177,8 @@ export interface FileRouteTypes {
     | '/usuarios'
     | '/f/$slug'
     | '/cadastros/$submissionId'
+    | '/crm/funil'
+    | '/crm/pipeline'
     | '/formularios/$formId'
     | '/imprimir/$templateId'
     | '/api/public/config'
@@ -173,6 +194,8 @@ export interface FileRouteTypes {
     | '/usuarios'
     | '/f/$slug'
     | '/cadastros/$submissionId'
+    | '/crm/funil'
+    | '/crm/pipeline'
     | '/formularios/$formId'
     | '/imprimir/$templateId'
     | '/api/public/config'
@@ -189,6 +212,8 @@ export interface FileRouteTypes {
     | '/_authenticated/usuarios'
     | '/f/$slug'
     | '/_authenticated/cadastros_/$submissionId'
+    | '/_authenticated/crm/funil'
+    | '/_authenticated/crm/pipeline'
     | '/_authenticated/formularios_/$formId'
     | '/_authenticated/imprimir/$templateId'
     | '/api/public/config'
@@ -281,6 +306,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCadastrosSubmissionIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/crm/funil': {
+      id: '/_authenticated/crm/funil'
+      path: '/crm/funil'
+      fullPath: '/crm/funil'
+      preLoaderRoute: typeof AuthenticatedCrmFunilRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/crm/pipeline': {
+      id: '/_authenticated/crm/pipeline'
+      path: '/crm/pipeline'
+      fullPath: '/crm/pipeline'
+      preLoaderRoute: typeof AuthenticatedCrmPipelineRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/formularios_/$formId': {
       id: '/_authenticated/formularios_/$formId'
       path: '/formularios/$formId'
@@ -313,6 +352,8 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedTemplatesRoute: typeof AuthenticatedTemplatesRoute
   AuthenticatedUsuariosRoute: typeof AuthenticatedUsuariosRoute
   AuthenticatedCadastrosSubmissionIdRoute: typeof AuthenticatedCadastrosSubmissionIdRoute
+  AuthenticatedCrmFunilRoute: typeof AuthenticatedCrmFunilRoute
+  AuthenticatedCrmPipelineRoute: typeof AuthenticatedCrmPipelineRoute
   AuthenticatedFormulariosFormIdRoute: typeof AuthenticatedFormulariosFormIdRoute
   AuthenticatedImprimirTemplateIdRoute: typeof AuthenticatedImprimirTemplateIdRoute
 }
@@ -326,6 +367,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedUsuariosRoute: AuthenticatedUsuariosRoute,
   AuthenticatedCadastrosSubmissionIdRoute:
     AuthenticatedCadastrosSubmissionIdRoute,
+  AuthenticatedCrmFunilRoute: AuthenticatedCrmFunilRoute,
+  AuthenticatedCrmPipelineRoute: AuthenticatedCrmPipelineRoute,
   AuthenticatedFormulariosFormIdRoute: AuthenticatedFormulariosFormIdRoute,
   AuthenticatedImprimirTemplateIdRoute: AuthenticatedImprimirTemplateIdRoute,
 }
