@@ -84,6 +84,8 @@ function PrintPage() {
     logo_url: string | null;
   } | null;
   const typedFields = fields as FormField[];
+  const layoutFields = ((data as unknown as { allFields?: unknown }).allFields ??
+    fields) as FormField[];
   const layout = parseLayout(template.layout);
   const hasLayout = !!layout && layout.pages.some((p) => p.blocks.length > 0);
   const size = PAGE_MM[layout?.pageSize ?? (template.page_size as "A4" | "A5")];
@@ -135,7 +137,7 @@ function PrintPage() {
         <div id="print-area">
           {submissions.map((sub) => {
             const ctx: PrintContext = {
-              fields: typedFields,
+              fields: layoutFields,
               values: sub.values,
               publicId: sub.public_id,
               schoolName: school?.name ?? "",
