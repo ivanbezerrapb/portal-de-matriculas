@@ -1,9 +1,9 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { PrintSheets, type PrintSheetsState } from "@/components/print/PrintSheets";
-import { listSubmissions } from "@/lib/ext/cadastros.functions";
+import { listSubmissions, setEnrollment } from "@/lib/ext/cadastros.functions";
 import { listSchools } from "@/lib/ext/escolas.functions";
 import { listForms } from "@/lib/ext/formularios.functions";
 import { listPrintTemplates } from "@/lib/ext/impressao.functions";
@@ -26,6 +26,7 @@ export const Route = createFileRoute("/_authenticated/cadastros")({
 
 function SubmissionsPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [schoolId, setSchoolId] = useState("");
   const [formId, setFormId] = useState("");
@@ -120,6 +121,20 @@ function SubmissionsPage() {
       (perms?.managerSchools.length ?? 0) > 0 ||
       (perms?.operatorSchools.length ?? 0) > 0) ??
     false;
+
+  const canEnroll =
+    (perms?.isAdmin || perms?.isEditor || (perms?.managerSchools.length ?? 0) > 0) ?? false;
+
+  const enrollM = useMutation({
+    mutationFn: (d: { id: string; enrolled: boolean }) => setEnrollment({ data: d }),
+    onSuccess: (_r, d) => {
+      toast.success(d.enrolled ? "Matrícula registrada." : "Matrícula desfeita.");
+      queryClient.invalidateQueries({ queryKey: ["submissions"] });
+      queryClient.invalidateQueries({ queryKey: ["pipeline"] });
+      queryClient.invalidateQueries({ queryKey: ["crm-tasks"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   function toggle(id: string) {
     setSelected((prev) => {
@@ -248,6 +263,7 @@ function SubmissionsPage() {
                 <th className="px-4 py-3">Escola</th>
                 <th className="px-4 py-3">Crianças</th>
                 <th className="px-4 py-3">Data</th>
+                <th className="px-4 py-3">Matrícula</th>
                 <th className="px-4 py-3"></th>
               </tr>
             </thead>
@@ -258,6 +274,7 @@ function SubmissionsPage() {
                 const school = s.schools as unknown as { name: string } | null;
                 const childrenCount = (s as unknown as { children_count: number | null })
                   .children_count;
+                const enrolled = Boolean((s as unknown as { enrolled?: boolean }).enrolled);
                 return (
                   <tr
                     key={s.id}
@@ -289,6 +306,21 @@ function SubmissionsPage() {
                         dateStyle: "short",
                         timeStyle: "short",
                       })}
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <input
+                          type="checkbox"
+                          className="accent-[var(--color-primary)]"
+                          checked={enrolled}
+                          disabled={!canEnroll || enrollM.isPending}
+                          onChange={(e) => enrollM.mutate({ id: s.id, enrolled: e.target.checked })}
+                          aria-label={`Matrícula de ${s.public_id}`}
+                        />
+                        {enrolled ? (
+                          <span className="font-medium text-emerald-600">Ativo</span>
+                        ) : null}
+                      </label>
                     </td>
                     <td className="px-2 py-2.5 text-right">
                       {canPrint && (

@@ -95,24 +95,20 @@ export const getSubmission = createServerFn({ method: "GET" })
       .single();
     if (error) throw new Error(error.message);
 
-    const [{ data: fields }, { data: values }, { data: history }] =
-      await Promise.all([
-        context.supabase
-          .from("form_fields")
-          .select("*")
-          .eq("form_id", submission.form_id)
-          .order("position"),
-        context.supabase
-          .from("submission_values")
-          .select("*")
-          .eq("submission_id", data.id),
-        context.supabase
-          .from("audit_log")
-          .select("*")
-          .eq("submission_id", data.id)
-          .order("created_at", { ascending: false })
-          .limit(50),
-      ]);
+    const [{ data: fields }, { data: values }, { data: history }] = await Promise.all([
+      context.supabase
+        .from("form_fields")
+        .select("*")
+        .eq("form_id", submission.form_id)
+        .order("position"),
+      context.supabase.from("submission_values").select("*").eq("submission_id", data.id),
+      context.supabase
+        .from("audit_log")
+        .select("*")
+        .eq("submission_id", data.id)
+        .order("created_at", { ascending: false })
+        .limit(50),
+    ]);
 
     return {
       submission,
@@ -146,9 +142,7 @@ export const updateSubmission = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
 
     const allowed =
-      perms.isAdmin ||
-      perms.isEditor ||
-      perms.managerSchools.includes(submission.school_id);
+      perms.isAdmin || perms.isEditor || perms.managerSchools.includes(submission.school_id);
     if (!allowed) {
       throw new Error("Você não tem permissão para editar este cadastro.");
     }
@@ -157,9 +151,7 @@ export const updateSubmission = createServerFn({ method: "POST" })
       .from("submission_values")
       .select("field_id, value")
       .eq("submission_id", data.id);
-    const currentMap = new Map(
-      (current ?? []).map((v) => [v.field_id, v.value ?? ""]),
-    );
+    const currentMap = new Map((current ?? []).map((v) => [v.field_id, v.value ?? ""]));
 
     const { data: fields } = await context.supabase
       .from("form_fields")
@@ -211,12 +203,7 @@ export const updateSubmission = createServerFn({ method: "POST" })
 
     if (childrenCount !== undefined) {
       const { writeChildrenCountValue } = await import("./server");
-      await writeChildrenCountValue(
-        context.supabase,
-        submission.form_id,
-        data.id,
-        childrenCount,
-      );
+      await writeChildrenCountValue(context.supabase, submission.form_id, data.id, childrenCount);
     }
 
     if (changes.length > 0 || childrenCount !== undefined) {
@@ -225,9 +212,7 @@ export const updateSubmission = createServerFn({ method: "POST" })
         .update({
           updated_at: new Date().toISOString(),
           updated_by: context.userId,
-          ...(childrenCount !== undefined
-            ? { children_count: childrenCount }
-            : {}),
+          ...(childrenCount !== undefined ? { children_count: childrenCount } : {}),
         })
         .eq("id", data.id);
     }
@@ -245,14 +230,110 @@ export const updateSubmission = createServerFn({ method: "POST" })
     return { ok: true, changed: changes.length };
   });
 
+// ---------- Matrícula (ganho pela tela de cadastros) ----------
+
+export const setEnrollment = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((data) => z.object({ id: z.string().uuid(), enrolled: z.boolean() }).parse(data))
+  .handler(async ({ data, context }) => {
+    const { getPerms } = await import("./server");
+    const perms = await getPerms(context.supabase, context.userId);
+
+    const { data: submission, error } = await context.supabase
+      .from("submissions")
+      .select("id, school_id, enrolled")
+      .eq("id", data.id)
+      .single();
+    if (error) throw new Error(error.message);
+
+    const allowed =
+      perms.isAdmin || perms.isEditor || perms.managerSchools.includes(submission.school_id);
+    if (!allowed) {
+      throw new Error("Você não tem permissão para alterar a matrícula deste cadastro.");
+    }
+
+    const now = new Date().toISOString();
+    const { error: updError } = await context.supabase
+      .from("submissions")
+      .update({
+        enrolled: data.enrolled,
+        enrolled_at: data.enrolled ? now : null,
+        enrolled_by: data.enrolled ? context.userId : null,
+        updated_at: now,
+        updated_by: context.userId,
+      })
+      .eq("id", data.id);
+    if (updError) throw new Error(updError.message);
+
+    // Sincroniza a oportunidade ligada a este cadastro, quando existir.
+    const { data: opportunity } = await context.supabase
+      .from("opportunities")
+      .select("id, status")
+      .eq("submission_id", data.id)
+      .maybeSingle();
+
+    if (opportunity) {
+      if (data.enrolled) {
+        await context.supabase
+          .from("crm_tasks")
+          .update({ done: true, done_at: now })
+          .eq("opportunity_id", opportunity.id)
+          .eq("done", false);
+
+        const { data: reason } = await context.supabase
+          .from("crm_close_reasons")
+          .select("id")
+          .eq("kind", "won")
+          .eq("label", "Matrícula realizada")
+          .maybeSingle();
+
+        await context.supabase
+          .from("opportunities")
+          .update({
+            status: "won",
+            close_reason_id: reason?.id ?? null,
+            close_note: "Matrícula confirmada na tela de cadastros.",
+            closed_at: now,
+            updated_at: now,
+          })
+          .eq("id", opportunity.id);
+      } else {
+        await context.supabase
+          .from("opportunities")
+          .update({
+            status: "open",
+            close_reason_id: null,
+            close_note: null,
+            closed_at: null,
+            updated_at: now,
+          })
+          .eq("id", opportunity.id);
+      }
+    }
+
+    await context.supabase.from("audit_log").insert({
+      submission_id: data.id,
+      actor_id: context.userId,
+      actor_email: context.userEmail,
+      action: "update",
+      changes: [
+        {
+          field_id: "enrolled",
+          label: "Matrícula",
+          before: submission.enrolled ? "Sim" : "Não",
+          after: data.enrolled ? "Sim" : "Não",
+        },
+      ],
+    });
+
+    return { ok: true };
+  });
+
 export const deleteSubmission = createServerFn({ method: "POST" })
   .middleware([requireAuth])
   .inputValidator((data) => z.object({ id: z.string().uuid() }).parse(data))
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase
-      .from("submissions")
-      .delete()
-      .eq("id", data.id);
+    const { error } = await context.supabase.from("submissions").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
