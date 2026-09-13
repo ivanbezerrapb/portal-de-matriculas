@@ -330,6 +330,37 @@ export const savePrintTemplate = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const duplicatePrintTemplate = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((data) =>
+    z.object({ id: z.string().uuid(), name: z.string().min(1) }).parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    const { data: src, error } = await context.supabase
+      .from("print_templates")
+      .select("*")
+      .eq("id", data.id)
+      .single();
+    if (error) throw new Error(error.message);
+    const { error: insErr } = await context.supabase
+      .from("print_templates")
+      .insert({
+        form_id: src.form_id,
+        name: data.name,
+        title: src.title,
+        header_text: src.header_text,
+        footer_text: src.footer_text,
+        show_logo: src.show_logo,
+        columns: src.columns,
+        page_size: src.page_size,
+        show_signature: src.show_signature,
+        field_ids: src.field_ids,
+        layout: src.layout,
+      });
+    if (insErr) throw new Error(insErr.message);
+    return { ok: true };
+  });
+
 export const deletePrintTemplate = createServerFn({ method: "POST" })
   .middleware([requireAuth])
   .inputValidator((data) => z.object({ id: z.string().uuid() }).parse(data))
