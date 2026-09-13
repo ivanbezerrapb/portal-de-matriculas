@@ -66,6 +66,51 @@ export function isAddressEmpty(a: AddressEntry): boolean {
   return !(a.cep || a.rua || a.numero || a.complemento || a.bairro || a.cidade || a.estado);
 }
 
+// Partes do endereço, gravadas separadamente em submission_values (coluna `part`).
+export type AddressPartKey = keyof AddressEntry;
+
+export const ADDRESS_PART_LABELS: Record<AddressPartKey, string> = {
+  cep: "CEP",
+  rua: "Rua",
+  numero: "Número",
+  complemento: "Complemento",
+  bairro: "Bairro",
+  cidade: "Cidade",
+  estado: "Estado",
+};
+
+export const ADDRESS_PARTS = Object.keys(ADDRESS_PART_LABELS) as AddressPartKey[];
+
+// Id sintético usado em seletores (Destino, impressão): "<fieldId>.<parte>".
+export function addressPartFieldId(fieldId: string, part: AddressPartKey): string {
+  return `${fieldId}.${part}`;
+}
+
+export function parseAddressPartFieldId(
+  id: string,
+): { fieldId: string; part: AddressPartKey } | null {
+  const m = /^([0-9a-fA-F-]{36})\.([a-z]+)$/.exec(id);
+  if (!m) return null;
+  const part = m[2] as AddressPartKey;
+  if (!(part in ADDRESS_PART_LABELS)) return null;
+  return { fieldId: m[1] as string, part };
+}
+
+// Linhas por parte para gravar junto com a linha principal (JSON completo).
+export function addressPartRows(
+  submissionId: string,
+  fieldId: string,
+  rawJson: string,
+): { submission_id: string; field_id: string; part: AddressPartKey; value: string }[] {
+  const addr = parseAddress(rawJson);
+  return ADDRESS_PARTS.filter((p) => addr[p].trim() !== "").map((p) => ({
+    submission_id: submissionId,
+    field_id: fieldId,
+    part: p,
+    value: addr[p].trim(),
+  }));
+}
+
 // Texto legível: "Rua X, 123 — Apto 2 — Bairro — Cidade/UF — CEP 00000-000"
 export function formatAddress(a: AddressEntry): string {
   const parts: string[] = [];
