@@ -71,13 +71,6 @@ function FormsPage() {
     onError: (e) => toast.error(e.message),
   });
 
-  const statusMut = useMutation({
-    mutationFn: (vars: { id: string; status: "draft" | "published" | "closed" }) =>
-      setFormStatus({ data: vars }),
-    onSuccess: invalidate,
-    onError: (e) => toast.error(e.message),
-  });
-
   const deleteMut = useMutation({
     mutationFn: (id: string) => deleteForm({ data: { id } }),
     onSuccess: () => {
