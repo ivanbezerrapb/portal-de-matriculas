@@ -1,11 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAuth } from "./auth";
-import {
-  mapFieldsByLabel,
-  parseLayout,
-  remapLayoutFields,
-} from "./print-layout";
+import { mapFieldsByLabel, parseLayout, remapLayoutFields } from "./print-layout";
 
 type Supa = { from: (t: string) => any };
 
@@ -32,11 +28,7 @@ const libraryInput = z.object({
 });
 
 // Copia um template da biblioteca para um formulário, casando campos pelo rótulo.
-async function applyToForm(
-  supabase: Supa,
-  lib: any,
-  formId: string,
-): Promise<void> {
+async function applyToForm(supabase: Supa, lib: any, formId: string): Promise<void> {
   const { data: fields } = await supabase
     .from("form_fields")
     .select("id, label, type, internal")
@@ -57,9 +49,7 @@ async function applyToForm(
   }[];
   const map = mapFieldsByLabel(sourceLabels, target);
   const sourceLayout = parseLayout(lib.layout);
-  const targetChildrenId = target.find(
-    (field) => field.type === "children" && !field.internal,
-  )?.id;
+  const targetChildrenId = target.find((field) => field.type === "children" && !field.internal)?.id;
   if (targetChildrenId) {
     for (const page of sourceLayout?.pages ?? []) {
       for (const block of page.blocks) {
@@ -71,11 +61,7 @@ async function applyToForm(
   }
   const layout = remapLayoutFields(sourceLayout, map);
   const mapped = [
-    ...new Set(
-      sourceLabels
-        .map((s) => map[s.id])
-        .filter((v): v is string => Boolean(v)),
-    ),
+    ...new Set(sourceLabels.map((s) => map[s.id]).filter((v): v is string => Boolean(v))),
   ];
 
   const payload = {
@@ -116,10 +102,7 @@ async function applyToForm(
   }
 
   if (existingId) {
-    const { error } = await supabase
-      .from("print_templates")
-      .update(payload)
-      .eq("id", existingId);
+    const { error } = await supabase.from("print_templates").update(payload).eq("id", existingId);
     if (error) throw new Error(error.message);
   } else {
     const { error } = await supabase.from("print_templates").insert(payload);
@@ -137,25 +120,15 @@ async function linkedFormIds(supabase: Supa, libId: string): Promise<string[]> {
   return [...new Set(((data ?? []) as { form_id: string }[]).map((r) => r.form_id))];
 }
 
-async function schoolFormIds(
-  supabase: Supa,
-  schoolIds: string[],
-): Promise<string[]> {
+async function schoolFormIds(supabase: Supa, schoolIds: string[]): Promise<string[]> {
   if (schoolIds.length === 0) return [];
-  const { data, error } = await supabase
-    .from("forms")
-    .select("id")
-    .in("school_id", schoolIds);
+  const { data, error } = await supabase.from("forms").select("id").in("school_id", schoolIds);
   if (error) throw new Error(error.message);
   return ((data ?? []) as { id: string }[]).map((f) => f.id);
 }
 
 // Reaplica o template em todos os formulários vinculados + escolas marcadas.
-async function propagate(
-  supabase: Supa,
-  lib: any,
-  schoolIds: string[],
-): Promise<number> {
+async function propagate(supabase: Supa, lib: any, schoolIds: string[]): Promise<number> {
   const ids = [
     ...new Set([
       ...(await linkedFormIds(supabase, lib.id)),
@@ -182,10 +155,7 @@ export const listTemplates = createServerFn({ method: "GET" })
 export const saveTemplate = createServerFn({ method: "POST" })
   .middleware([requireAuth])
   .inputValidator((data) =>
-    z
-      .object({ id: z.string().uuid().optional() })
-      .merge(libraryInput)
-      .parse(data),
+    z.object({ id: z.string().uuid().optional() }).merge(libraryInput).parse(data),
   )
   .handler(async ({ data, context }) => {
     const payload = {
@@ -224,11 +194,7 @@ export const saveTemplate = createServerFn({ method: "POST" })
       saved = row;
     }
 
-    const applied = await propagate(
-      context.supabase as unknown as Supa,
-      saved,
-      data.school_ids,
-    );
+    const applied = await propagate(context.supabase as unknown as Supa, saved, data.school_ids);
     return { template: saved, applied };
   });
 
@@ -298,11 +264,7 @@ export const applyTemplateToForm = createServerFn({ method: "POST" })
       .eq("id", data.template_id)
       .single();
     if (error) throw new Error(error.message);
-    await applyToForm(
-      context.supabase as unknown as Supa,
-      lib,
-      data.form_id,
-    );
+    await applyToForm(context.supabase as unknown as Supa, lib, data.form_id);
     return { ok: true };
   });
 
