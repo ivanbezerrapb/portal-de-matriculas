@@ -1,5 +1,11 @@
 // Modelo de layout visual da impressão (arrastar e soltar).
-import { parseChildren, type ChildEntry, type FormField } from "./model";
+import {
+  ADDRESS_PART_LABELS,
+  parseAddressPartFieldId,
+  parseChildren,
+  type ChildEntry,
+  type FormField,
+} from "./model";
 
 export type PageSizeName = "A4" | "A5";
 

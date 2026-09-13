@@ -17,6 +17,22 @@ import {
   type FormField,
 } from "@/lib/ext/model";
 import { FieldRenderer, formatValue } from "@/components/FieldRenderer";
+
+// Endereço exibido em partes, uma por linha (CEP, Rua, Número...).
+function AddressPartsLines({ raw }: { raw: string }) {
+  const addr = parseAddress(raw);
+  const filled = ADDRESS_PARTS.filter((p) => addr[p].trim() !== "");
+  if (filled.length === 0) return <span>—</span>;
+  return (
+    <span className="flex flex-col gap-0.5">
+      {filled.map((p) => (
+        <span key={p}>
+          <span className="text-muted-foreground">{ADDRESS_PART_LABELS[p]}:</span> {addr[p]}
+        </span>
+      ))}
+    </span>
+  );
+}
 import { Button, Card, Select, Spinner } from "@/components/ui";
 
 export const Route = createFileRoute("/_authenticated/cadastros_/$submissionId")({
