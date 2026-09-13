@@ -119,7 +119,13 @@ function PublicFormPage() {
       }
       if (field.type === "address" && field.required && typeof v === "string") {
         const a = parseAddress(v);
-        if (!a.rua.trim() || !a.numero.trim() || !a.bairro.trim() || !a.cidade.trim() || !a.estado.trim()) {
+        if (
+          !a.rua.trim() ||
+          !a.numero.trim() ||
+          !a.bairro.trim() ||
+          !a.cidade.trim() ||
+          !a.estado.trim()
+        ) {
           newErrors[field.id] = "Preencha rua, número, bairro, cidade e estado";
         }
       }

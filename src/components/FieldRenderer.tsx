@@ -31,16 +31,10 @@ export function FieldRenderer({
         {field.label}
         {field.required && <span className="ml-1 text-destructive">*</span>}
       </Label>
-      {field.help_text && (
-        <p className="mb-1 text-xs text-muted-foreground">{field.help_text}</p>
-      )}
+      {field.help_text && <p className="mb-1 text-xs text-muted-foreground">{field.help_text}</p>}
 
       {field.type === "short_text" && (
-        <Input
-          id={field.id}
-          value={strValue}
-          onChange={(e) => onChange(e.target.value)}
-        />
+        <Input id={field.id} value={strValue} onChange={(e) => onChange(e.target.value)} />
       )}
       {field.type === "long_text" && (
         <Textarea
@@ -89,9 +83,7 @@ export function FieldRenderer({
             <label
               key={opt}
               className={`flex cursor-pointer items-center gap-2 rounded-md border px-4 py-2 text-sm ${
-                strValue === opt
-                  ? "border-primary bg-accent font-medium"
-                  : "border-input bg-card"
+                strValue === opt ? "border-primary bg-accent font-medium" : "border-input bg-card"
               }`}
             >
               <input
@@ -111,9 +103,7 @@ export function FieldRenderer({
             <label
               key={opt}
               className={`flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm ${
-                strValue === opt
-                  ? "border-primary bg-accent font-medium"
-                  : "border-input bg-card"
+                strValue === opt ? "border-primary bg-accent font-medium" : "border-input bg-card"
               }`}
             >
               <input
@@ -135,9 +125,7 @@ export function FieldRenderer({
               <label
                 key={opt}
                 className={`flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm ${
-                  checked
-                    ? "border-primary bg-accent font-medium"
-                    : "border-input bg-card"
+                  checked ? "border-primary bg-accent font-medium" : "border-input bg-card"
                 }`}
               >
                 <input
@@ -145,11 +133,7 @@ export function FieldRenderer({
                   className="accent-[var(--color-primary)]"
                   checked={checked}
                   onChange={() =>
-                    onChange(
-                      checked
-                        ? arrValue.filter((v) => v !== opt)
-                        : [...arrValue, opt],
-                    )
+                    onChange(checked ? arrValue.filter((v) => v !== opt) : [...arrValue, opt])
                   }
                 />
                 {opt}
@@ -185,8 +169,7 @@ function ChildrenField({
   const children = parseChildren(value);
   const { series, turnos } = splitChildOptions(field.options);
 
-  const commit = (list: ChildEntry[]) =>
-    onChange(list.length === 0 ? "" : JSON.stringify(list));
+  const commit = (list: ChildEntry[]) => onChange(list.length === 0 ? "" : JSON.stringify(list));
 
   const setCount = (count: number) => {
     if (count <= 0) return commit([]);
@@ -196,9 +179,7 @@ function ChildrenField({
   };
 
   const setChild = (index: number, patch: Partial<ChildEntry>) => {
-    commit(
-      children.map((c, i) => (i === index ? { ...c, ...patch } : c)),
-    );
+    commit(children.map((c, i) => (i === index ? { ...c, ...patch } : c)));
   };
 
   return (
@@ -217,10 +198,7 @@ function ChildrenField({
       </Select>
 
       {children.map((child, i) => (
-        <div
-          key={i}
-          className="rounded-md border border-input bg-card p-3"
-        >
+        <div key={i} className="rounded-md border border-input bg-card p-3">
           <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Criança {i + 1}
           </p>
@@ -234,9 +212,7 @@ function ChildrenField({
               />
             </div>
             <div>
-              <Label htmlFor={`${field.id}-nasc-${i}`}>
-                Data de nascimento
-              </Label>
+              <Label htmlFor={`${field.id}-nasc-${i}`}>Data de nascimento</Label>
               <Input
                 id={`${field.id}-nasc-${i}`}
                 type="date"
@@ -282,8 +258,33 @@ function ChildrenField({
 }
 
 const UFS = [
-  "AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB","PR","PE","PI","RJ",
-  "RN","RS","RO","RR","SC","SP","SE","TO",
+  "AC",
+  "AL",
+  "AP",
+  "AM",
+  "BA",
+  "CE",
+  "DF",
+  "ES",
+  "GO",
+  "MA",
+  "MT",
+  "MS",
+  "MG",
+  "PA",
+  "PB",
+  "PR",
+  "PE",
+  "PI",
+  "RJ",
+  "RN",
+  "RS",
+  "RO",
+  "RR",
+  "SC",
+  "SP",
+  "SE",
+  "TO",
 ];
 
 function maskCep(raw: string): string {
@@ -437,12 +438,7 @@ export function formatValue(field: FormField, raw: string): string {
     return list
       .map(
         (c, i) =>
-          `${i + 1}. ${[
-            c.nome || "—",
-            formatDateBR(c.nascimento),
-            c.serie,
-            c.turno,
-          ]
+          `${i + 1}. ${[c.nome || "—", formatDateBR(c.nascimento), c.serie, c.turno]
             .filter(Boolean)
             .join(" — ")}`,
       )
