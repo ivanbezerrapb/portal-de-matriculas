@@ -19,6 +19,16 @@ import {
 } from "@/components/ui";
 
 export const Route = createFileRoute("/_authenticated/escolas")({
+  head: () => ({
+    meta: [
+      { title: "Escolas — Grupo Inter" },
+      { name: "description", content: "Gerencie escolas e sequências de identificação." },
+      { property: "og:title", content: "Escolas — Grupo Inter" },
+      { property: "og:description", content: "Gerencie escolas e sequências de identificação." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: SchoolsPage,
 });
 

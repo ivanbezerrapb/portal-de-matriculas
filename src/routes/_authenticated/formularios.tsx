@@ -25,6 +25,16 @@ const ICON_BTN =
   "inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors";
 
 export const Route = createFileRoute("/_authenticated/formularios")({
+  head: () => ({
+    meta: [
+      { title: "Formulários — Grupo Inter" },
+      { name: "description", content: "Crie e publique formulários escolares personalizados." },
+      { property: "og:title", content: "Formulários — Grupo Inter" },
+      { property: "og:description", content: "Crie e publique formulários escolares personalizados." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: FormsPage,
 });
 

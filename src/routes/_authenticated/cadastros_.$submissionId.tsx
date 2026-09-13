@@ -15,6 +15,16 @@ import { Button, Card, Select, Spinner } from "@/components/ui";
 
 export const Route = createFileRoute("/_authenticated/cadastros_/$submissionId")(
   {
+    head: () => ({
+      meta: [
+        { title: "Detalhes do cadastro — Grupo Inter" },
+        { name: "description", content: "Consulte e edite os dados deste cadastro escolar." },
+        { property: "og:title", content: "Detalhes do cadastro — Grupo Inter" },
+        { property: "og:description", content: "Consulte e edite os dados deste cadastro escolar." },
+        { property: "og:type", content: "website" },
+        { name: "twitter:card", content: "summary" },
+      ],
+    }),
     component: SubmissionDetailPage,
   },
 );

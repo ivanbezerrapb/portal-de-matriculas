@@ -34,6 +34,16 @@ import {
 } from "@/components/ui";
 
 export const Route = createFileRoute("/_authenticated/formularios_/$formId")({
+  head: () => ({
+    meta: [
+      { title: "Configurar formulário — Grupo Inter" },
+      { name: "description", content: "Configure campos, publicação e impressão do formulário." },
+      { property: "og:title", content: "Configurar formulário — Grupo Inter" },
+      { property: "og:description", content: "Configure campos, publicação e impressão do formulário." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: FormConfigPage,
 });
 

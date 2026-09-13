@@ -29,6 +29,16 @@ import {
 } from "@/components/ui";
 
 export const Route = createFileRoute("/_authenticated/templates")({
+  head: () => ({
+    meta: [
+      { title: "Templates de impressão — Grupo Inter" },
+      { name: "description", content: "Gerencie modelos de impressão compartilhados entre escolas." },
+      { property: "og:title", content: "Templates de impressão — Grupo Inter" },
+      { property: "og:description", content: "Gerencie modelos de impressão compartilhados entre escolas." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: TemplatesLibraryPage,
 });
 

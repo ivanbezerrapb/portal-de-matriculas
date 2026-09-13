@@ -21,7 +21,10 @@ export const Route = createFileRoute("/f/$slug")({
     meta: [
       { title: "Formulário — Formulários Escolares" },
       { name: "description", content: `Preencha o formulário ${params.slug}.` },
+      { property: "og:title", content: "Formulário público — Grupo Inter" },
+      { property: "og:description", content: `Preencha o formulário ${params.slug}.` },
       { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: PublicFormPage,

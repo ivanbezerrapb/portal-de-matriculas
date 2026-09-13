@@ -22,6 +22,16 @@ import {
 } from "@/components/ui";
 
 export const Route = createFileRoute("/_authenticated/cadastros")({
+  head: () => ({
+    meta: [
+      { title: "Cadastros — Grupo Inter" },
+      { name: "description", content: "Consulte e gerencie os cadastros escolares." },
+      { property: "og:title", content: "Cadastros — Grupo Inter" },
+      { property: "og:description", content: "Consulte e gerencie os cadastros escolares." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: SubmissionsPage,
 });
 
@@ -255,10 +265,10 @@ function SubmissionsPage() {
           description="Ajuste os filtros ou aguarde novos envios pelo link público."
         />
       ) : (
-        <div className="mt-4 overflow-hidden rounded-xl border border-border bg-card">
-          <table className="w-full text-sm">
+        <div className="mt-4 overflow-x-auto rounded-lg border border-border bg-card">
+          <table className="w-full min-w-[760px] text-sm">
             <thead>
-              <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
+              <tr className="border-b border-border bg-muted/60 text-left text-xs uppercase tracking-wide text-muted-foreground">
                 <th className="px-4 py-3"></th>
                 <th className="px-4 py-3">ID</th>
                 <th className="px-4 py-3">Responsável</th>

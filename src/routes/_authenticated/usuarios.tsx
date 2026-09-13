@@ -21,6 +21,16 @@ import {
 } from "@/components/ui";
 
 export const Route = createFileRoute("/_authenticated/usuarios")({
+  head: () => ({
+    meta: [
+      { title: "Usuários — Grupo Inter" },
+      { name: "description", content: "Gerencie usuários e permissões por escola." },
+      { property: "og:title", content: "Usuários — Grupo Inter" },
+      { property: "og:description", content: "Gerencie usuários e permissões por escola." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: UsersPage,
 });
 

@@ -116,7 +116,9 @@ function AuthenticatedLayout() {
               src={logoAsset.url}
               alt="Grupo Inter"
               className={
-                collapsed ? "h-auto w-8 max-w-none object-contain object-left" : "h-auto w-full"
+                collapsed
+                  ? "h-auto w-28 max-w-none object-contain object-left"
+                  : "h-auto w-full"
               }
             />
           </div>

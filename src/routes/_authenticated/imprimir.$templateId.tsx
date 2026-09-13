@@ -8,6 +8,16 @@ import {
 import { Button } from "@/components/ui";
 
 export const Route = createFileRoute("/_authenticated/imprimir/$templateId")({
+  head: () => ({
+    meta: [
+      { title: "Imprimir cadastro — Grupo Inter" },
+      { name: "description", content: "Visualize e imprima fichas de cadastro." },
+      { property: "og:title", content: "Imprimir cadastro — Grupo Inter" },
+      { property: "og:description", content: "Visualize e imprima fichas de cadastro." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   validateSearch: (search: Record<string, unknown>) => ({
     ids: z.string().default("").parse(search["ids"]),
   }),
