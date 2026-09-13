@@ -171,23 +171,29 @@ export function DynamicPrintPage({
         ...style,
       }}
     >
-      {layout.blocks.map(({ block, y, dynamic }) => (
-        <div
-          key={block.id}
-          ref={registerDynamicRef(layout.register, block.id, dynamic)}
-          style={{
-            position: "absolute",
-            left: `${block.x}mm`,
-            top: `${y}mm`,
-            width: `${block.w}mm`,
-            minHeight: `${block.h}mm`,
-            height: dynamic ? "auto" : `${block.h}mm`,
-            overflow: dynamic ? "visible" : "hidden",
-          }}
-        >
-          <BlockView block={block} ctx={ctx} preview={preview} />
-        </div>
-      ))}
+      {layout.blocks.map(({ block, y, h, dynamic, scale }) => {
+        const grew = h > block.h + 0.01;
+        return (
+          <div
+            key={block.id}
+            ref={registerDynamicRef(layout.register, block.id, dynamic)}
+            style={
+              {
+                position: "absolute",
+                left: `${block.x}mm`,
+                top: `${y}mm`,
+                width: `${block.w}mm`,
+                minHeight: `${block.h}mm`,
+                height: dynamic && grew ? "auto" : `${block.h}mm`,
+                overflow: dynamic && grew ? "visible" : "hidden",
+                "--pscale": scale,
+              } as CSSProperties
+            }
+          >
+            <BlockView block={block} ctx={ctx} preview={preview} />
+          </div>
+        );
+      })}
     </div>
   );
 }
