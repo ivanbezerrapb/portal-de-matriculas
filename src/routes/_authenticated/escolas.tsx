@@ -212,9 +212,9 @@ function SchoolsPage() {
         <p className="mt-2 text-xs text-muted-foreground">
           Exemplo de ID:{" "}
           <span className="font-mono">
-            {(form.id_prefix || "ESCA") +
-              "-" +
-              "1".padStart(form.id_digits, "0")}
+            {"1".padStart(form.id_digits, "0") +
+              "/" +
+              (form.id_prefix || "ESCA")}
           </span>
         </p>
       </Card>
@@ -247,8 +247,8 @@ function SchoolsPage() {
                     Prefixo <span className="font-mono">{s.id_prefix}</span> ·
                     próximo ID:{" "}
                     <span className="font-mono">
-                      {s.id_prefix}-
-                      {String(s.id_next_number).padStart(s.id_digits, "0")}
+                      {String(s.id_next_number).padStart(s.id_digits, "0")}/
+                      {s.id_prefix}
                     </span>
                   </p>
                 </div>
