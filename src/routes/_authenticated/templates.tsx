@@ -438,6 +438,21 @@ function TemplatesLibraryPage() {
                 schoolName="Escola"
                 formId={editing.ref_form_id}
               />
+            ) : fallbackFields.length > 0 ? (
+              <>
+                <p className="mb-2 text-xs text-muted-foreground">
+                  Layout salvo neste template. Escolha o formulário de referência acima para poder
+                  incluir novos campos.
+                </p>
+                <LayoutEditor
+                  layout={editing.layout}
+                  onChange={(l) => setEditing({ ...editing, layout: l })}
+                  fields={fallbackFields}
+                  formTitle={editing.title || "Formulário"}
+                  schoolName="Escola"
+                  formId=""
+                />
+              </>
             ) : (
               <p className="text-sm text-muted-foreground">
                 Escolha um formulário de referência para montar o layout.
