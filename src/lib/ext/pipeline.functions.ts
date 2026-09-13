@@ -4,7 +4,10 @@ import { requireAuth } from "./auth";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { FunnelStage, Opportunity } from "./model";
 
-type OpportunityRow = Opportunity & { submissions: { public_id: string } | null };
+type OpportunityRow = Opportunity & {
+  submissions: { public_id: string } | null;
+  crm_close_reasons: { label: string; kind: "won" | "lost" } | null;
+};
 
 async function stageContext(supabase: SupabaseClient, stageId: string) {
   const { data, error } = await supabase
@@ -19,7 +22,14 @@ async function stageContext(supabase: SupabaseClient, stageId: string) {
 
 export const listPipeline = createServerFn({ method: "GET" })
   .middleware([requireAuth])
-  .inputValidator((data) => z.object({ funnel_id: z.string().uuid() }).parse(data))
+  .inputValidator((data) =>
+    z
+      .object({
+        funnel_id: z.string().uuid(),
+        status: z.enum(["open", "won", "lost"]).optional(),
+      })
+      .parse(data),
+  )
   .handler(async ({ data, context }) => {
     const { data: stages, error } = await context.supabase
       .from("funnel_stages")
@@ -28,11 +38,13 @@ export const listPipeline = createServerFn({ method: "GET" })
       .order("position");
     if (error) throw new Error(error.message);
 
+    const status = data.status ?? "open";
     const { data: opportunities, error: oppError } = await context.supabase
       .from("opportunities")
-      .select("*, submissions(public_id)")
+      .select("*, submissions(public_id), crm_close_reasons(label, kind)")
       .eq("funnel_id", data.funnel_id)
-      .order("position");
+      .eq("status", status)
+      .order(status === "open" ? "position" : "closed_at");
     if (oppError) throw new Error(oppError.message);
 
     return {
@@ -142,6 +154,62 @@ export const deleteOpportunity = createServerFn({ method: "POST" })
   .inputValidator((data) => z.object({ id: z.string().uuid() }).parse(data))
   .handler(async ({ data, context }) => {
     const { error } = await context.supabase.from("opportunities").delete().eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+// Fecha a oportunidade como ganha ou perdida, guardando motivo e observação.
+export const closeOpportunity = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((data) =>
+    z
+      .object({
+        id: z.string().uuid(),
+        result: z.enum(["won", "lost"]),
+        reason_id: z.string().uuid(),
+        note: z.string().optional().nullable(),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    // Confere se o motivo existe e é do tipo certo.
+    const { data: reason, error: reasonError } = await context.supabase
+      .from("crm_close_reasons")
+      .select("id, kind")
+      .eq("id", data.reason_id)
+      .single();
+    if (reasonError || !reason) throw new Error("Motivo não encontrado.");
+    if (reason.kind !== data.result) throw new Error("Motivo não corresponde ao resultado.");
+
+    const { error } = await context.supabase
+      .from("opportunities")
+      .update({
+        status: data.result,
+        close_reason_id: data.reason_id,
+        close_note: data.note?.trim() || null,
+        closed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+// Reabre uma oportunidade fechada, voltando para a etapa em que estava.
+export const reopenOpportunity = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((data) => z.object({ id: z.string().uuid() }).parse(data))
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase
+      .from("opportunities")
+      .update({
+        status: "open",
+        close_reason_id: null,
+        close_note: null,
+        closed_at: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });

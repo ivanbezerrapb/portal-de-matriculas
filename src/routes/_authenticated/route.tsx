@@ -12,8 +12,10 @@ import {
   ClipboardList,
   Filter,
   Kanban,
+  ListTodo,
   Settings,
   LayoutDashboard,
+  Trophy,
   LogOut,
   School,
   Users,
@@ -86,6 +88,8 @@ function AuthenticatedLayout() {
       children: [
         { to: "/crm/pipeline", label: "Pipeline", icon: Kanban },
         { to: "/crm/funil", label: "Funil", icon: Filter },
+        { to: "/crm/tarefas", label: "Tarefas", icon: ListTodo },
+        { to: "/crm/motivos", label: "Motivos", icon: Trophy },
       ],
     },
     ...(isAdmin
