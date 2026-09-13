@@ -610,6 +610,35 @@ function TemplatesTab({
               Editar
             </Button>
             <Button
+              variant="secondary"
+              onClick={() => {
+                const name = window.prompt(
+                  "Nome do novo modelo:",
+                  `Cópia de ${t.name}`,
+                );
+                if (name?.trim()) dupMut.mutate({ id: t.id, name: name.trim() });
+              }}
+            >
+              Duplicar
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                const name = window.prompt(
+                  "Nome do template na biblioteca:",
+                  t.name,
+                );
+                if (name?.trim()) {
+                  toLibraryMut.mutate({
+                    print_template_id: t.id,
+                    name: name.trim(),
+                  });
+                }
+              }}
+            >
+              Salvar como template
+            </Button>
+            <Button
               variant="ghost"
               onClick={() => {
                 if (window.confirm(`Excluir o modelo "${t.name}"?`)) {
