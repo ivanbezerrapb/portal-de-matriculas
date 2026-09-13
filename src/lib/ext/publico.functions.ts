@@ -69,7 +69,8 @@ export const submitPublicForm = createServerFn({ method: "POST" })
     for (const field of publicFields) {
       const v = data.values[field.id];
       const empty =
-        v == null || (typeof v === "string" && v.trim() === "") ||
+        v == null ||
+        (typeof v === "string" && v.trim() === "") ||
         (Array.isArray(v) && v.length === 0);
       if (field.required && empty) {
         throw new Error(`O campo "${field.label}" é obrigatório.`);
@@ -78,9 +79,7 @@ export const submitPublicForm = createServerFn({ method: "POST" })
         const list = parseChildren(typeof v === "string" ? v : "");
         childrenCount = list.length;
         if (list.length === 0 || list.length > MAX_CHILDREN) {
-          throw new Error(
-            `Informe de 1 a ${MAX_CHILDREN} crianças em "${field.label}".`,
-          );
+          throw new Error(`Informe de 1 a ${MAX_CHILDREN} crianças em "${field.label}".`);
         }
         if (field.required) {
           list.forEach((c, i) => {
@@ -94,10 +93,9 @@ export const submitPublicForm = createServerFn({ method: "POST" })
       }
     }
 
-    const { data: publicId, error: idError } = await supabase.rpc(
-      "next_school_public_id",
-      { p_school_id: form.school_id },
-    );
+    const { data: publicId, error: idError } = await supabase.rpc("next_school_public_id", {
+      p_school_id: form.school_id,
+    });
     if (idError || !publicId) {
       throw new Error(idError?.message ?? "Falha ao gerar o ID do cadastro.");
     }
@@ -124,20 +122,58 @@ export const submitPublicForm = createServerFn({ method: "POST" })
           : String(data.values[f.id]).trim(),
       }));
     if (rows.length > 0) {
-      const { error: valuesError } = await supabase
-        .from("submission_values")
-        .insert(rows);
+      const { error: valuesError } = await supabase.from("submission_values").insert(rows);
       if (valuesError) throw new Error(valuesError.message);
+    }
+
+    // Cria a oportunidade no funil padrão da escola (primeira etapa).
+    try {
+      const { data: funnel } = await supabase
+        .from("funnels")
+        .select("id")
+        .eq("school_id", form.school_id)
+        .eq("is_default", true)
+        .maybeSingle();
+      if (funnel) {
+        const { data: stage } = await supabase
+          .from("funnel_stages")
+          .select("id")
+          .eq("funnel_id", funnel.id)
+          .order("position")
+          .limit(1)
+          .maybeSingle();
+        if (stage) {
+          const valueOf = (type: string) => {
+            const field = publicFields.find((f) => f.type === type);
+            const v = field ? data.values[field.id] : undefined;
+            return typeof v === "string" && v.trim() ? v.trim() : null;
+          };
+          const { data: last } = await supabase
+            .from("opportunities")
+            .select("position")
+            .eq("stage_id", stage.id)
+            .order("position", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          await supabase.from("opportunities").insert({
+            funnel_id: funnel.id,
+            stage_id: stage.id,
+            school_id: form.school_id,
+            submission_id: submission.id,
+            name: valueOf("short_text") ?? publicId,
+            phone: valueOf("phone"),
+            email: valueOf("email"),
+            position: (last?.position ?? -1) + 1,
+          });
+        }
+      }
+    } catch {
+      // O cadastro já foi salvo; falha ao criar a oportunidade não bloqueia o envio.
     }
 
     if (childrenCount !== null) {
       const { writeChildrenCountValue } = await import("./server");
-      await writeChildrenCountValue(
-        supabase,
-        form.id,
-        submission.id,
-        childrenCount,
-      );
+      await writeChildrenCountValue(supabase, form.id, submission.id, childrenCount);
     }
 
     return { publicId };
