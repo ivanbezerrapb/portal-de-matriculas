@@ -130,6 +130,7 @@ function TemplatesLibraryPage() {
             ...t.prev_field_labels.filter((p) => !refFields.some((f) => f.id === p.id)),
           ],
           school_ids: t.school_ids,
+          ref_form_id: t.ref_form_id || null,
         },
       }),
     onSuccess: (res) => {
@@ -217,7 +218,7 @@ function TemplatesLibraryPage() {
                   show_signature: t.show_signature,
                   layout: parseLayout(t.layout) ?? emptyLayout(t.page_size as "A4" | "A5"),
                   school_ids: (t.school_ids ?? []) as string[],
-                  ref_form_id: "",
+                  ref_form_id: (t.ref_form_id ?? "") as string,
                   prev_field_labels: (
                     (t.field_labels ?? []) as {
                       id: string;
@@ -318,6 +319,7 @@ function TemplatesLibraryPage() {
                 value={editing.ref_form_id}
                 onChange={async (e) => {
                   const nextFormId = e.target.value;
+                  if (nextFormId === editing.ref_form_id) return;
                   if (!nextFormId) {
                     setEditing({ ...editing, ref_form_id: "" });
                     return;

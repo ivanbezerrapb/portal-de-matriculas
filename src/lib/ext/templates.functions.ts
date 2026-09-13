@@ -28,6 +28,7 @@ const libraryInput = z.object({
   layout: z.any().optional().nullable(),
   field_labels: z.array(labelPair),
   school_ids: z.array(z.string().uuid()),
+  ref_form_id: z.string().uuid().optional().nullable(),
 });
 
 // Copia um template da biblioteca para um formulário, casando campos pelo rótulo.
@@ -199,6 +200,7 @@ export const saveTemplate = createServerFn({ method: "POST" })
       layout: data.layout ?? null,
       field_labels: data.field_labels,
       school_ids: data.school_ids,
+      ref_form_id: data.ref_form_id ?? null,
       updated_at: new Date().toISOString(),
     };
 
@@ -256,6 +258,7 @@ export const duplicateTemplate = createServerFn({ method: "POST" })
         show_signature: src.show_signature,
         layout: src.layout,
         field_labels: src.field_labels,
+        ref_form_id: src.ref_form_id ?? null,
         school_ids: [],
         created_by: context.userId,
       })
@@ -341,6 +344,7 @@ export const saveFormTemplateAsLibrary = createServerFn({ method: "POST" })
         show_signature: tpl.show_signature,
         layout: tpl.layout,
         field_labels: fields ?? [],
+        ref_form_id: tpl.form_id,
         school_ids: [],
         created_by: context.userId,
       })
