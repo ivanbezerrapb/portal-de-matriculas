@@ -96,25 +96,6 @@ function PrintPage() {
     (statuses.length === expectedPages && statuses.every((status) => status.ready));
   const hasOverflow = statuses.some((status) => status.overflow);
 
-  useEffect(() => {
-    if (!data || data.submissions.length === 0 || !dynamicReady || hasOverflow) return;
-    const timer = setTimeout(() => window.print(), 300);
-    return () => clearTimeout(timer);
-  }, [data, dynamicReady, hasOverflow]);
-
-  const updatePageStatus = useCallback(
-    (key: string, status: { ready: boolean; overflow: boolean }) => {
-      setPageStatus((current) => {
-        const previous = current[key];
-        if (
-          previous?.ready === status.ready &&
-          previous.overflow === status.overflow
-        ) return current;
-        return { ...current, [key]: status };
-      });
-    },
-    [],
-  );
 
   const printCss = `
     @media print {
