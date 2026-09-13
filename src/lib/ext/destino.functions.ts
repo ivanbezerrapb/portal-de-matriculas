@@ -30,10 +30,7 @@ export const getDestination = createServerFn({ method: "GET" })
       .from("funnels")
       .select("id, name, school_id, is_default")
       .order("name");
-    const { data: stages } = await supabase
-      .from("funnel_stages")
-      .select("*")
-      .order("position");
+    const { data: stages } = await supabase.from("funnel_stages").select("*").order("position");
 
     return {
       destination,

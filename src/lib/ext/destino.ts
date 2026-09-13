@@ -1,15 +1,7 @@
 // Regras de destino: decidem se um cadastro vira oportunidade no CRM
 // e em qual funil/etapa ele entra. Módulo puro (usado no servidor).
 
-export type ConditionOp =
-  | "eq"
-  | "neq"
-  | "contains"
-  | "empty"
-  | "not_empty"
-  | "in"
-  | "gt"
-  | "lt";
+export type ConditionOp = "eq" | "neq" | "contains" | "empty" | "not_empty" | "in" | "gt" | "lt";
 
 export const CONDITION_OP_LABELS: Record<ConditionOp, string> = {
   eq: "é igual a",
@@ -126,8 +118,7 @@ export function evaluateRules(
   const ordered = [...rules].sort((a, b) => a.position - b.position);
   for (const rule of ordered) {
     const conditions = rule.conditions ?? [];
-    const matched =
-      conditions.length > 0 && conditions.every((c) => matchCondition(c, values));
+    const matched = conditions.length > 0 && conditions.every((c) => matchCondition(c, values));
     if (!matched) continue;
     const name = rule.label?.trim() || `Regra ${rule.position + 1}`;
     if (!rule.send) {
