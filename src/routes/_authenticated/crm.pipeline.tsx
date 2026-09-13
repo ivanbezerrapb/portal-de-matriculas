@@ -259,9 +259,18 @@ function PipelinePage() {
                             />
                             {stage.name}
                           </span>
-                          <span className="text-[11px] text-muted-foreground">
-                            {formatDate(card.created_at)}
-                          </span>
+                          {activity ? (
+                            <span
+                              className={`text-[11px] font-medium ${activityColor(activity.due_date)}`}
+                            >
+                              {activity.title}
+                              {activity.due_date
+                                ? ` · ${new Date(`${activity.due_date}T00:00:00`).toLocaleDateString("pt-BR")}`
+                                : ""}
+                            </span>
+                          ) : (
+                            <span className="text-[11px] text-muted-foreground">Sem atividade</span>
+                          )}
                         </div>
                         {card.status !== "open" && (
                           <p
