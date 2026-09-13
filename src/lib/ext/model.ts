@@ -71,14 +71,8 @@ export function splitChildOptions(options: string[] | null | undefined): {
   return { series, turnos };
 }
 
-export function joinChildOptions(
-  series: string[],
-  turnos: string[],
-): string[] {
-  return [
-    ...series.map((s) => `serie:${s}`),
-    ...turnos.map((t) => `turno:${t}`),
-  ];
+export function joinChildOptions(series: string[], turnos: string[]): string[] {
+  return [...series.map((s) => `serie:${s}`), ...turnos.map((t) => `turno:${t}`)];
 }
 
 export type School = {
@@ -115,10 +109,7 @@ export type FormField = {
 // Campo interno automático que guarda a quantidade de crianças como resposta.
 export const CHILDREN_COUNT_LABEL = "Quantidade de crianças";
 
-export function isChildrenCountField(f: {
-  label: string;
-  internal: boolean;
-}): boolean {
+export function isChildrenCountField(f: { label: string; internal: boolean }): boolean {
   return f.internal && f.label === CHILDREN_COUNT_LABEL;
 }
 

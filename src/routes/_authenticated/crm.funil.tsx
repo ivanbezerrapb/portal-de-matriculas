@@ -17,22 +17,16 @@ import {
 import { listSchools } from "@/lib/ext/escolas.functions";
 import { getMyPermissions } from "@/lib/ext/cadastros.functions";
 import type { Funnel, FunnelStage } from "@/lib/ext/model";
-import {
-  Button,
-  Card,
-  EmptyState,
-  Input,
-  Label,
-  Select,
-  Spinner,
-  Textarea,
-} from "@/components/ui";
+import { Button, Card, EmptyState, Input, Label, Select, Spinner, Textarea } from "@/components/ui";
 
 export const Route = createFileRoute("/_authenticated/crm/funil")({
   head: () => ({
     meta: [
       { title: "Funil — Grupo Inter" },
-      { name: "description", content: "Crie funis por escola e organize as etapas de atendimento." },
+      {
+        name: "description",
+        content: "Crie funis por escola e organize as etapas de atendimento.",
+      },
       { property: "og:title", content: "Funil — Grupo Inter" },
       {
         property: "og:description",
@@ -45,15 +39,7 @@ export const Route = createFileRoute("/_authenticated/crm/funil")({
   component: FunilPage,
 });
 
-const STAGE_COLORS = [
-  "#1e40af",
-  "#0284c7",
-  "#7c3aed",
-  "#d97706",
-  "#059669",
-  "#dc2626",
-  "#475569",
-];
+const STAGE_COLORS = ["#1e40af", "#0284c7", "#7c3aed", "#d97706", "#059669", "#dc2626", "#475569"];
 
 type StageDraft = { name: string; description: string; color: string };
 const emptyStage: StageDraft = { name: "", description: "", color: STAGE_COLORS[0]! };
@@ -136,7 +122,10 @@ function FunilPage() {
   const [addingStageIn, setAddingStageIn] = useState<string | null>(null);
   const [editingStage, setEditingStage] = useState<string | null>(null);
 
-  const { data: perms } = useQuery({ queryKey: ["my-permissions"], queryFn: () => getMyPermissions() });
+  const { data: perms } = useQuery({
+    queryKey: ["my-permissions"],
+    queryFn: () => getMyPermissions(),
+  });
   const isAdmin = perms?.isAdmin ?? false;
 
   const schoolsQuery = useQuery({ queryKey: ["schools"], queryFn: () => listSchools() });
@@ -341,13 +330,21 @@ function FunilPage() {
                     </div>
                     <div>
                       <Label>Descrição</Label>
-                      <Textarea name="description" rows={2} defaultValue={funnel.description ?? ""} />
+                      <Textarea
+                        name="description"
+                        rows={2}
+                        defaultValue={funnel.description ?? ""}
+                      />
                     </div>
                     <div className="flex gap-2">
                       <Button type="submit" disabled={updateFunnelM.isPending}>
                         Salvar
                       </Button>
-                      <Button type="button" variant="outline" onClick={() => setEditingFunnel(null)}>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setEditingFunnel(null)}
+                      >
                         Cancelar
                       </Button>
                     </div>
