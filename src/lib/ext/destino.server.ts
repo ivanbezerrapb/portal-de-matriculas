@@ -84,7 +84,35 @@ export async function applyDestination(
     return { status, reason: decision.reason };
   }
 
-  // Já existe oportunidade para este cadastro?
+  const pick = (fieldId: string | null | undefined): string | null => {
+    if (!fieldId) return null;
+    const text = answerText(args.values[fieldId]);
+    return text.trim() || null;
+  };
+
+  // Informações adicionais configuradas na aba Destino.
+  const extras = destination?.extra_fields ?? [];
+  let details: { label: string; value: string }[] = [];
+  if (extras.length > 0) {
+    const { data: fieldRows } = await supabase
+      .from("form_fields")
+      .select("id, label")
+      .in(
+        "id",
+        extras.map((e) => e.field_id),
+      );
+    const labels = new Map(
+      ((fieldRows ?? []) as { id: string; label: string }[]).map((f) => [f.id, f.label]),
+    );
+    details = extras
+      .map((extra) => ({
+        label: extra.label?.trim() || (labels.get(extra.field_id) ?? "Informação"),
+        value: answerText(args.values[extra.field_id]),
+      }))
+      .filter((d) => d.value !== "");
+  }
+
+  // Já existe oportunidade para este cadastro? Atualiza os dados do cartão.
   const { data: existing } = await supabase
     .from("opportunities")
     .select("id")
@@ -92,18 +120,20 @@ export async function applyDestination(
     .maybeSingle();
   if (existing) {
     await supabase
+      .from("opportunities")
+      .update({
+        name: pick(destination?.name_field_id) ?? args.publicId,
+        phone: pick(destination?.phone_field_id),
+        email: pick(destination?.email_field_id),
+        details,
+      })
+      .eq("id", existing.id);
+    await supabase
       .from("submissions")
       .update({ crm_status: "sent", crm_reason: decision.reason })
       .eq("id", args.submissionId);
     return { status: "sent", reason: decision.reason };
   }
-
-  const pick = (fieldId: string | null | undefined): string | null => {
-    if (!fieldId) return null;
-    const v = args.values[fieldId];
-    const text = Array.isArray(v) ? v.join(", ") : (v ?? "");
-    return String(text).trim() || null;
-  };
 
   let funnelId = decision.funnel_id;
   if (!funnelId) {
@@ -138,6 +168,7 @@ export async function applyDestination(
     name: pick(destination?.name_field_id) ?? args.publicId,
     phone: pick(destination?.phone_field_id),
     email: pick(destination?.email_field_id),
+    details,
     position: ((last?.position as number | undefined) ?? -1) + 1,
   });
   if (error) {
