@@ -7,9 +7,7 @@ import { requireAuth } from "./auth";
 // Lista modelos de impressão disponíveis (RLS limita por perfil/escola).
 export const listPrintTemplates = createServerFn({ method: "GET" })
   .middleware([requireAuth])
-  .inputValidator((data) =>
-    z.object({ form_id: z.string().uuid().optional() }).parse(data),
-  )
+  .inputValidator((data) => z.object({ form_id: z.string().uuid().optional() }).parse(data))
   .handler(async ({ data, context }) => {
     let query = context.supabase
       .from("print_templates")
@@ -71,9 +69,7 @@ export const getPrintData = createServerFn({ method: "GET" })
       const wanted = (template.field_ids ?? []) as string[];
       if (wanted.length === 0) return all;
       const map = new Map(all.map((f) => [f.id, f]));
-      return wanted
-        .map((id) => map.get(id))
-        .filter((f): f is NonNullable<typeof f> => !!f);
+      return wanted.map((id) => map.get(id)).filter((f): f is NonNullable<typeof f> => !!f);
     })();
 
     return {

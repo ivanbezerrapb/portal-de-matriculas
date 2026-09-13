@@ -1,18 +1,10 @@
 // Editor visual (arrastar e soltar) do layout de impressão.
-import {
-  useEffect,
-  useRef,
-  useState,
-  type CSSProperties,
-} from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Eye, Maximize2, Minimize2, X, ZoomIn, ZoomOut } from "lucide-react";
 import { toast } from "sonner";
 import { getSupabase } from "@/lib/ext/browser";
-import {
-  getSubmission,
-  listSubmissions,
-} from "@/lib/ext/cadastros.functions";
+import { getSubmission, listSubmissions } from "@/lib/ext/cadastros.functions";
 import { BlockView } from "@/components/print/BlockView";
 import { DynamicPrintPage } from "@/components/print/DynamicPrintPage";
 import {
@@ -103,11 +95,7 @@ export function LayoutEditor({
       setFitZoom(
         Math.max(
           0.25,
-          Math.min(
-            1,
-            availableWidth / (size.w * MM_PX),
-            availableHeight / (size.h * MM_PX),
-          ),
+          Math.min(1, availableWidth / (size.w * MM_PX), availableHeight / (size.h * MM_PX)),
         ),
       );
     };
@@ -135,9 +123,7 @@ export function LayoutEditor({
     createdAt: new Date().toISOString(),
   };
 
-  const selectedBlocks = (page?.blocks ?? []).filter((b) =>
-    selectedIds.includes(b.id),
-  );
+  const selectedBlocks = (page?.blocks ?? []).filter((b) => selectedIds.includes(b.id));
   const selected = selectedBlocks.length === 1 ? selectedBlocks[0] : null;
 
   function setPages(pages: PrintLayout["pages"]) {
@@ -151,9 +137,7 @@ export function LayoutEditor({
         p.id === page.id
           ? {
               ...p,
-              blocks: p.blocks.map((b) =>
-                b.id === id ? ({ ...b, ...patch } as PrintBlock) : b,
-              ),
+              blocks: p.blocks.map((b) => (b.id === id ? ({ ...b, ...patch } as PrintBlock) : b)),
             }
           : p,
       ),
@@ -169,9 +153,7 @@ export function LayoutEditor({
         p.id === pid
           ? {
               ...p,
-              blocks: p.blocks.map((b) =>
-                map[b.id] ? ({ ...b, ...map[b.id] } as PrintBlock) : b,
-              ),
+              blocks: p.blocks.map((b) => (map[b.id] ? ({ ...b, ...map[b.id] } as PrintBlock) : b)),
             }
           : p,
       ),
@@ -185,11 +167,7 @@ export function LayoutEditor({
       const cf = fields.find((f) => f.type === "children");
       if (cf) (b as { fieldId: string }).fieldId = cf.id;
     }
-    setPages(
-      layout.pages.map((p) =>
-        p.id === page.id ? { ...p, blocks: [...p.blocks, b] } : p,
-      ),
-    );
+    setPages(layout.pages.map((p) => (p.id === page.id ? { ...p, blocks: [...p.blocks, b] } : p)));
     setSelectedIds([b.id]);
   }
 
@@ -197,9 +175,7 @@ export function LayoutEditor({
     if (!page || ids.length === 0) return;
     setPages(
       layoutRef.current.pages.map((p) =>
-        p.id === page.id
-          ? { ...p, blocks: p.blocks.filter((b) => !ids.includes(b.id)) }
-          : p,
+        p.id === page.id ? { ...p, blocks: p.blocks.filter((b) => !ids.includes(b.id)) } : p,
       ),
     );
     setSelectedIds([]);
@@ -211,9 +187,7 @@ export function LayoutEditor({
       .filter((b) => ids.includes(b.id))
       .map((b) => ({ ...b, id: uid(), x: b.x + 5, y: b.y + 5 }) as PrintBlock);
     setPages(
-      layout.pages.map((p) =>
-        p.id === page.id ? { ...p, blocks: [...p.blocks, ...copies] } : p,
-      ),
+      layout.pages.map((p) => (p.id === page.id ? { ...p, blocks: [...p.blocks, ...copies] } : p)),
     );
     setSelectedIds(copies.map((c) => c.id));
   }
@@ -278,13 +252,9 @@ export function LayoutEditor({
     const onWheel = (event: WheelEvent) => {
       if (!event.ctrlKey && !event.metaKey) return;
       event.preventDefault();
-      const dy =
-        event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? 100 : 1);
+      const dy = event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? 100 : 1);
       const currentZoom = scaleRef.current / MM_PX;
-      const next = Math.min(
-        MAX_ZOOM,
-        Math.max(MIN_ZOOM, currentZoom * Math.exp(-dy * 0.0015)),
-      );
+      const next = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, currentZoom * Math.exp(-dy * 0.0015)));
       if (Math.abs(next - currentZoom) < 0.001) return;
       const rect = viewport.getBoundingClientRect();
       const px = event.clientX - rect.left + viewport.scrollLeft;
@@ -302,25 +272,17 @@ export function LayoutEditor({
 
   function changeZoom(delta: number) {
     const current = zoom === "fit" ? fitZoom : zoom;
-    setZoom(
-      Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, Math.round((current + delta) * 100) / 100)),
-    );
+    setZoom(Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, Math.round((current + delta) * 100) / 100)));
   }
 
-  function startDrag(
-    e: React.PointerEvent,
-    block: PrintBlock,
-    mode: "move" | "resize",
-  ) {
+  function startDrag(e: React.PointerEvent, block: PrintBlock, mode: "move" | "resize") {
     e.preventDefault();
     e.stopPropagation();
 
     const multi = e.ctrlKey || e.metaKey || e.shiftKey;
     let ids = selectedRef.current;
     if (multi) {
-      ids = ids.includes(block.id)
-        ? ids.filter((id) => id !== block.id)
-        : [...ids, block.id];
+      ids = ids.includes(block.id) ? ids.filter((id) => id !== block.id) : [...ids, block.id];
       setSelectedIds(ids);
       if (!ids.includes(block.id)) return;
     } else if (!ids.includes(block.id)) {
@@ -331,8 +293,7 @@ export function LayoutEditor({
     const startX = e.clientX;
     const startY = e.clientY;
     const blocks = (
-      layoutRef.current.pages.find((p) => p.id === pageIdRef.current)?.blocks ??
-      []
+      layoutRef.current.pages.find((p) => p.id === pageIdRef.current)?.blocks ?? []
     ).filter((b) => (mode === "move" ? ids.includes(b.id) : b.id === block.id));
     const origins = blocks.map((b) => ({ id: b.id, x: b.x, y: b.y, w: b.w, h: b.h }));
 
@@ -389,16 +350,11 @@ export function LayoutEditor({
       if (box.w < 1 && box.h < 1) return;
       moved = true;
       setMarquee(box);
-      const blocks =
-        layoutRef.current.pages.find((p) => p.id === pageIdRef.current)
-          ?.blocks ?? [];
+      const blocks = layoutRef.current.pages.find((p) => p.id === pageIdRef.current)?.blocks ?? [];
       const hit = blocks
         .filter(
           (b) =>
-            b.x < box.x + box.w &&
-            b.x + b.w > box.x &&
-            b.y < box.y + box.h &&
-            b.y + b.h > box.y,
+            b.x < box.x + box.w && b.x + b.w > box.x && b.y < box.y + box.h && b.y + b.h > box.y,
         )
         .map((b) => b.id);
       setSelectedIds([...new Set([...base, ...hit])]);
@@ -435,267 +391,260 @@ export function LayoutEditor({
             onClick={() => setFullscreen((current) => !current)}
             title={fullscreen ? "Sair da tela cheia" : "Abrir em tela cheia"}
           >
-            {fullscreen ? (
-              <Minimize2 className="h-4 w-4" />
-            ) : (
-              <Maximize2 className="h-4 w-4" />
-            )}
+            {fullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
             {fullscreen ? "Sair da tela cheia" : "Tela cheia"}
           </Button>
         </div>
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col gap-4 lg:flex-row">
-      {/* Barra de blocos + canvas */}
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <div className="flex flex-wrap items-center gap-2">
-          {BLOCK_ORDER.map((t) => (
-            <Button
-              key={t}
-              variant="outline"
-              className="px-2.5 py-1 text-xs"
-              onClick={() => addBlock(t)}
-            >
-              + {BLOCK_LABELS[t]}
-            </Button>
-          ))}
-        </div>
+        {/* Barra de blocos + canvas */}
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          <div className="flex flex-wrap items-center gap-2">
+            {BLOCK_ORDER.map((t) => (
+              <Button
+                key={t}
+                variant="outline"
+                className="px-2.5 py-1 text-xs"
+                onClick={() => addBlock(t)}
+              >
+                + {BLOCK_LABELS[t]}
+              </Button>
+            ))}
+          </div>
 
-        <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
-          <div className="flex items-center gap-1">
-            {layout.pages.map((p, i) => (
+          <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
+            <div className="flex items-center gap-1">
+              {layout.pages.map((p, i) => (
+                <button
+                  key={p.id}
+                  onClick={() => {
+                    setPageIdx(i);
+                    setSelectedIds([]);
+                  }}
+                  className={`rounded-md border px-2.5 py-1 text-xs ${
+                    i === pageIdx
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border text-muted-foreground"
+                  }`}
+                >
+                  Página {i + 1}
+                </button>
+              ))}
               <button
-                key={p.id}
+                className="rounded-md border border-dashed border-border px-2.5 py-1 text-xs text-muted-foreground"
                 onClick={() => {
-                  setPageIdx(i);
-                  setSelectedIds([]);
+                  setPages([...layout.pages, { id: uid(), blocks: [] }]);
+                  setPageIdx(layout.pages.length);
                 }}
-                className={`rounded-md border px-2.5 py-1 text-xs ${
-                  i === pageIdx
+              >
+                + Página
+              </button>
+              {layout.pages.length > 1 && (
+                <button
+                  className="rounded-md px-2 py-1 text-xs text-destructive"
+                  onClick={() => {
+                    if (!page) return;
+                    if (!window.confirm("Excluir esta página do modelo?")) return;
+                    const rest = layout.pages.filter((p) => p.id !== page.id);
+                    setPages(rest);
+                    setPageIdx(0);
+                  }}
+                >
+                  Excluir página
+                </button>
+              )}
+            </div>
+
+            <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <input
+                type="checkbox"
+                className="accent-[var(--color-primary)]"
+                checked={snap}
+                onChange={(e) => setSnap(e.target.checked)}
+              />
+              Alinhar à grade
+            </label>
+
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                className="rounded-md border border-border px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
+                onClick={() => changeZoom(-0.1)}
+                title="Afastar"
+              >
+                <ZoomOut className="h-4 w-4" />
+              </button>
+              <span className="w-12 text-center text-xs tabular-nums text-muted-foreground">
+                {Math.round(activeZoom * 100)}%
+              </span>
+              <button
+                type="button"
+                className="rounded-md border border-border px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
+                onClick={() => changeZoom(0.1)}
+                title="Aproximar"
+              >
+                <ZoomIn className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                className={`rounded-md border px-2 py-1 text-xs ${
+                  zoom === "fit"
                     ? "border-primary bg-primary/10 text-primary"
                     : "border-border text-muted-foreground"
                 }`}
+                onClick={() => setZoom("fit")}
               >
-                Página {i + 1}
+                Ajustar à tela
               </button>
-            ))}
-            <button
-              className="rounded-md border border-dashed border-border px-2.5 py-1 text-xs text-muted-foreground"
-              onClick={() => {
-                setPages([...layout.pages, { id: uid(), blocks: [] }]);
-                setPageIdx(layout.pages.length);
-              }}
-            >
-              + Página
-            </button>
-            {layout.pages.length > 1 && (
-              <button
-                className="rounded-md px-2 py-1 text-xs text-destructive"
-                onClick={() => {
-                  if (!page) return;
-                  if (!window.confirm("Excluir esta página do modelo?")) return;
-                  const rest = layout.pages.filter((p) => p.id !== page.id);
-                  setPages(rest);
-                  setPageIdx(0);
-                }}
-              >
-                Excluir página
-              </button>
+            </div>
+
+            {selectedIds.length > 1 && (
+              <div className="flex items-center gap-2 text-xs">
+                <span className="text-muted-foreground">
+                  {selectedIds.length} blocos selecionados
+                </span>
+                <button
+                  className="rounded-md px-2 py-1 text-destructive"
+                  onClick={() => removeBlocks(selectedIds)}
+                >
+                  Excluir selecionados ({selectedIds.length})
+                </button>
+              </div>
             )}
           </div>
 
-          <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <input
-              type="checkbox"
-              className="accent-[var(--color-primary)]"
-              checked={snap}
-              onChange={(e) => setSnap(e.target.checked)}
-            />
-            Alinhar à grade
-          </label>
-
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              className="rounded-md border border-border px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
-              onClick={() => changeZoom(-0.1)}
-              title="Afastar"
-            >
-              <ZoomOut className="h-4 w-4" />
-            </button>
-            <span className="w-12 text-center text-xs tabular-nums text-muted-foreground">
-              {Math.round(activeZoom * 100)}%
-            </span>
-            <button
-              type="button"
-              className="rounded-md border border-border px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
-              onClick={() => changeZoom(0.1)}
-              title="Aproximar"
-            >
-              <ZoomIn className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              className={`rounded-md border px-2 py-1 text-xs ${
-                zoom === "fit"
-                  ? "border-primary bg-primary/10 text-primary"
-                  : "border-border text-muted-foreground"
-              }`}
-              onClick={() => setZoom("fit")}
-            >
-              Ajustar à tela
-            </button>
-          </div>
-
-          {selectedIds.length > 1 && (
-            <div className="flex items-center gap-2 text-xs">
-              <span className="text-muted-foreground">
-                {selectedIds.length} blocos selecionados
-              </span>
-              <button
-                className="rounded-md px-2 py-1 text-destructive"
-                onClick={() => removeBlocks(selectedIds)}
-              >
-                Excluir selecionados ({selectedIds.length})
-              </button>
-            </div>
-          )}
-        </div>
-
-        <div
-          ref={viewportRef}
-          className={`mt-3 flex min-h-[32rem] flex-1 items-start justify-center overflow-auto rounded-xl border border-border bg-muted/40 p-4 ${
-            fullscreen ? "h-full" : "max-h-[calc(100vh-13rem)]"
-          }`}
-        >
           <div
-            ref={canvasRef}
-            onPointerDown={startMarquee}
-            style={{
-              position: "relative",
-              flex: "none",
-              width: size.w * scale,
-              height: size.h * scale,
-              background: "#fff",
-              boxShadow: "0 1px 8px rgba(0,0,0,.15)",
-              backgroundImage:
-                "linear-gradient(to right, rgba(0,0,0,.05) 1px, transparent 1px), linear-gradient(to bottom, rgba(0,0,0,.05) 1px, transparent 1px)",
-              backgroundSize: `${10 * scale}px ${10 * scale}px`,
-            }}
+            ref={viewportRef}
+            className={`mt-3 flex min-h-[32rem] flex-1 items-start justify-center overflow-auto rounded-xl border border-border bg-muted/40 p-4 ${
+              fullscreen ? "h-full" : "max-h-[calc(100vh-13rem)]"
+            }`}
           >
             <div
+              ref={canvasRef}
+              onPointerDown={startMarquee}
               style={{
-                position: "absolute",
-                inset: 0,
-                width: size.w * MM_PX,
-                height: size.h * MM_PX,
-                transform: `scale(${activeZoom})`,
-                transformOrigin: "top left",
+                position: "relative",
+                flex: "none",
+                width: size.w * scale,
+                height: size.h * scale,
+                background: "#fff",
+                boxShadow: "0 1px 8px rgba(0,0,0,.15)",
+                backgroundImage:
+                  "linear-gradient(to right, rgba(0,0,0,.05) 1px, transparent 1px), linear-gradient(to bottom, rgba(0,0,0,.05) 1px, transparent 1px)",
+                backgroundSize: `${10 * scale}px ${10 * scale}px`,
               }}
             >
-              {(page?.blocks ?? []).map((b) => (
-                <div
-                  key={b.id}
-                  onPointerDown={(e) => startDrag(e, b, "move")}
-                  style={{
-                    position: "absolute",
-                    left: `${b.x}mm`,
-                    top: `${b.y}mm`,
-                    width: `${b.w}mm`,
-                    height: `${b.h}mm`,
-                    outline: selectedIds.includes(b.id)
-                      ? "1.5px solid var(--color-primary)"
-                      : "1px dashed rgba(0,0,0,.18)",
-                    background: selectedIds.includes(b.id)
-                      ? "rgba(37,99,235,.06)"
-                      : undefined,
-                    cursor: "move",
-                    overflow: "hidden",
-                  }}
-                >
-                  <BlockView block={b} ctx={ctx} preview />
-                  {selected?.id === b.id && (
-                    <div
-                      onPointerDown={(e) => startDrag(e, b, "resize")}
-                      style={{
-                        position: "absolute",
-                        right: -4,
-                        bottom: -4,
-                        width: 10,
-                        height: 10,
-                        background: "var(--color-primary)",
-                        borderRadius: 2,
-                        cursor: "nwse-resize",
-                      }}
-                    />
-                  )}
-                </div>
-              ))}
-              {marquee && (
-                <div
-                  style={{
-                    position: "absolute",
-                    left: `${marquee.x}mm`,
-                    top: `${marquee.y}mm`,
-                    width: `${marquee.w}mm`,
-                    height: `${marquee.h}mm`,
-                    border: "1px solid var(--color-primary)",
-                    background: "rgba(37,99,235,.10)",
-                    pointerEvents: "none",
-                  }}
-                />
-              )}
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  width: size.w * MM_PX,
+                  height: size.h * MM_PX,
+                  transform: `scale(${activeZoom})`,
+                  transformOrigin: "top left",
+                }}
+              >
+                {(page?.blocks ?? []).map((b) => (
+                  <div
+                    key={b.id}
+                    onPointerDown={(e) => startDrag(e, b, "move")}
+                    style={{
+                      position: "absolute",
+                      left: `${b.x}mm`,
+                      top: `${b.y}mm`,
+                      width: `${b.w}mm`,
+                      height: `${b.h}mm`,
+                      outline: selectedIds.includes(b.id)
+                        ? "1.5px solid var(--color-primary)"
+                        : "1px dashed rgba(0,0,0,.18)",
+                      background: selectedIds.includes(b.id) ? "rgba(37,99,235,.06)" : undefined,
+                      cursor: "move",
+                      overflow: "hidden",
+                    }}
+                  >
+                    <BlockView block={b} ctx={ctx} preview />
+                    {selected?.id === b.id && (
+                      <div
+                        onPointerDown={(e) => startDrag(e, b, "resize")}
+                        style={{
+                          position: "absolute",
+                          right: -4,
+                          bottom: -4,
+                          width: 10,
+                          height: 10,
+                          background: "var(--color-primary)",
+                          borderRadius: 2,
+                          cursor: "nwse-resize",
+                        }}
+                      />
+                    )}
+                  </div>
+                ))}
+                {marquee && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      left: `${marquee.x}mm`,
+                      top: `${marquee.y}mm`,
+                      width: `${marquee.w}mm`,
+                      height: `${marquee.h}mm`,
+                      border: "1px solid var(--color-primary)",
+                      background: "rgba(37,99,235,.10)",
+                      pointerEvents: "none",
+                    }}
+                  />
+                )}
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Inspetor */}
-      <div className="w-full shrink-0 lg:w-80">
-        <div className="rounded-xl border border-border bg-card p-4 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto">
-          {selectedBlocks.length > 1 ? (
-            <div>
-              <p className="font-medium text-foreground">
-                {selectedBlocks.length} blocos selecionados
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Arraste qualquer um deles para mover todos juntos, ou use as
-                setas do teclado.
-              </p>
-              <div className="mt-3 flex gap-2">
-                <Button
-                  variant="outline"
-                  className="px-2.5 py-1 text-xs"
-                  onClick={() => duplicateBlocks(selectedIds)}
-                >
-                  Duplicar
-                </Button>
-                <Button
-                  variant="danger"
-                  className="px-2.5 py-1 text-xs"
-                  onClick={() => removeBlocks(selectedIds)}
-                >
-                  Excluir
-                </Button>
+        {/* Inspetor */}
+        <div className="w-full shrink-0 lg:w-80">
+          <div className="rounded-xl border border-border bg-card p-4 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto">
+            {selectedBlocks.length > 1 ? (
+              <div>
+                <p className="font-medium text-foreground">
+                  {selectedBlocks.length} blocos selecionados
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Arraste qualquer um deles para mover todos juntos, ou use as setas do teclado.
+                </p>
+                <div className="mt-3 flex gap-2">
+                  <Button
+                    variant="outline"
+                    className="px-2.5 py-1 text-xs"
+                    onClick={() => duplicateBlocks(selectedIds)}
+                  >
+                    Duplicar
+                  </Button>
+                  <Button
+                    variant="danger"
+                    className="px-2.5 py-1 text-xs"
+                    onClick={() => removeBlocks(selectedIds)}
+                  >
+                    Excluir
+                  </Button>
+                </div>
               </div>
-            </div>
-          ) : !selected ? (
-            <p className="text-sm text-muted-foreground">
-              Clique em um bloco para editar suas propriedades, ou adicione um
-              novo bloco acima. Segure Ctrl para selecionar vários, ou arraste
-              sobre a folha vazia para selecionar por área.
-            </p>
-          ) : (
-            <Inspector
-              block={selected}
-              fields={fields}
-              onChange={(patch) => updateBlock(selected.id, patch)}
-              onDuplicate={() => duplicateBlocks([selected.id])}
-              onRemove={() => removeBlocks([selected.id])}
-            />
-          )}
+            ) : !selected ? (
+              <p className="text-sm text-muted-foreground">
+                Clique em um bloco para editar suas propriedades, ou adicione um novo bloco acima.
+                Segure Ctrl para selecionar vários, ou arraste sobre a folha vazia para selecionar
+                por área.
+              </p>
+            ) : (
+              <Inspector
+                block={selected}
+                fields={fields}
+                onChange={(patch) => updateBlock(selected.id, patch)}
+                onDuplicate={() => duplicateBlocks([selected.id])}
+                onRemove={() => removeBlocks([selected.id])}
+              />
+            )}
+          </div>
         </div>
-      </div>
       </div>
 
       {previewOpen && (
@@ -737,12 +686,7 @@ function PrintPreviewDialog({
   const size = PAGE_MM[layout.pageSize];
   const submission = submissionData?.submission;
   const values = submissionData
-    ? Object.fromEntries(
-        submissionData.values.map((value) => [
-          value.field_id,
-          value.value ?? "",
-        ]),
-      )
+    ? Object.fromEntries(submissionData.values.map((value) => [value.field_id, value.value ?? ""]))
     : {};
   const school = submission?.schools as unknown as { name?: string } | null;
   const ctx: PrintContext | null = submission
@@ -807,13 +751,7 @@ function PrintPreviewDialog({
         ) : ctx ? (
           <div className="flex flex-col items-center gap-6">
             {layout.pages.map((page, index) => (
-              <PreviewPage
-                key={page.id}
-                page={page}
-                pageNumber={index + 1}
-                size={size}
-                ctx={ctx}
-              />
+              <PreviewPage key={page.id} page={page} pageNumber={index + 1} size={size} ctx={ctx} />
             ))}
           </div>
         ) : (
@@ -856,13 +794,11 @@ function PreviewPage({
 
   return (
     <div ref={wrapperRef} className="w-full max-w-[210mm]">
-      <p className="mb-2 text-center text-xs text-muted-foreground">
-        Página {pageNumber}
-      </p>
+      <p className="mb-2 text-center text-xs text-muted-foreground">Página {pageNumber}</p>
       {overflow && (
         <div className="mb-3 border border-destructive bg-destructive/10 p-3 text-sm text-destructive">
-          O conteúdo desta página ultrapassa o limite da folha. Reorganize os
-          blocos antes de imprimir para evitar dados cortados.
+          O conteúdo desta página ultrapassa o limite da folha. Reorganize os blocos antes de
+          imprimir para evitar dados cortados.
         </div>
       )}
       <div
@@ -918,10 +854,7 @@ function Inspector({
           >
             Duplicar
           </button>
-          <button
-            className="rounded-md px-2 py-1 text-xs text-destructive"
-            onClick={onRemove}
-          >
+          <button className="rounded-md px-2 py-1 text-xs text-destructive" onClick={onRemove}>
             Excluir
           </button>
         </div>
@@ -940,9 +873,7 @@ function Inspector({
           </div>
         ))}
       </div>
-      <p className="mt-1 text-[11px] text-muted-foreground">
-        Posição e tamanho em milímetros.
-      </p>
+      <p className="mt-1 text-[11px] text-muted-foreground">Posição e tamanho em milímetros.</p>
 
       {block.type === "text" && (
         <>
@@ -971,10 +902,7 @@ function Inspector({
         <>
           <div style={rowStyle}>
             <Label>Informação</Label>
-            <Select
-              value={block.source}
-              onChange={(e) => onChange({ source: e.target.value })}
-            >
+            <Select value={block.source} onChange={(e) => onChange({ source: e.target.value })}>
               <optgroup label="Do sistema">
                 {SPECIAL_SOURCES.map((s) => (
                   <option key={s.value} value={s.value}>
@@ -1014,9 +942,7 @@ function Inspector({
         </>
       )}
 
-      {block.type === "image" && (
-        <ImageControls block={block} onChange={onChange} />
-      )}
+      {block.type === "image" && <ImageControls block={block} onChange={onChange} />}
 
       {block.type === "box" && (
         <>
@@ -1040,10 +966,7 @@ function Inspector({
           </div>
           <div style={rowStyle}>
             <Label>Preenchimento</Label>
-            <Select
-              value={block.fill}
-              onChange={(e) => onChange({ fill: e.target.value })}
-            >
+            <Select value={block.fill} onChange={(e) => onChange({ fill: e.target.value })}>
               <option value="">Transparente</option>
               <option value="#d9d9d9">Cinza</option>
               <option value="#f2f2f2">Cinza claro</option>
@@ -1068,10 +991,7 @@ function Inspector({
         <>
           <div style={rowStyle}>
             <Label>Legenda</Label>
-            <Input
-              value={block.caption}
-              onChange={(e) => onChange({ caption: e.target.value })}
-            />
+            <Input value={block.caption} onChange={(e) => onChange({ caption: e.target.value })} />
           </div>
           <div style={rowStyle}>
             <Label>Tamanho da letra (pt)</Label>
@@ -1088,10 +1008,7 @@ function Inspector({
         <>
           <div style={rowStyle}>
             <Label>Campo "N Filhos"</Label>
-            <Select
-              value={block.fieldId}
-              onChange={(e) => onChange({ fieldId: e.target.value })}
-            >
+            <Select value={block.fieldId} onChange={(e) => onChange({ fieldId: e.target.value })}>
               <option value="">Automático</option>
               {fields
                 .filter((f) => f.type === "children")
@@ -1106,9 +1023,7 @@ function Inspector({
             <Label>Formato</Label>
             <Select
               value={block.mode}
-              onChange={(e) =>
-                onChange({ mode: e.target.value as "list" | "table" })
-              }
+              onChange={(e) => onChange({ mode: e.target.value as "list" | "table" })}
             >
               <option value="list">Lista</option>
               <option value="table">Tabela</option>
@@ -1155,9 +1070,7 @@ function TypographyControls({
         <Select
           className="px-2 py-1 text-xs"
           value={block.align}
-          onChange={(e) =>
-            onChange({ align: e.target.value as "left" | "center" | "right" })
-          }
+          onChange={(e) => onChange({ align: e.target.value as "left" | "center" | "right" })}
         >
           <option value="left">Esquerda</option>
           <option value="center">Centro</option>
@@ -1225,9 +1138,7 @@ function ImageControls({
       onChange({ url: data.publicUrl });
       toast.success("Imagem enviada.");
     } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Falha ao enviar a imagem.",
-      );
+      toast.error(err instanceof Error ? err.message : "Falha ao enviar a imagem.");
     } finally {
       setUploading(false);
     }
@@ -1246,9 +1157,7 @@ function ImageControls({
             if (f) void upload(f);
           }}
         />
-        {uploading && (
-          <p className="mt-1 text-xs text-muted-foreground">Enviando...</p>
-        )}
+        {uploading && <p className="mt-1 text-xs text-muted-foreground">Enviando...</p>}
         {block.url && (
           <img
             src={block.url}
@@ -1261,9 +1170,7 @@ function ImageControls({
         <Label>Ajuste</Label>
         <Select
           value={block.fit}
-          onChange={(e) =>
-            onChange({ fit: e.target.value as "contain" | "cover" })
-          }
+          onChange={(e) => onChange({ fit: e.target.value as "contain" | "cover" })}
         >
           <option value="contain">Caber inteira</option>
           <option value="cover">Preencher a área</option>
@@ -1292,9 +1199,7 @@ function TableControls({
   function setCell(patch: Partial<(typeof block.rows)[0][0]>) {
     setRows(
       block.rows.map((row, ri) =>
-        ri === sel.r
-          ? row.map((c, ci) => (ci === sel.c ? { ...c, ...patch } : c))
-          : row,
+        ri === sel.r ? row.map((c, ci) => (ci === sel.c ? { ...c, ...patch } : c)) : row,
       ),
     );
   }
@@ -1312,10 +1217,7 @@ function TableControls({
             value={block.cols.length}
             onChange={(e) => {
               const n = Math.max(1, Math.min(8, Number(e.target.value)));
-              const cols = Array.from(
-                { length: n },
-                (_, i) => block.cols[i] ?? 1,
-              );
+              const cols = Array.from({ length: n }, (_, i) => block.cols[i] ?? 1);
               const rows = block.rows.map((row) =>
                 Array.from({ length: n }, (_, i) => row[i] ?? cell("")),
               );
@@ -1336,13 +1238,9 @@ function TableControls({
               const rows = Array.from(
                 { length: n },
                 (_, i) =>
-                  block.rows[i] ??
-                  Array.from({ length: block.cols.length }, () => cell("")),
+                  block.rows[i] ?? Array.from({ length: block.cols.length }, () => cell("")),
               );
-              const rowHeights = Array.from(
-                { length: n },
-                (_, i) => block.rowHeights[i] ?? 1,
-              );
+              const rowHeights = Array.from({ length: n }, (_, i) => block.rowHeights[i] ?? 1);
               onChange({ rows, rowHeights } as Partial<PrintBlock>);
             }}
           />
@@ -1354,9 +1252,7 @@ function TableControls({
           type="checkbox"
           className="accent-[var(--color-primary)]"
           checked={block.header}
-          onChange={(e) =>
-            onChange({ header: e.target.checked } as Partial<PrintBlock>)
-          }
+          onChange={(e) => onChange({ header: e.target.checked } as Partial<PrintBlock>)}
         />
         Primeira linha é cabeçalho
       </label>
@@ -1392,9 +1288,7 @@ function TableControls({
               min={1}
               value={block.rowHeights[i] ?? 1}
               onChange={(e) => {
-                const rowHeights = block.rows.map(
-                  (_, j) => block.rowHeights[j] ?? 1,
-                );
+                const rowHeights = block.rows.map((_, j) => block.rowHeights[j] ?? 1);
                 rowHeights[i] = Math.max(1, Number(e.target.value));
                 onChange({ rowHeights } as Partial<PrintBlock>);
               }}
@@ -1480,9 +1374,7 @@ function TableControls({
             <Select
               className="w-32 px-2 py-1 text-xs"
               value={current.align}
-              onChange={(e) =>
-                setCell({ align: e.target.value as "left" | "center" })
-              }
+              onChange={(e) => setCell({ align: e.target.value as "left" | "center" })}
             >
               <option value="left">Esquerda</option>
               <option value="center">Centro</option>
@@ -1498,9 +1390,7 @@ function TableControls({
           className="px-2 py-1 text-xs"
           type="number"
           value={block.fontSize}
-          onChange={(e) =>
-            onChange({ fontSize: Number(e.target.value) } as Partial<PrintBlock>)
-          }
+          onChange={(e) => onChange({ fontSize: Number(e.target.value) } as Partial<PrintBlock>)}
         />
       </div>
     </>
