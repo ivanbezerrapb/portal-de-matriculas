@@ -1,11 +1,8 @@
 # Roadmap — Sistema de Formulários por Escola
 
-- [ ] Conectar Supabase externo (aguardando credenciais do usuário via formulário seguro)
-- [ ] Corrigir erros de build (dependência @supabase/supabase-js)
-- [ ] Esquema do banco: schools, user_roles, profiles, forms, form_fields, submissions, submission_values, print_templates, audit_log + RLS + has_role
-- [ ] Autenticação e-mail/senha (login/cadastro) + rotas protegidas
-- [ ] Escolas com configuração de ID sequencial (4 escolas iniciais)
-- [ ] Construtor de formulários + link público + envio
-- [ ] Listagem de cadastros, busca por ID, edição interna
-- [ ] Modelos de impressão configuráveis + impressão em lote
-- [ ] Gestão de usuários e perfis
+- [x] Conectar Supabase externo (credenciais salvas)
+- [x] Trocar para o novo Supabase (nrfqkavipnycifrucbfg)
+- [x] Esquema do banco aplicado via psql (9 tabelas, RLS, funções, trigger, seed de 4 escolas)
+- [ ] Testar fluxo completo no navegador (conta teste temporária, depois removida)
+- [ ] Corrigir erros encontrados nos testes
+- [ ] Usuário cria a conta de Administrador (primeiro cadastro vira admin automaticamente)

@@ -18,8 +18,8 @@ import { Route as AuthenticatedEscolasRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedFormulariosRouteImport } from './routes/_authenticated/formularios'
 import { Route as AuthenticatedUsuariosRouteImport } from './routes/_authenticated/usuarios'
 import { Route as FSlugRouteImport } from './routes/f/$slug'
-import { Route as AuthenticatedCadastrosSubmissionIdRouteImport } from './routes/_authenticated/cadastros.$submissionId'
-import { Route as AuthenticatedFormulariosFormIdRouteImport } from './routes/_authenticated/formularios.$formId'
+import { Route as AuthenticatedCadastrosSubmissionIdRouteImport } from './routes/_authenticated/cadastros_.$submissionId'
+import { Route as AuthenticatedFormulariosFormIdRouteImport } from './routes/_authenticated/formularios_.$formId'
 import { Route as AuthenticatedImprimirTemplateIdRouteImport } from './routes/_authenticated/imprimir.$templateId'
 import { Route as ApiPublicConfigRouteImport } from './routes/api/public/config'
 
@@ -70,15 +70,15 @@ const FSlugRoute = FSlugRouteImport.update({
 } as any)
 const AuthenticatedCadastrosSubmissionIdRoute =
   AuthenticatedCadastrosSubmissionIdRouteImport.update({
-    id: '/$submissionId',
-    path: '/$submissionId',
-    getParentRoute: () => AuthenticatedCadastrosRoute,
+    id: '/cadastros_/$submissionId',
+    path: '/cadastros/$submissionId',
+    getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedFormulariosFormIdRoute =
   AuthenticatedFormulariosFormIdRouteImport.update({
-    id: '/$formId',
-    path: '/$formId',
-    getParentRoute: () => AuthenticatedFormulariosRoute,
+    id: '/formularios_/$formId',
+    path: '/formularios/$formId',
+    getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedImprimirTemplateIdRoute =
   AuthenticatedImprimirTemplateIdRouteImport.update({
@@ -95,10 +95,10 @@ const ApiPublicConfigRoute = ApiPublicConfigRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
-  '/cadastros': typeof AuthenticatedCadastrosRouteWithChildren
+  '/cadastros': typeof AuthenticatedCadastrosRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/escolas': typeof AuthenticatedEscolasRoute
-  '/formularios': typeof AuthenticatedFormulariosRouteWithChildren
+  '/formularios': typeof AuthenticatedFormulariosRoute
   '/usuarios': typeof AuthenticatedUsuariosRoute
   '/f/$slug': typeof FSlugRoute
   '/cadastros/$submissionId': typeof AuthenticatedCadastrosSubmissionIdRoute
@@ -109,10 +109,10 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
-  '/cadastros': typeof AuthenticatedCadastrosRouteWithChildren
+  '/cadastros': typeof AuthenticatedCadastrosRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/escolas': typeof AuthenticatedEscolasRoute
-  '/formularios': typeof AuthenticatedFormulariosRouteWithChildren
+  '/formularios': typeof AuthenticatedFormulariosRoute
   '/usuarios': typeof AuthenticatedUsuariosRoute
   '/f/$slug': typeof FSlugRoute
   '/cadastros/$submissionId': typeof AuthenticatedCadastrosSubmissionIdRoute
@@ -125,14 +125,14 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
-  '/_authenticated/cadastros': typeof AuthenticatedCadastrosRouteWithChildren
+  '/_authenticated/cadastros': typeof AuthenticatedCadastrosRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/escolas': typeof AuthenticatedEscolasRoute
-  '/_authenticated/formularios': typeof AuthenticatedFormulariosRouteWithChildren
+  '/_authenticated/formularios': typeof AuthenticatedFormulariosRoute
   '/_authenticated/usuarios': typeof AuthenticatedUsuariosRoute
   '/f/$slug': typeof FSlugRoute
-  '/_authenticated/cadastros/$submissionId': typeof AuthenticatedCadastrosSubmissionIdRoute
-  '/_authenticated/formularios/$formId': typeof AuthenticatedFormulariosFormIdRoute
+  '/_authenticated/cadastros_/$submissionId': typeof AuthenticatedCadastrosSubmissionIdRoute
+  '/_authenticated/formularios_/$formId': typeof AuthenticatedFormulariosFormIdRoute
   '/_authenticated/imprimir/$templateId': typeof AuthenticatedImprimirTemplateIdRoute
   '/api/public/config': typeof ApiPublicConfigRoute
 }
@@ -176,8 +176,8 @@ export interface FileRouteTypes {
     | '/_authenticated/formularios'
     | '/_authenticated/usuarios'
     | '/f/$slug'
-    | '/_authenticated/cadastros/$submissionId'
-    | '/_authenticated/formularios/$formId'
+    | '/_authenticated/cadastros_/$submissionId'
+    | '/_authenticated/formularios_/$formId'
     | '/_authenticated/imprimir/$templateId'
     | '/api/public/config'
   fileRoutesById: FileRoutesById
@@ -255,19 +255,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/cadastros/$submissionId': {
-      id: '/_authenticated/cadastros/$submissionId'
-      path: '/$submissionId'
+    '/_authenticated/cadastros_/$submissionId': {
+      id: '/_authenticated/cadastros_/$submissionId'
+      path: '/cadastros/$submissionId'
       fullPath: '/cadastros/$submissionId'
       preLoaderRoute: typeof AuthenticatedCadastrosSubmissionIdRouteImport
-      parentRoute: typeof AuthenticatedCadastrosRoute
+      parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/formularios/$formId': {
-      id: '/_authenticated/formularios/$formId'
-      path: '/$formId'
+    '/_authenticated/formularios_/$formId': {
+      id: '/_authenticated/formularios_/$formId'
+      path: '/formularios/$formId'
       fullPath: '/formularios/$formId'
       preLoaderRoute: typeof AuthenticatedFormulariosFormIdRouteImport
-      parentRoute: typeof AuthenticatedFormulariosRoute
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/imprimir/$templateId': {
       id: '/_authenticated/imprimir/$templateId'
@@ -286,50 +286,26 @@ declare module '@tanstack/react-router' {
   }
 }
 
-interface AuthenticatedCadastrosRouteChildren {
-  AuthenticatedCadastrosSubmissionIdRoute: typeof AuthenticatedCadastrosSubmissionIdRoute
-}
-
-const AuthenticatedCadastrosRouteChildren: AuthenticatedCadastrosRouteChildren =
-  {
-    AuthenticatedCadastrosSubmissionIdRoute:
-      AuthenticatedCadastrosSubmissionIdRoute,
-  }
-
-const AuthenticatedCadastrosRouteWithChildren =
-  AuthenticatedCadastrosRoute._addFileChildren(
-    AuthenticatedCadastrosRouteChildren,
-  )
-
-interface AuthenticatedFormulariosRouteChildren {
-  AuthenticatedFormulariosFormIdRoute: typeof AuthenticatedFormulariosFormIdRoute
-}
-
-const AuthenticatedFormulariosRouteChildren: AuthenticatedFormulariosRouteChildren =
-  {
-    AuthenticatedFormulariosFormIdRoute: AuthenticatedFormulariosFormIdRoute,
-  }
-
-const AuthenticatedFormulariosRouteWithChildren =
-  AuthenticatedFormulariosRoute._addFileChildren(
-    AuthenticatedFormulariosRouteChildren,
-  )
-
 interface AuthenticatedRouteRouteChildren {
-  AuthenticatedCadastrosRoute: typeof AuthenticatedCadastrosRouteWithChildren
+  AuthenticatedCadastrosRoute: typeof AuthenticatedCadastrosRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedEscolasRoute: typeof AuthenticatedEscolasRoute
-  AuthenticatedFormulariosRoute: typeof AuthenticatedFormulariosRouteWithChildren
+  AuthenticatedFormulariosRoute: typeof AuthenticatedFormulariosRoute
   AuthenticatedUsuariosRoute: typeof AuthenticatedUsuariosRoute
+  AuthenticatedCadastrosSubmissionIdRoute: typeof AuthenticatedCadastrosSubmissionIdRoute
+  AuthenticatedFormulariosFormIdRoute: typeof AuthenticatedFormulariosFormIdRoute
   AuthenticatedImprimirTemplateIdRoute: typeof AuthenticatedImprimirTemplateIdRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
-  AuthenticatedCadastrosRoute: AuthenticatedCadastrosRouteWithChildren,
+  AuthenticatedCadastrosRoute: AuthenticatedCadastrosRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedEscolasRoute: AuthenticatedEscolasRoute,
-  AuthenticatedFormulariosRoute: AuthenticatedFormulariosRouteWithChildren,
+  AuthenticatedFormulariosRoute: AuthenticatedFormulariosRoute,
   AuthenticatedUsuariosRoute: AuthenticatedUsuariosRoute,
+  AuthenticatedCadastrosSubmissionIdRoute:
+    AuthenticatedCadastrosSubmissionIdRoute,
+  AuthenticatedFormulariosFormIdRoute: AuthenticatedFormulariosFormIdRoute,
   AuthenticatedImprimirTemplateIdRoute: AuthenticatedImprimirTemplateIdRoute,
 }
 
