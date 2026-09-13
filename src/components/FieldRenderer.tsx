@@ -1,7 +1,10 @@
-import type { ChildEntry, FormField } from "@/lib/ext/model";
+import { useState } from "react";
+import type { AddressEntry, ChildEntry, FormField } from "@/lib/ext/model";
 import {
   MAX_CHILDREN,
   emptyChild,
+  formatAddress,
+  parseAddress,
   parseChildren,
   splitChildOptions,
 } from "@/lib/ext/model";
@@ -158,6 +161,10 @@ export function FieldRenderer({
 
       {field.type === "children" && (
         <ChildrenField field={field} value={strValue} onChange={onChange} />
+      )}
+
+      {field.type === "address" && (
+        <AddressField field={field} value={strValue} onChange={onChange} />
       )}
 
       {error && <p className="mt-1 text-xs text-destructive">{error}</p>}
