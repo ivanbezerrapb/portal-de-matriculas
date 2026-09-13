@@ -27,7 +27,10 @@
 5. **Gestão de usuários** (`/usuarios`)
    - Criar usuários, atribuir perfis (administrador, gestor de escola, operador de impressão, editor) e vincular gestor/operador a uma escola.
 
-6. **Verificação final**
+6. **Entrada direta no login**
+   - Substituir a página inicial: `/` redireciona para `/auth` (ou para o painel, se já estiver logado).
+
+7. **Verificação final**
    - Corrigir erros de compilação restantes e testar o fluxo completo no navegador.
 
 ## Passo necessário de você (antes dos testes)
