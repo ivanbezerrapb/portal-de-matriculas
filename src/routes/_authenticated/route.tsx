@@ -42,7 +42,20 @@ export const Route = createFileRoute("/_authenticated")({
     return { user: data.user };
   },
   component: AuthenticatedLayout,
+  errorComponent: () => <SessionExpired />,
 });
+
+function SessionExpired() {
+  const navigate = useNavigate();
+  useEffect(() => {
+    navigate({ to: "/auth", replace: true });
+  }, [navigate]);
+  return (
+    <div className="flex min-h-screen items-center justify-center">
+      <Spinner />
+    </div>
+  );
+}
 
 function AuthenticatedLayout() {
   const navigate = useNavigate();
@@ -51,11 +64,16 @@ function AuthenticatedLayout() {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const { data: perms } = useQuery({
+  const { data: perms, error: permsError } = useQuery({
     queryKey: ["my-permissions"],
     queryFn: () => getMyPermissions(),
     staleTime: 60_000,
+    retry: false,
   });
+
+  useEffect(() => {
+    if (permsError) navigate({ to: "/auth", replace: true });
+  }, [permsError, navigate]);
 
   async function handleSignOut() {
     await queryClient.cancelQueries();
