@@ -182,7 +182,7 @@ function SubmissionDetailPage() {
               updateMut.mutate();
             }}
           >
-            {fields.map((field) => (
+            {editableFields.map((field) => (
               <FieldRenderer
                 key={field.id}
                 field={field}

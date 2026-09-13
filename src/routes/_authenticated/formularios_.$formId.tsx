@@ -15,6 +15,7 @@ import {
 } from "@/lib/ext/templates.functions";
 import {
   FIELD_TYPE_LABELS,
+  isChildrenCountField,
   joinChildOptions,
   splitChildOptions,
   type FieldType,
