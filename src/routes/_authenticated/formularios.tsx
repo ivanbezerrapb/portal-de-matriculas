@@ -2,12 +2,12 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
+import { Copy, Link2, Settings, Trash2 } from "lucide-react";
 import {
   createForm,
   deleteForm,
   duplicateForm,
   listForms,
-  setFormStatus,
 } from "@/lib/ext/formularios.functions";
 import { listSchools } from "@/lib/ext/escolas.functions";
 import {
@@ -20,6 +20,9 @@ import {
   Select,
   Spinner,
 } from "@/components/ui";
+
+const ICON_BTN =
+  "inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors";
 
 export const Route = createFileRoute("/_authenticated/formularios")({
   component: FormsPage,
@@ -64,13 +67,6 @@ function FormsPage() {
       setTitle("");
       invalidate();
     },
-    onError: (e) => toast.error(e.message),
-  });
-
-  const statusMut = useMutation({
-    mutationFn: (vars: { id: string; status: "draft" | "published" | "closed" }) =>
-      setFormStatus({ data: vars }),
-    onSuccess: invalidate,
     onError: (e) => toast.error(e.message),
   });
 
@@ -176,34 +172,39 @@ function FormsPage() {
                     {school?.name ?? "—"}
                   </p>
                 </div>
-                {f.status !== "published" ? (
-                  <Button
-                    variant="secondary"
-                    onClick={() =>
-                      statusMut.mutate({ id: f.id, status: "published" })
-                    }
+                {f.status === "published" ? (
+                  <button
+                    type="button"
+                    className={ICON_BTN}
+                    title="Copiar link do formulário"
+                    aria-label="Copiar link do formulário"
+                    onClick={async () => {
+                      const url = `${window.location.origin}/f/${f.public_slug}`;
+                      try {
+                        await navigator.clipboard.writeText(url);
+                        toast.success("Link copiado.");
+                      } catch {
+                        toast.error("Não foi possível copiar o link.");
+                      }
+                    }}
                   >
-                    Publicar
-                  </Button>
-                ) : (
-                  <Button
-                    variant="secondary"
-                    onClick={() =>
-                      statusMut.mutate({ id: f.id, status: "closed" })
-                    }
-                  >
-                    Encerrar
-                  </Button>
-                )}
+                    <Link2 size={18} />
+                  </button>
+                ) : null}
                 <Link
                   to="/formularios/$formId"
                   params={{ formId: f.id }}
-                  className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                  className={ICON_BTN}
+                  title="Configurar"
+                  aria-label="Configurar"
                 >
-                  Configurar
+                  <Settings size={18} />
                 </Link>
-                <Button
-                  variant="secondary"
+                <button
+                  type="button"
+                  className={ICON_BTN}
+                  title="Duplicar"
+                  aria-label="Duplicar"
                   onClick={() =>
                     setDup({
                       id: f.id,
@@ -212,10 +213,13 @@ function FormsPage() {
                     })
                   }
                 >
-                  Duplicar
-                </Button>
-                <Button
-                  variant="ghost"
+                  <Copy size={18} />
+                </button>
+                <button
+                  type="button"
+                  className={ICON_BTN}
+                  title="Excluir"
+                  aria-label="Excluir"
                   onClick={() => {
                     if (
                       window.confirm(
@@ -226,8 +230,8 @@ function FormsPage() {
                     }
                   }}
                 >
-                  Excluir
-                </Button>
+                  <Trash2 size={18} />
+                </button>
               </Card>
             );
           })}
