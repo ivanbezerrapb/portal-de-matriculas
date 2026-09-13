@@ -44,9 +44,13 @@ async function applyToForm(
   }[];
   const map = mapFieldsByLabel(sourceLabels, target);
   const layout = remapLayoutFields(parseLayout(lib.layout), map);
-  const mapped = sourceLabels
-    .map((s) => map[s.id])
-    .filter((v): v is string => Boolean(v));
+  const mapped = [
+    ...new Set(
+      sourceLabels
+        .map((s) => map[s.id])
+        .filter((v): v is string => Boolean(v)),
+    ),
+  ];
 
   const payload = {
     form_id: formId,

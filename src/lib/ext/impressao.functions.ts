@@ -79,6 +79,10 @@ export const getPrintData = createServerFn({ method: "GET" })
       template,
       form,
       fields: orderedFields,
+      // Todos os campos do formulário: o layout precisa deles para achar
+      // blocos dinâmicos (ex.: lista de crianças) mesmo quando o modelo veio
+      // de outro formulário e a lista salva não inclui o campo.
+      allFields: fields ?? [],
       submissions: (submissions ?? []).map((s) => ({
         ...s,
         values: Object.fromEntries(
