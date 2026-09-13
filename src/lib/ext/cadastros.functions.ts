@@ -116,9 +116,12 @@ export const updateSubmission = createServerFn({ method: "POST" })
 
     const { data: fields } = await context.supabase
       .from("form_fields")
-      .select("id, label")
+      .select("id, label, type")
       .eq("form_id", submission.form_id);
     const fieldLabels = new Map((fields ?? []).map((f) => [f.id, f.label]));
+    const childrenFieldIds = new Set(
+      (fields ?? []).filter((f) => f.type === "children").map((f) => f.id),
+    );
 
     const changes: {
       field_id: string;
