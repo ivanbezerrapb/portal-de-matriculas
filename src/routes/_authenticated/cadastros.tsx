@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
+import { toast } from "sonner";
 import { listSubmissions } from "@/lib/ext/cadastros.functions";
 import { listSchools } from "@/lib/ext/escolas.functions";
 import { listForms } from "@/lib/ext/formularios.functions";
@@ -29,6 +30,10 @@ function SubmissionsPage() {
   const [to, setTo] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [printTemplateId, setPrintTemplateId] = useState("");
+  const [picker, setPicker] = useState<{
+    submissionId: string;
+    formId: string;
+  } | null>(null);
 
   const { data: perms } = useQuery({
     queryKey: ["my-permissions"],
