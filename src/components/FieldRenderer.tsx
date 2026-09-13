@@ -428,6 +428,9 @@ function formatDateBR(raw: string): string {
 // Formata um valor para exibição/impressão
 export function formatValue(field: FormField, raw: string): string {
   if (!raw) return "—";
+  if (field.type === "address") {
+    return formatAddress(parseAddress(raw)) || "—";
+  }
   if (field.type === "children") {
     const list = parseChildren(raw);
     if (list.length === 0) return "—";
