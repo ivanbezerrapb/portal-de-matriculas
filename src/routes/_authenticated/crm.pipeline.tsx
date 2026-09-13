@@ -45,6 +45,7 @@ function PipelinePage() {
   const { funil } = Route.useSearch();
   const [dragging, setDragging] = useState<string | null>(null);
   const [newIn, setNewIn] = useState<string | null>(null);
+  const [openCard, setOpenCard] = useState<string | null>(null);
 
   const funnelsQuery = useQuery({ queryKey: ["funnels"], queryFn: () => listFunnels() });
   const funnels = funnelsQuery.data?.funnels ?? [];
@@ -203,17 +204,13 @@ function PipelinePage() {
                         onDragEnd={() => setDragging(null)}
                         className="group rounded-lg border border-border bg-card p-3 shadow-sm"
                       >
-                        {card.submission_id ? (
-                          <Link
-                            to="/cadastros/$submissionId"
-                            params={{ submissionId: card.submission_id }}
-                            className="block"
-                          >
-                            {body}
-                          </Link>
-                        ) : (
-                          body
-                        )}
+                        <button
+                          type="button"
+                          className="block w-full cursor-pointer text-left"
+                          onClick={() => setOpenCard(card.id)}
+                        >
+                          {body}
+                        </button>
                         <button
                           type="button"
                           aria-label="Remover oportunidade"
