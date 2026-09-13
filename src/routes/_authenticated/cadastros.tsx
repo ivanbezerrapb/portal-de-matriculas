@@ -67,6 +67,8 @@ function SubmissionsPage() {
   const { data: submissions, isLoading } = useQuery({
     queryKey: ["submissions", filters],
     queryFn: () => listSubmissions({ data: filters }),
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
   });
 
   // Modelos de impressão do formulário dos itens selecionados (precisam ser do mesmo formulário)

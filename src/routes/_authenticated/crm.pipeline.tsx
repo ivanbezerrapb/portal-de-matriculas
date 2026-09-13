@@ -84,6 +84,9 @@ function PipelinePage() {
     queryKey: ["pipeline", selected, statusFilter],
     queryFn: () => listPipeline({ data: { funnel_id: selected!, status: statusFilter } }),
     enabled: Boolean(selected),
+    // Atualiza sozinho, mas pausa durante arraste, criação ou painel aberto.
+    refetchInterval: dragging || newIn || openCard || closing ? false : 30_000,
+    refetchIntervalInBackground: false,
   });
 
   const stages = pipelineQuery.data?.stages ?? [];
@@ -537,6 +540,8 @@ function OpportunityTasks({ opportunityId }: { opportunityId: string }) {
   const { data: tasks } = useQuery({
     queryKey: ["crm-tasks", "opp", opportunityId],
     queryFn: () => listTasks({ data: { opportunity_id: opportunityId } }),
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
   });
 
   function refresh() {

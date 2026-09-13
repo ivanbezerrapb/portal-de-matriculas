@@ -39,6 +39,8 @@ function TarefasPage() {
       listTasks({
         data: filter === "all" ? {} : { done: filter === "done" },
       }),
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
   });
 
   function refresh() {

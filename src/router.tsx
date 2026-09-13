@@ -19,6 +19,10 @@ export const getRouter = () => {
     defaultOptions: {
       queries: {
         retry: (count, error) => !isUnauthorized(error) && count < 3,
+        // Mantém as telas atualizadas sem precisar recarregar a página.
+        staleTime: 15_000,
+        refetchOnWindowFocus: true,
+        refetchOnReconnect: true,
       },
     },
   });
