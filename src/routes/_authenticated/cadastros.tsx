@@ -1,7 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { toast } from "sonner";
 import { listSubmissions } from "@/lib/ext/cadastros.functions";
 import { listSchools } from "@/lib/ext/escolas.functions";
 import { listForms } from "@/lib/ext/formularios.functions";
@@ -265,6 +264,3 @@ function SubmissionsPage() {
     </div>
   );
 }
-
-// Referência para evitar import não utilizado
-void toast;
