@@ -239,7 +239,7 @@ export const reopenOpportunity = createServerFn({ method: "POST" })
   .middleware([requireAuth])
   .inputValidator((data) => z.object({ id: z.string().uuid() }).parse(data))
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase
+    const { data: updated, error } = await context.supabase
       .from("opportunities")
       .update({
         status: "open",
@@ -248,7 +248,16 @@ export const reopenOpportunity = createServerFn({ method: "POST" })
         closed_at: null,
         updated_at: new Date().toISOString(),
       })
-      .eq("id", data.id);
+      .eq("id", data.id)
+      .select("submission_id")
+      .maybeSingle();
     if (error) throw new Error(error.message);
+
+    if (updated?.submission_id) {
+      await context.supabase
+        .from("submissions")
+        .update({ enrolled: false, enrolled_at: null, enrolled_by: null })
+        .eq("id", updated.submission_id);
+    }
     return { ok: true };
   });
