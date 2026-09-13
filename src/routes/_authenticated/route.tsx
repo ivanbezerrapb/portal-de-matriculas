@@ -86,6 +86,8 @@ function AuthenticatedLayout() {
       children: [
         { to: "/crm/pipeline", label: "Pipeline", icon: Kanban },
         { to: "/crm/funil", label: "Funil", icon: Filter },
+        { to: "/crm/tarefas", label: "Tarefas", icon: ListTodo },
+        { to: "/crm/motivos", label: "Motivos", icon: Trophy },
       ],
     },
     ...(isAdmin
