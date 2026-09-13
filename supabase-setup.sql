@@ -345,3 +345,8 @@ create policy ptl_select on public.print_template_library for select to authenti
 create policy ptl_insert on public.print_template_library for insert to authenticated with check (public.has_role(auth.uid(), 'admin'));
 create policy ptl_update on public.print_template_library for update to authenticated using (public.has_role(auth.uid(), 'admin'));
 create policy ptl_delete on public.print_template_library for delete to authenticated using (public.has_role(auth.uid(), 'admin'));
+
+-- Vínculo entre o modelo dentro do formulário e o template da biblioteca
+alter table public.print_templates
+  add column if not exists library_id uuid references public.print_template_library(id) on delete set null;
+create index if not exists print_templates_library_id_idx on public.print_templates(library_id);
