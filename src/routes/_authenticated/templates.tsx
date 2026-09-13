@@ -48,8 +48,8 @@ type Editing = {
   prev_field_labels: {
     id: string;
     label: string;
-    type?: string;
-    internal?: boolean;
+    type?: string | undefined;
+    internal?: boolean | undefined;
   }[];
 };
 
@@ -90,7 +90,10 @@ function TemplatesLibraryPage() {
 
   const { data: refForm } = useQuery({
     queryKey: ["form", editing?.ref_form_id],
-    queryFn: () => getForm({ data: { id: editing!.ref_form_id } }),
+    queryFn: () => {
+      if (!editing?.ref_form_id) throw new Error("Selecione um formulário.");
+      return getForm({ data: { id: editing.ref_form_id } });
+    },
     enabled: Boolean(editing?.ref_form_id),
   });
   const refFields = (refForm?.fields ?? []) as FormField[];
@@ -222,8 +225,8 @@ function TemplatesLibraryPage() {
                   prev_field_labels: ((t.field_labels ?? []) as {
                     id: string;
                     label: string;
-                    type?: string;
-                    internal?: boolean;
+                    type?: string | undefined;
+                    internal?: boolean | undefined;
                   }[]).map((p) => ({
                     id: p.id,
                     label: p.label,
