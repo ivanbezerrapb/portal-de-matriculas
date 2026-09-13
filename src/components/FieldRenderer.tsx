@@ -1,5 +1,11 @@
-import type { FormField } from "@/lib/ext/model";
-import { Input, Label, Textarea } from "./ui";
+import type { ChildEntry, FormField } from "@/lib/ext/model";
+import {
+  MAX_CHILDREN,
+  emptyChild,
+  parseChildren,
+  splitChildOptions,
+} from "@/lib/ext/model";
+import { Input, Label, Select, Textarea } from "./ui";
 
 // Renderiza um campo do formulário. `value` é string ou string[] (múltipla escolha).
 export function FieldRenderer({
