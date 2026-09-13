@@ -59,6 +59,65 @@ export function extAdmin(): SupabaseClient {
   });
 }
 
+// Garante o campo interno "Quantidade de crianças" do formulário e devolve seu id.
+export async function ensureChildrenCountField(
+  supabase: SupabaseClient,
+  formId: string,
+): Promise<string | null> {
+  const { CHILDREN_COUNT_LABEL } = await import("./model");
+  const { data: existing } = await supabase
+    .from("form_fields")
+    .select("id")
+    .eq("form_id", formId)
+    .eq("internal", true)
+    .eq("label", CHILDREN_COUNT_LABEL)
+    .maybeSingle();
+  if (existing?.id) return existing.id as string;
+
+  const { data: last } = await supabase
+    .from("form_fields")
+    .select("position")
+    .eq("form_id", formId)
+    .order("position", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const { data: created, error } = await supabase
+    .from("form_fields")
+    .insert({
+      form_id: formId,
+      label: CHILDREN_COUNT_LABEL,
+      type: "number",
+      required: false,
+      internal: true,
+      position: ((last?.position as number | undefined) ?? -1) + 1,
+    })
+    .select("id")
+    .single();
+  if (error) return null;
+  return (created?.id as string) ?? null;
+}
+
+// Grava a quantidade de crianças como resposta do cadastro.
+export async function writeChildrenCountValue(
+  supabase: SupabaseClient,
+  formId: string,
+  submissionId: string,
+  count: number | null,
+): Promise<void> {
+  const fieldId = await ensureChildrenCountField(supabase, formId);
+  if (!fieldId) return;
+  await supabase.from("submission_values").upsert(
+    {
+      submission_id: submissionId,
+      field_id: fieldId,
+      value: count == null ? "" : String(count),
+      value_number: count,
+    },
+    { onConflict: "submission_id,field_id" },
+  );
+}
+
 export type Perms = {
   isAdmin: boolean;
   isEditor: boolean;
