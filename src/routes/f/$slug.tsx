@@ -4,7 +4,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { getPublicForm, submitPublicForm } from "@/lib/ext/publico.functions";
 import type { FormField } from "@/lib/ext/model";
-import { parseChildren } from "@/lib/ext/model";
+import { parseAddress, parseChildren } from "@/lib/ext/model";
 import { FieldRenderer } from "@/components/FieldRenderer";
 import { Button, Card } from "@/components/ui";
 
@@ -116,6 +116,18 @@ function PublicFormPage() {
         !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)
       ) {
         newErrors[field.id] = "E-mail inválido";
+      }
+      if (field.type === "address" && field.required && typeof v === "string") {
+        const a = parseAddress(v);
+        if (
+          !a.rua.trim() ||
+          !a.numero.trim() ||
+          !a.bairro.trim() ||
+          !a.cidade.trim() ||
+          !a.estado.trim()
+        ) {
+          newErrors[field.id] = "Preencha rua, número, bairro, cidade e estado";
+        }
       }
       if (field.type === "children" && !empty && typeof v === "string") {
         const list = parseChildren(v);

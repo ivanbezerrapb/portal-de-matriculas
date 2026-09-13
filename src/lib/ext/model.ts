@@ -9,7 +9,8 @@ export type FieldType =
   | "yes_no"
   | "email"
   | "phone"
-  | "children";
+  | "children"
+  | "address";
 
 export const FIELD_TYPE_LABELS: Record<FieldType, string> = {
   short_text: "Texto curto",
@@ -22,7 +23,61 @@ export const FIELD_TYPE_LABELS: Record<FieldType, string> = {
   email: "E-mail",
   phone: "Telefone",
   children: "N Filhos",
+  address: "Endereço",
 };
+
+// ---------- Campo "Endereço" ----------
+
+export type AddressEntry = {
+  cep: string;
+  rua: string;
+  numero: string;
+  complemento: string;
+  bairro: string;
+  cidade: string;
+  estado: string;
+};
+
+export function emptyAddress(): AddressEntry {
+  return { cep: "", rua: "", numero: "", complemento: "", bairro: "", cidade: "", estado: "" };
+}
+
+// Lê o valor gravado (JSON) como endereço.
+export function parseAddress(raw: string | null | undefined): AddressEntry {
+  if (!raw) return emptyAddress();
+  try {
+    const obj = JSON.parse(raw) as Record<string, unknown>;
+    if (!obj || typeof obj !== "object" || Array.isArray(obj)) return emptyAddress();
+    return {
+      cep: String(obj["cep"] ?? ""),
+      rua: String(obj["rua"] ?? ""),
+      numero: String(obj["numero"] ?? ""),
+      complemento: String(obj["complemento"] ?? ""),
+      bairro: String(obj["bairro"] ?? ""),
+      cidade: String(obj["cidade"] ?? ""),
+      estado: String(obj["estado"] ?? ""),
+    };
+  } catch {
+    return emptyAddress();
+  }
+}
+
+export function isAddressEmpty(a: AddressEntry): boolean {
+  return !(a.cep || a.rua || a.numero || a.complemento || a.bairro || a.cidade || a.estado);
+}
+
+// Texto legível: "Rua X, 123 — Apto 2 — Bairro — Cidade/UF — CEP 00000-000"
+export function formatAddress(a: AddressEntry): string {
+  const parts: string[] = [];
+  const linha = [a.rua.trim(), a.numero.trim()].filter(Boolean).join(", ");
+  if (linha) parts.push(linha);
+  if (a.complemento.trim()) parts.push(a.complemento.trim());
+  if (a.bairro.trim()) parts.push(a.bairro.trim());
+  const cidadeUf = [a.cidade.trim(), a.estado.trim()].filter(Boolean).join("/");
+  if (cidadeUf) parts.push(cidadeUf);
+  if (a.cep.trim()) parts.push(`CEP ${a.cep.trim()}`);
+  return parts.join(" — ");
+}
 
 // ---------- Campo "N Filhos" ----------
 

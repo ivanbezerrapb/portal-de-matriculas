@@ -1,5 +1,6 @@
 // Regras de destino: decidem se um cadastro vira oportunidade no CRM
 // e em qual funil/etapa ele entra. Módulo puro (usado no servidor).
+import { formatAddress, parseAddress } from "./model";
 
 export type ConditionOp = "eq" | "neq" | "contains" | "empty" | "not_empty" | "in" | "gt" | "lt";
 
@@ -56,6 +57,7 @@ export function answerText(raw: string | string[] | null | undefined): string {
   if (raw == null) return "";
   if (Array.isArray(raw)) return raw.join(", ");
   const s = String(raw).trim();
+  if (s.startsWith("{")) return formatAddress(parseAddress(s));
   if (s.startsWith("[")) {
     try {
       const arr = JSON.parse(s);
