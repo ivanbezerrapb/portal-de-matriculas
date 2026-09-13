@@ -14,7 +14,7 @@ import { Button, Card, EmptyState, Input, Label, Select, Spinner, Textarea } fro
 
 export const Route = createFileRoute("/_authenticated/crm/pipeline")({
   validateSearch: (search: Record<string, unknown>) => ({
-    funil: typeof search['funil'] === "string" ? (search['funil'] as string) : undefined,
+    funil: typeof search["funil"] === "string" ? (search["funil"] as string) : undefined,
   }),
   head: () => ({
     meta: [
@@ -163,10 +163,7 @@ function PipelinePage() {
                 }}
               >
                 <div className="mb-3 flex items-center gap-2">
-                  <span
-                    className="h-3 w-3 rounded-full"
-                    style={{ backgroundColor: stage.color }}
-                  />
+                  <span className="h-3 w-3 rounded-full" style={{ backgroundColor: stage.color }} />
                   <p className="flex-1 text-sm font-semibold text-foreground">{stage.name}</p>
                   <span className="rounded-full bg-card px-2 py-0.5 text-xs text-muted-foreground">
                     {cards.length}
