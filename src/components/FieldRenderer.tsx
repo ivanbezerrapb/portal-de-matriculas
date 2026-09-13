@@ -1,5 +1,11 @@
-import type { FormField } from "@/lib/ext/model";
-import { Input, Label, Textarea } from "./ui";
+import type { ChildEntry, FormField } from "@/lib/ext/model";
+import {
+  MAX_CHILDREN,
+  emptyChild,
+  parseChildren,
+  splitChildOptions,
+} from "@/lib/ext/model";
+import { Input, Label, Select, Textarea } from "./ui";
 
 // Renderiza um campo do formulário. `value` é string ou string[] (múltipla escolha).
 export function FieldRenderer({
@@ -150,14 +156,150 @@ export function FieldRenderer({
         </div>
       )}
 
+      {field.type === "children" && (
+        <ChildrenField field={field} value={strValue} onChange={onChange} />
+      )}
+
       {error && <p className="mt-1 text-xs text-destructive">{error}</p>}
     </div>
   );
 }
 
+// Bloco "N Filhos": quantidade + dados individuais de cada criança.
+function ChildrenField({
+  field,
+  value,
+  onChange,
+}: {
+  field: FormField;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const children = parseChildren(value);
+  const { series, turnos } = splitChildOptions(field.options);
+
+  const commit = (list: ChildEntry[]) =>
+    onChange(list.length === 0 ? "" : JSON.stringify(list));
+
+  const setCount = (count: number) => {
+    if (count <= 0) return commit([]);
+    const next = [...children];
+    while (next.length < count) next.push(emptyChild());
+    commit(next.slice(0, count));
+  };
+
+  const setChild = (index: number, patch: Partial<ChildEntry>) => {
+    commit(
+      children.map((c, i) => (i === index ? { ...c, ...patch } : c)),
+    );
+  };
+
+  return (
+    <div className="flex flex-col gap-3">
+      <Select
+        className="w-48"
+        value={children.length === 0 ? "" : String(children.length)}
+        onChange={(e) => setCount(Number(e.target.value || 0))}
+      >
+        <option value="">Quantas crianças?</option>
+        {Array.from({ length: MAX_CHILDREN }, (_, i) => i + 1).map((n) => (
+          <option key={n} value={n}>
+            {n} {n === 1 ? "criança" : "crianças"}
+          </option>
+        ))}
+      </Select>
+
+      {children.map((child, i) => (
+        <div
+          key={i}
+          className="rounded-md border border-input bg-card p-3"
+        >
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Criança {i + 1}
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <Label htmlFor={`${field.id}-nome-${i}`}>Nome</Label>
+              <Input
+                id={`${field.id}-nome-${i}`}
+                value={child.nome}
+                onChange={(e) => setChild(i, { nome: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label htmlFor={`${field.id}-nasc-${i}`}>
+                Data de nascimento
+              </Label>
+              <Input
+                id={`${field.id}-nasc-${i}`}
+                type="date"
+                value={child.nascimento}
+                onChange={(e) => setChild(i, { nascimento: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label htmlFor={`${field.id}-serie-${i}`}>Série</Label>
+              <Select
+                id={`${field.id}-serie-${i}`}
+                value={child.serie}
+                onChange={(e) => setChild(i, { serie: e.target.value })}
+              >
+                <option value="">Selecione...</option>
+                {series.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor={`${field.id}-turno-${i}`}>Turno</Label>
+              <Select
+                id={`${field.id}-turno-${i}`}
+                value={child.turno}
+                onChange={(e) => setChild(i, { turno: e.target.value })}
+              >
+                <option value="">Selecione...</option>
+                {turnos.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function formatDateBR(raw: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}/.test(raw)) return raw;
+  const [y, m, d] = raw.slice(0, 10).split("-");
+  return `${d}/${m}/${y}`;
+}
+
 // Formata um valor para exibição/impressão
 export function formatValue(field: FormField, raw: string): string {
   if (!raw) return "—";
+  if (field.type === "children") {
+    const list = parseChildren(raw);
+    if (list.length === 0) return "—";
+    return list
+      .map(
+        (c, i) =>
+          `${i + 1}. ${[
+            c.nome || "—",
+            formatDateBR(c.nascimento),
+            c.serie,
+            c.turno,
+          ]
+            .filter(Boolean)
+            .join(" — ")}`,
+      )
+      .join("\n");
+  }
   if (field.type === "multiple_choice") {
     try {
       const arr = JSON.parse(raw) as string[];

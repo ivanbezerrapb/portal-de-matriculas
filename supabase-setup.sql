@@ -51,7 +51,7 @@ create table public.form_fields (
   form_id uuid references public.forms(id) on delete cascade not null,
   label text not null,
   help_text text,
-  type text not null check (type in ('short_text','long_text','number','date','single_choice','multiple_choice','yes_no','email','phone')),
+  type text not null check (type in ('short_text','long_text','number','date','single_choice','multiple_choice','yes_no','email','phone','children')),
   options jsonb,
   required boolean not null default false,
   internal boolean not null default false,

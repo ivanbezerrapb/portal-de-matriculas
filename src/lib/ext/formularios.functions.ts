@@ -131,6 +131,7 @@ const fieldInput = z.object({
     "yes_no",
     "email",
     "phone",
+    "children",
   ]),
   options: z.array(z.string()).optional().nullable(),
   required: z.boolean(),

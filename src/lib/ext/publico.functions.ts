@@ -62,13 +62,33 @@ export const submitPublicForm = createServerFn({ method: "POST" })
       .eq("internal", false);
     const publicFields = fields ?? [];
 
+    const { MAX_CHILDREN, parseChildren } = await import("./model");
+
     for (const field of publicFields) {
-      if (!field.required) continue;
       const v = data.values[field.id];
       const empty =
         v == null || (typeof v === "string" && v.trim() === "") ||
         (Array.isArray(v) && v.length === 0);
-      if (empty) throw new Error(`O campo "${field.label}" é obrigatório.`);
+      if (field.required && empty) {
+        throw new Error(`O campo "${field.label}" é obrigatório.`);
+      }
+      if (field.type === "children" && !empty) {
+        const list = parseChildren(typeof v === "string" ? v : "");
+        if (list.length === 0 || list.length > MAX_CHILDREN) {
+          throw new Error(
+            `Informe de 1 a ${MAX_CHILDREN} crianças em "${field.label}".`,
+          );
+        }
+        if (field.required) {
+          list.forEach((c, i) => {
+            if (!c.nome.trim() || !c.nascimento || !c.serie || !c.turno) {
+              throw new Error(
+                `Preencha nome, data de nascimento, série e turno da criança ${i + 1} em "${field.label}".`,
+              );
+            }
+          });
+        }
+      }
     }
 
     const { data: publicId, error: idError } = await supabase.rpc(

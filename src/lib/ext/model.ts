@@ -8,7 +8,8 @@ export type FieldType =
   | "multiple_choice"
   | "yes_no"
   | "email"
-  | "phone";
+  | "phone"
+  | "children";
 
 export const FIELD_TYPE_LABELS: Record<FieldType, string> = {
   short_text: "Texto curto",
@@ -20,7 +21,65 @@ export const FIELD_TYPE_LABELS: Record<FieldType, string> = {
   yes_no: "Sim/Não",
   email: "E-mail",
   phone: "Telefone",
+  children: "N Filhos",
 };
+
+// ---------- Campo "N Filhos" ----------
+
+export const MAX_CHILDREN = 5;
+
+export type ChildEntry = {
+  nome: string;
+  nascimento: string;
+  serie: string;
+  turno: string;
+};
+
+export function emptyChild(): ChildEntry {
+  return { nome: "", nascimento: "", serie: "", turno: "" };
+}
+
+// Lê o valor gravado (JSON) como lista de crianças.
+export function parseChildren(raw: string | null | undefined): ChildEntry[] {
+  if (!raw) return [];
+  try {
+    const arr = JSON.parse(raw);
+    if (!Array.isArray(arr)) return [];
+    return arr.slice(0, MAX_CHILDREN).map((c) => ({
+      nome: String(c?.nome ?? ""),
+      nascimento: String(c?.nascimento ?? ""),
+      serie: String(c?.serie ?? ""),
+      turno: String(c?.turno ?? ""),
+    }));
+  } catch {
+    return [];
+  }
+}
+
+// As opções de Série e Turno ficam na mesma coluna `options`,
+// prefixadas com "serie:" e "turno:".
+export function splitChildOptions(options: string[] | null | undefined): {
+  series: string[];
+  turnos: string[];
+} {
+  const series: string[] = [];
+  const turnos: string[] = [];
+  for (const opt of options ?? []) {
+    if (opt.startsWith("serie:")) series.push(opt.slice(6));
+    else if (opt.startsWith("turno:")) turnos.push(opt.slice(6));
+  }
+  return { series, turnos };
+}
+
+export function joinChildOptions(
+  series: string[],
+  turnos: string[],
+): string[] {
+  return [
+    ...series.map((s) => `serie:${s}`),
+    ...turnos.map((t) => `turno:${t}`),
+  ];
+}
 
 export type School = {
   id: string;
