@@ -24,6 +24,84 @@ export const Route = createFileRoute("/_authenticated/escolas")({
 
 const emptyForm = { name: "", id_prefix: "", id_digits: 4, id_next_number: 1 };
 
+function EditSchoolCard({
+  school,
+  saving,
+  onSave,
+  onCancel,
+}: {
+  school: School;
+  saving: boolean;
+  onSave: (s: School) => void;
+  onCancel: () => void;
+}) {
+  const [draft, setDraft] = useState<School>(school);
+  return (
+    <Card>
+      <form
+        className="flex flex-wrap items-end gap-3"
+        onSubmit={(e) => {
+          e.preventDefault();
+          onSave(draft);
+        }}
+      >
+        <div className="min-w-48 flex-1">
+          <Label>Nome</Label>
+          <Input
+            value={draft.name}
+            onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+            required
+          />
+        </div>
+        <div className="w-28">
+          <Label>Prefixo</Label>
+          <Input
+            value={draft.id_prefix}
+            onChange={(e) =>
+              setDraft({ ...draft, id_prefix: e.target.value.toUpperCase() })
+            }
+            required
+          />
+        </div>
+        <div className="w-24">
+          <Label>Dígitos</Label>
+          <Input
+            type="number"
+            min={2}
+            max={8}
+            value={draft.id_digits}
+            onChange={(e) =>
+              setDraft({ ...draft, id_digits: Number(e.target.value) })
+            }
+            required
+          />
+        </div>
+        <div className="w-32">
+          <Label>Próximo número</Label>
+          <Input
+            type="number"
+            min={1}
+            value={draft.id_next_number}
+            onChange={(e) =>
+              setDraft({ ...draft, id_next_number: Number(e.target.value) })
+            }
+            required
+          />
+        </div>
+        <Button type="submit" disabled={saving}>
+          Salvar
+        </Button>
+        <Button type="button" variant="ghost" onClick={onCancel}>
+          Cancelar
+        </Button>
+      </form>
+      <p className="mt-2 text-xs text-muted-foreground">
+        Atenção: reduzir o próximo número pode gerar IDs duplicados.
+      </p>
+    </Card>
+  );
+}
+
 function SchoolsPage() {
   const queryClient = useQueryClient();
   const { data: schools, isLoading } = useQuery({
@@ -31,7 +109,7 @@ function SchoolsPage() {
     queryFn: () => listSchools(),
   });
   const [form, setForm] = useState(emptyForm);
-  const [editing, setEditing] = useState<School | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const invalidate = () =>
     queryClient.invalidateQueries({ queryKey: ["schools"] });
@@ -47,20 +125,20 @@ function SchoolsPage() {
   });
 
   const updateMut = useMutation({
-    mutationFn: (school: School) =>
+    mutationFn: (s: School) =>
       updateSchool({
         data: {
-          id: school.id,
-          name: school.name,
-          logo_url: school.logo_url,
-          id_prefix: school.id_prefix,
-          id_digits: school.id_digits,
-          id_next_number: school.id_next_number,
+          id: s.id,
+          name: s.name,
+          logo_url: s.logo_url,
+          id_prefix: s.id_prefix,
+          id_digits: s.id_digits,
+          id_next_number: s.id_next_number,
         },
       }),
     onSuccess: () => {
       toast.success("Escola atualizada.");
-      setEditing(null);
+      setEditingId(null);
       invalidate();
     },
     onError: (e) => toast.error(e.message),
@@ -153,84 +231,14 @@ function SchoolsPage() {
       ) : (
         <div className="mt-6 flex flex-col gap-3">
           {schools.map((s) =>
-            editing?.id === s.id ? (
-              <Card key={s.id}>
-                <form
-                  className="flex flex-wrap items-end gap-3"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    updateMut.mutate(editing);
-                  }}
-                >
-                  <div className="min-w-48 flex-1">
-                    <Label>Nome</Label>
-                    <Input
-                      value={editing.name}
-                      onChange={(e) =>
-                        setEditing({ ...editing, name: e.target.value })
-                      }
-                      required
-                    />
-                  </div>
-                  <div className="w-28">
-                    <Label>Prefixo</Label>
-                    <Input
-                      value={editing.id_prefix}
-                      onChange={(e) =>
-                        setEditing({
-                          ...editing,
-                          id_prefix: e.target.value.toUpperCase(),
-                        })
-                      }
-                      required
-                    />
-                  </div>
-                  <div className="w-24">
-                    <Label>Dígitos</Label>
-                    <Input
-                      type="number"
-                      min={2}
-                      max={8}
-                      value={editing.id_digits}
-                      onChange={(e) =>
-                        setEditing({
-                          ...editing,
-                          id_digits: Number(e.target.value),
-                        })
-                      }
-                      required
-                    />
-                  </div>
-                  <div className="w-32">
-                    <Label>Próximo número</Label>
-                    <Input
-                      type="number"
-                      min={1}
-                      value={editing.id_next_number}
-                      onChange={(e) =>
-                        setEditing({
-                          ...editing,
-                          id_next_number: Number(e.target.value),
-                        })
-                      }
-                      required
-                    />
-                  </div>
-                  <Button type="submit" disabled={updateMut.isPending}>
-                    Salvar
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={() => setEditing(null)}
-                  >
-                    Cancelar
-                  </Button>
-                </form>
-                <p className="mt-2 text-xs text-muted-foreground">
-                  Atenção: reduzir o próximo número pode gerar IDs duplicados.
-                </p>
-              </Card>
+            editingId === s.id ? (
+              <EditSchoolCard
+                key={s.id}
+                school={s}
+                saving={updateMut.isPending}
+                onSave={(draft) => updateMut.mutate(draft)}
+                onCancel={() => setEditingId(null)}
+              />
             ) : (
               <Card key={s.id} className="flex flex-wrap items-center gap-4">
                 <div className="min-w-0 flex-1">
@@ -244,7 +252,7 @@ function SchoolsPage() {
                     </span>
                   </p>
                 </div>
-                <Button variant="secondary" onClick={() => setEditing(s)}>
+                <Button variant="secondary" onClick={() => setEditingId(s.id)}>
                   Editar
                 </Button>
                 <Button
