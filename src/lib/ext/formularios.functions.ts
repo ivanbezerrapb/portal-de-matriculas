@@ -287,6 +287,7 @@ const templateInput = z.object({
   page_size: z.enum(["A4", "A5"]),
   show_signature: z.boolean(),
   field_ids: z.array(z.string()),
+  layout: z.any().optional().nullable(),
 });
 
 export const savePrintTemplate = createServerFn({ method: "POST" })
@@ -312,6 +313,7 @@ export const savePrintTemplate = createServerFn({ method: "POST" })
       page_size: data.page_size,
       show_signature: data.show_signature,
       field_ids: data.field_ids,
+      layout: data.layout ?? null,
     };
     if (data.id) {
       const { error } = await context.supabase
