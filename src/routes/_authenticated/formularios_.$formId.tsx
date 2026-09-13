@@ -12,6 +12,8 @@ import {
 } from "@/lib/ext/formularios.functions";
 import {
   FIELD_TYPE_LABELS,
+  joinChildOptions,
+  splitChildOptions,
   type FieldType,
   type FormField,
   type PrintTemplate,
