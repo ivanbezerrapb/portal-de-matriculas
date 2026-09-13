@@ -56,7 +56,7 @@ const STAGE_COLORS = [
 ];
 
 type StageDraft = { name: string; description: string; color: string };
-const emptyStage: StageDraft = { name: "", description: "", color: STAGE_COLORS[0] };
+const emptyStage: StageDraft = { name: "", description: "", color: STAGE_COLORS[0]! };
 
 function StageForm({
   value,
@@ -199,8 +199,8 @@ function FunilPage() {
     const next = [...list];
     const target = index + delta;
     if (target < 0 || target >= next.length) return;
-    const a = next[index];
-    next[index] = next[target];
+    const a = next[index]!;
+    next[index] = next[target]!;
     next[target] = a;
     reorderM.mutate({ funnel_id: funnelId, ids: next.map((s) => s.id) });
   }
