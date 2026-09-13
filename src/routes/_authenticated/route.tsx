@@ -133,6 +133,114 @@ function AuthenticatedLayout() {
         : "text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
     }`;
 
+  return (
+    <div className="flex min-h-screen w-full bg-background">
+      {mobileOpen ? (
+        <button
+          type="button"
+          aria-label="Fechar menu"
+          className="fixed inset-0 z-40 bg-foreground/30 lg:hidden"
+          onClick={() => setMobileOpen(false)}
+        />
+      ) : null}
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 flex flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width,transform] duration-200 lg:sticky lg:top-0 lg:h-screen ${collapsed ? "w-[72px]" : "w-64"} ${mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}
+      >
+        <div className="flex h-20 items-center justify-between border-b border-sidebar-border px-4">
+          <div
+            className={`flex min-w-0 items-center overflow-hidden rounded-lg bg-card ${collapsed ? "h-10 w-10 justify-center p-1.5" : "w-44 px-3 py-2"}`}
+          >
+            <img
+              src={logoAsset.url}
+              alt="Grupo Inter"
+              className={
+                collapsed ? "h-auto w-28 max-w-none object-contain object-left" : "h-auto w-full"
+              }
+            />
+          </div>
+          <Button
+            variant="ghost"
+            className="h-9 w-9 shrink-0 p-0 text-sidebar-foreground hover:bg-sidebar-accent lg:hidden"
+            onClick={() => setMobileOpen(false)}
+            aria-label="Fechar menu"
+          >
+            <X className="h-5 w-5" />
+          </Button>
+        </div>
+        <nav className="flex-1 overflow-y-auto px-3 py-5" aria-label="Navegação principal">
+          {navEntries.map((entry) => {
+            if (!isGroup(entry)) {
+              const Icon = entry.icon;
+              const active = pathname.startsWith(entry.to);
+              return (
+                <Link
+                  key={entry.to}
+                  to={entry.to}
+                  onClick={() => setMobileOpen(false)}
+                  className={leafClass(active)}
+                  title={collapsed ? entry.label : undefined}
+                >
+                  <Icon className="h-5 w-5 shrink-0" />
+                  {!collapsed && <span>{entry.label}</span>}
+                </Link>
+              );
+            }
+
+            const Icon = entry.icon;
+            const open = groupIsOpen(entry.key);
+            const hasActiveChild = entry.children.some((c) => pathname.startsWith(c.to));
+            return (
+              <div key={entry.key} className="mb-1">
+                <button
+                  type="button"
+                  onClick={() => toggleGroup(entry.key)}
+                  className={`flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                    hasActiveChild
+                      ? "text-sidebar-foreground"
+                      : "text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                  }`}
+                  title={collapsed ? entry.label : undefined}
+                  aria-expanded={open}
+                >
+                  <Icon className="h-5 w-5 shrink-0" />
+                  {!collapsed && (
+                    <>
+                      <span className="flex-1 text-left">{entry.label}</span>
+                      {entry.badge && (
+                        <span className="rounded-full bg-sidebar-accent px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sidebar-accent-foreground">
+                          {entry.badge}
+                        </span>
+                      )}
+                      <ChevronDown
+                        className={`h-4 w-4 shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
+                      />
+                    </>
+                  )}
+                </button>
+                {!collapsed && open && (
+                  <div className="mt-1 ml-4 border-l border-sidebar-border pl-3">
+                    {entry.children.map((child) => {
+                      const ChildIcon = child.icon;
+                      const active = pathname.startsWith(child.to);
+                      return (
+                        <Link
+                          key={child.to}
+                          to={child.to}
+                          onClick={() => setMobileOpen(false)}
+                          className={leafClass(active)}
+                        >
+                          <ChildIcon className="h-4 w-4 shrink-0" />
+                          <span>{child.label}</span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </nav>
+
         <div className="border-t border-sidebar-border px-3 py-4">
           {perms ? (
             <div className={collapsed ? "sr-only" : "px-2"}>
