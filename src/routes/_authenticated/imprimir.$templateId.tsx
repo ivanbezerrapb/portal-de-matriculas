@@ -8,7 +8,7 @@ import { Button, Spinner } from "@/components/ui";
 
 export const Route = createFileRoute("/_authenticated/imprimir/$templateId")({
   validateSearch: (search: Record<string, unknown>) => ({
-    ids: z.string().default("").parse(search.ids),
+    ids: z.string().default("").parse(search["ids"]),
   }),
   component: PrintPage,
 });
