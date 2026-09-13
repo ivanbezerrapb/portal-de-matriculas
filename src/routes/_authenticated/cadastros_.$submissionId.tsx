@@ -100,9 +100,7 @@ function SubmissionDetailPage() {
 
   const valueMap = new Map(data.values.map((v) => [v.field_id, v.value ?? ""]));
 
-  const canEdit =
-    (perms?.isAdmin || perms?.managerSchools.includes(submission.school_id)) ??
-    false;
+  const canEdit = (perms?.isAdmin || perms?.managerSchools.includes(submission.school_id)) ?? false;
 
   return (
     <div className="mx-auto max-w-3xl">

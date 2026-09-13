@@ -11,9 +11,7 @@ function env(name: string): string {
 function supabaseFetch(key: string): typeof fetch {
   return (input, init) => {
     const headers = new Headers(
-      typeof Request !== "undefined" && input instanceof Request
-        ? input.headers
-        : undefined,
+      typeof Request !== "undefined" && input instanceof Request ? input.headers : undefined,
     );
     if (init?.headers) {
       new Headers(init.headers).forEach((v, k) => headers.set(k, v));
@@ -128,10 +126,7 @@ export type Perms = {
 };
 
 // Lê os papéis do usuário usando o cliente dele (RLS permite ver os próprios papéis).
-export async function getPerms(
-  supabase: SupabaseClient,
-  userId: string,
-): Promise<Perms> {
+export async function getPerms(supabase: SupabaseClient, userId: string): Promise<Perms> {
   const { data } = await supabase
     .from("user_roles")
     .select("role, school_id")

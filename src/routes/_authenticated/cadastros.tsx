@@ -123,8 +123,7 @@ function SubmissionsPage() {
       (perms?.operatorSchools.length ?? 0) > 0) ??
     false;
 
-  const canEnroll =
-    (perms?.isAdmin || (perms?.managerSchools.length ?? 0) > 0) ?? false;
+  const canEnroll = (perms?.isAdmin || (perms?.managerSchools.length ?? 0) > 0) ?? false;
 
   const enrollM = useMutation({
     mutationFn: (d: { id: string; enrolled: boolean }) => setEnrollment({ data: d }),

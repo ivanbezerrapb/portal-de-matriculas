@@ -52,12 +52,7 @@ export const createUser = createServerFn({ method: "POST" })
         email: z.string().email(),
         password: z.string().min(6),
         full_name: z.string().min(1),
-        role: z.enum([
-          "admin",
-          "school_manager",
-          "print_operator",
-          "info_center",
-        ]),
+        role: z.enum(["admin", "school_manager", "print_operator", "info_center"]),
         school_id: z.string().uuid().optional().nullable(),
       })
       .parse(data),
@@ -95,12 +90,7 @@ export const setUserRole = createServerFn({ method: "POST" })
     z
       .object({
         user_id: z.string().uuid(),
-        role: z.enum([
-          "admin",
-          "school_manager",
-          "print_operator",
-          "info_center",
-        ]),
+        role: z.enum(["admin", "school_manager", "print_operator", "info_center"]),
         school_id: z.string().uuid().optional().nullable(),
         action: z.enum(["add", "remove"]),
       })
@@ -114,8 +104,8 @@ export const setUserRole = createServerFn({ method: "POST" })
     if (data.action === "add") {
       const needsSchool =
         data.role === "school_manager" ||
-      data.role === "print_operator" ||
-      data.role === "info_center";
+        data.role === "print_operator" ||
+        data.role === "info_center";
       const { error } = await admin.from("user_roles").upsert(
         {
           user_id: data.user_id,
@@ -126,11 +116,7 @@ export const setUserRole = createServerFn({ method: "POST" })
       );
       if (error) throw new Error(error.message);
     } else {
-      let q = admin
-        .from("user_roles")
-        .delete()
-        .eq("user_id", data.user_id)
-        .eq("role", data.role);
+      let q = admin.from("user_roles").delete().eq("user_id", data.user_id).eq("role", data.role);
       q = data.school_id ? q.eq("school_id", data.school_id) : q.is("school_id", null);
       const { error } = await q;
       if (error) throw new Error(error.message);

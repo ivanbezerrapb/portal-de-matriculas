@@ -309,9 +309,7 @@ function AuthenticatedLayout() {
               <p className="truncate text-sm font-semibold text-sidebar-foreground">
                 {perms.fullName || perms.email}
               </p>
-              <p className="mt-0.5 text-xs text-sidebar-foreground/60">
-                {roleLabel}
-              </p>
+              <p className="mt-0.5 text-xs text-sidebar-foreground/60">{roleLabel}</p>
             </div>
           ) : (
             <Spinner className="h-4 w-4" />
