@@ -1,0 +1,74 @@
+import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
+import { requireAuth } from "./auth";
+
+// ---------- Impressão ----------
+
+// Dados completos para impressão: modelo + cadastros + campos + valores.
+// O RLS do cliente do usuário já limita operadores/gestores à própria escola.
+export const getPrintData = createServerFn({ method: "GET" })
+  .middleware([requireAuth])
+  .inputValidator((data) =>
+    z
+      .object({
+        template_id: z.string().uuid(),
+        submission_ids: z.array(z.string().uuid()).min(1).max(200),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    const { data: template, error } = await context.supabase
+      .from("print_templates")
+      .select("*")
+      .eq("id", data.template_id)
+      .single();
+    if (error) throw new Error(error.message);
+
+    const { data: form } = await context.supabase
+      .from("forms")
+      .select("id, title, school_id, schools(name, logo_url)")
+      .eq("id", template.form_id)
+      .single();
+    if (!form) throw new Error("Formulário não encontrado.");
+
+    const { data: fields } = await context.supabase
+      .from("form_fields")
+      .select("*")
+      .eq("form_id", template.form_id)
+      .order("position");
+
+    const { data: submissions } = await context.supabase
+      .from("submissions")
+      .select("*")
+      .in("id", data.submission_ids)
+      .order("public_id");
+
+    const { data: values } = await context.supabase
+      .from("submission_values")
+      .select("*")
+      .in("submission_id", data.submission_ids);
+
+    const orderedFields = (() => {
+      const all = fields ?? [];
+      const wanted = (template.field_ids ?? []) as string[];
+      if (wanted.length === 0) return all;
+      const map = new Map(all.map((f) => [f.id, f]));
+      return wanted
+        .map((id) => map.get(id))
+        .filter((f): f is NonNullable<typeof f> => !!f);
+    })();
+
+    return {
+      template,
+      form,
+      fields: orderedFields,
+      submissions: (submissions ?? []).map((s) => ({
+        ...s,
+        values: Object.fromEntries(
+          (values ?? [])
+            .filter((v) => v.submission_id === s.id)
+            .map((v) => [v.field_id, v.value ?? ""]),
+        ),
+      })),
+    };
+  });
