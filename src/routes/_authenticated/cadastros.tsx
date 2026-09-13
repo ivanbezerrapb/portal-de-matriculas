@@ -251,6 +251,7 @@ function SubmissionsPage() {
                 <th className="px-4 py-3">ID</th>
                 <th className="px-4 py-3">Formulário</th>
                 <th className="px-4 py-3">Escola</th>
+                <th className="px-4 py-3">Crianças</th>
                 <th className="px-4 py-3">Data</th>
                 <th className="px-4 py-3"></th>
               </tr>
@@ -259,6 +260,9 @@ function SubmissionsPage() {
               {submissions.map((s) => {
                 const form = s.forms as unknown as { title: string } | null;
                 const school = s.schools as unknown as { name: string } | null;
+                const childrenCount = (
+                  s as unknown as { children_count: number | null }
+                ).children_count;
                 return (
                   <tr
                     key={s.id}
@@ -287,6 +291,9 @@ function SubmissionsPage() {
                     </td>
                     <td className="px-4 py-2.5 text-muted-foreground">
                       {school?.name ?? "—"}
+                    </td>
+                    <td className="px-4 py-2.5 text-muted-foreground">
+                      {childrenCount ?? "—"}
                     </td>
                     <td className="px-4 py-2.5 text-muted-foreground">
                       {new Date(s.created_at).toLocaleDateString("pt-BR")}

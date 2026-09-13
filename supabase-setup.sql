@@ -64,6 +64,7 @@ create table public.submissions (
   form_id uuid references public.forms(id) on delete cascade not null,
   school_id uuid references public.schools(id) on delete cascade not null,
   public_id text not null unique,
+  children_count integer,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   updated_by uuid references auth.users(id)

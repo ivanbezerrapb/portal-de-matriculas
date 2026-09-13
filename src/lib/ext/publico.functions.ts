@@ -64,6 +64,8 @@ export const submitPublicForm = createServerFn({ method: "POST" })
 
     const { MAX_CHILDREN, parseChildren } = await import("./model");
 
+    let childrenCount: number | null = null;
+
     for (const field of publicFields) {
       const v = data.values[field.id];
       const empty =
@@ -74,6 +76,7 @@ export const submitPublicForm = createServerFn({ method: "POST" })
       }
       if (field.type === "children" && !empty) {
         const list = parseChildren(typeof v === "string" ? v : "");
+        childrenCount = list.length;
         if (list.length === 0 || list.length > MAX_CHILDREN) {
           throw new Error(
             `Informe de 1 a ${MAX_CHILDREN} crianças em "${field.label}".`,
@@ -105,6 +108,7 @@ export const submitPublicForm = createServerFn({ method: "POST" })
         form_id: form.id,
         school_id: form.school_id,
         public_id: publicId,
+        children_count: childrenCount,
       })
       .select("id")
       .single();
