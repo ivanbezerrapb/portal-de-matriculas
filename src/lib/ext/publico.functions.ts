@@ -130,5 +130,15 @@ export const submitPublicForm = createServerFn({ method: "POST" })
       if (valuesError) throw new Error(valuesError.message);
     }
 
+    if (childrenCount !== null) {
+      const { writeChildrenCountValue } = await import("./server");
+      await writeChildrenCountValue(
+        supabase,
+        form.id,
+        submission.id,
+        childrenCount,
+      );
+    }
+
     return { publicId };
   });

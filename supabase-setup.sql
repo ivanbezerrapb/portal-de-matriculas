@@ -75,6 +75,7 @@ create table public.submission_values (
   submission_id uuid references public.submissions(id) on delete cascade not null,
   field_id uuid references public.form_fields(id) on delete cascade not null,
   value text,
+  value_number numeric,
   primary key (submission_id, field_id)
 );
 

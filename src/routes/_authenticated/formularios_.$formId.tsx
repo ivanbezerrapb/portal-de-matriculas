@@ -15,6 +15,7 @@ import {
 } from "@/lib/ext/templates.functions";
 import {
   FIELD_TYPE_LABELS,
+  isChildrenCountField,
   joinChildOptions,
   splitChildOptions,
   type FieldType,
@@ -146,7 +147,9 @@ function FieldsTab({
 }) {
   const queryClient = useQueryClient();
   const [fields, setFields] = useState<EditableField[]>(
-    initialFields.map(({ ...f }) => f),
+    initialFields
+      .filter((f) => !isChildrenCountField(f))
+      .map(({ ...f }) => f),
   );
   const [deletedIds, setDeletedIds] = useState<string[]>([]);
 

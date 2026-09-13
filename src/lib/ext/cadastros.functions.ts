@@ -162,6 +162,16 @@ export const updateSubmission = createServerFn({ method: "POST" })
       if (n > 0) childrenCount = Math.max(childrenCount ?? 0, n);
     }
 
+    if (childrenCount !== undefined) {
+      const { writeChildrenCountValue } = await import("./server");
+      await writeChildrenCountValue(
+        context.supabase,
+        submission.form_id,
+        data.id,
+        childrenCount,
+      );
+    }
+
     if (changes.length > 0 || childrenCount !== undefined) {
       await context.supabase
         .from("submissions")
