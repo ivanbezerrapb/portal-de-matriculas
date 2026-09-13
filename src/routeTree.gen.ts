@@ -16,6 +16,7 @@ import { Route as AuthenticatedDashboardRouteImport } from './routes/_authentica
 import { Route as AuthenticatedEscolasRouteImport } from './routes/_authenticated/escolas'
 import { Route as AuthenticatedFormulariosRouteImport } from './routes/_authenticated/formularios'
 import { Route as FSlugRouteImport } from './routes/f/$slug'
+import { Route as AuthenticatedFormulariosFormIdRouteImport } from './routes/_authenticated/formularios.$formId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -52,22 +53,30 @@ const FSlugRoute = FSlugRouteImport.update({
   path: '/f/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedFormulariosFormIdRoute =
+  AuthenticatedFormulariosFormIdRouteImport.update({
+    id: '/$formId',
+    path: '/$formId',
+    getParentRoute: () => AuthenticatedFormulariosRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/escolas': typeof AuthenticatedEscolasRoute
-  '/formularios': typeof AuthenticatedFormulariosRoute
+  '/formularios': typeof AuthenticatedFormulariosRouteWithChildren
   '/f/$slug': typeof FSlugRoute
+  '/formularios/$formId': typeof AuthenticatedFormulariosFormIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/escolas': typeof AuthenticatedEscolasRoute
-  '/formularios': typeof AuthenticatedFormulariosRoute
+  '/formularios': typeof AuthenticatedFormulariosRouteWithChildren
   '/f/$slug': typeof FSlugRoute
+  '/formularios/$formId': typeof AuthenticatedFormulariosFormIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -76,15 +85,29 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/escolas': typeof AuthenticatedEscolasRoute
-  '/_authenticated/formularios': typeof AuthenticatedFormulariosRoute
+  '/_authenticated/formularios': typeof AuthenticatedFormulariosRouteWithChildren
   '/f/$slug': typeof FSlugRoute
+  '/_authenticated/formularios/$formId': typeof AuthenticatedFormulariosFormIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/auth' | '/dashboard' | '/escolas' | '/formularios' | '/f/$slug'
+    | '/'
+    | '/auth'
+    | '/dashboard'
+    | '/escolas'
+    | '/formularios'
+    | '/f/$slug'
+    | '/formularios/$formId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/dashboard' | '/escolas' | '/formularios' | '/f/$slug'
+  to:
+    | '/'
+    | '/auth'
+    | '/dashboard'
+    | '/escolas'
+    | '/formularios'
+    | '/f/$slug'
+    | '/formularios/$formId'
   id:
     | '__root__'
     | '/'
@@ -94,6 +117,7 @@ export interface FileRouteTypes {
     | '/_authenticated/escolas'
     | '/_authenticated/formularios'
     | '/f/$slug'
+    | '/_authenticated/formularios/$formId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -154,19 +178,40 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/formularios/$formId': {
+      id: '/_authenticated/formularios/$formId'
+      path: '/$formId'
+      fullPath: '/formularios/$formId'
+      preLoaderRoute: typeof AuthenticatedFormulariosFormIdRouteImport
+      parentRoute: typeof AuthenticatedFormulariosRoute
+    }
   }
 }
+
+interface AuthenticatedFormulariosRouteChildren {
+  AuthenticatedFormulariosFormIdRoute: typeof AuthenticatedFormulariosFormIdRoute
+}
+
+const AuthenticatedFormulariosRouteChildren: AuthenticatedFormulariosRouteChildren =
+  {
+    AuthenticatedFormulariosFormIdRoute: AuthenticatedFormulariosFormIdRoute,
+  }
+
+const AuthenticatedFormulariosRouteWithChildren =
+  AuthenticatedFormulariosRoute._addFileChildren(
+    AuthenticatedFormulariosRouteChildren,
+  )
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedEscolasRoute: typeof AuthenticatedEscolasRoute
-  AuthenticatedFormulariosRoute: typeof AuthenticatedFormulariosRoute
+  AuthenticatedFormulariosRoute: typeof AuthenticatedFormulariosRouteWithChildren
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedEscolasRoute: AuthenticatedEscolasRoute,
-  AuthenticatedFormulariosRoute: AuthenticatedFormulariosRoute,
+  AuthenticatedFormulariosRoute: AuthenticatedFormulariosRouteWithChildren,
 }
 
 const AuthenticatedRouteRouteWithChildren =

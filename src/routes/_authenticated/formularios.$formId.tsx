@@ -184,7 +184,8 @@ function FieldsTab({
       const target = idx + dir;
       if (idx < 0 || target < 0 || target >= prev.length) return prev;
       const next = [...prev];
-      const [item] = next.splice(idx, 1);
+      const item = next[idx];
+      next.splice(idx, 1);
       next.splice(target, 0, item);
       return next;
     });
@@ -619,7 +620,11 @@ function TemplatesTab({
                       disabled={idx === 0}
                       onClick={() => {
                         const ids = [...editing.field_ids];
-                        [ids[idx - 1], ids[idx]] = [ids[idx], ids[idx - 1]];
+                        const prev = ids[idx - 1];
+                        const cur = ids[idx];
+                        if (prev == null || cur == null) return;
+                        ids[idx - 1] = cur;
+                        ids[idx] = prev;
                         setEditing({ ...editing, field_ids: ids });
                       }}
                     >
@@ -630,7 +635,11 @@ function TemplatesTab({
                       disabled={idx === editing.field_ids.length - 1}
                       onClick={() => {
                         const ids = [...editing.field_ids];
-                        [ids[idx + 1], ids[idx]] = [ids[idx], ids[idx + 1]];
+                        const next = ids[idx + 1];
+                        const cur = ids[idx];
+                        if (next == null || cur == null) return;
+                        ids[idx + 1] = cur;
+                        ids[idx] = next;
                         setEditing({ ...editing, field_ids: ids });
                       }}
                     >
