@@ -534,36 +534,13 @@ function PrintPreviewDialog({
         ) : ctx ? (
           <div className="flex flex-col items-center gap-6">
             {layout.pages.map((page, index) => (
-              <div key={page.id}>
-                <p className="mb-2 text-center text-xs text-muted-foreground">
-                  Página {index + 1}
-                </p>
-                <div
-                  className="relative origin-top bg-white shadow-lg"
-                  style={{
-                    width: `${size.w}mm`,
-                    height: `${size.h}mm`,
-                    color: "#000",
-                    overflow: "hidden",
-                  }}
-                >
-                  {page.blocks.map((block) => (
-                    <div
-                      key={block.id}
-                      style={{
-                        position: "absolute",
-                        left: `${block.x}mm`,
-                        top: `${block.y}mm`,
-                        width: `${block.w}mm`,
-                        height: `${block.h}mm`,
-                        overflow: "hidden",
-                      }}
-                    >
-                      <BlockView block={block} ctx={ctx} preview={false} />
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <PreviewPage
+                key={page.id}
+                page={page}
+                pageNumber={index + 1}
+                size={size}
+                ctx={ctx}
+              />
             ))}
           </div>
         ) : (
@@ -571,6 +548,76 @@ function PrintPreviewDialog({
             Selecione um cadastro acima para abrir a pré-visualização.
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+function PreviewPage({
+  page,
+  pageNumber,
+  size,
+  ctx,
+}: {
+  page: PrintLayout["pages"][number];
+  pageNumber: number;
+  size: { w: number; h: number };
+  ctx: PrintContext;
+}) {
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(1);
+
+  useEffect(() => {
+    const wrapper = wrapperRef.current;
+    if (!wrapper) return;
+    const fit = () => {
+      const paperWidth = size.w * MM_PX;
+      setScale(Math.min(1, Math.max(0.25, wrapper.clientWidth / paperWidth)));
+    };
+    fit();
+    const observer = new ResizeObserver(fit);
+    observer.observe(wrapper);
+    return () => observer.disconnect();
+  }, [size.w]);
+
+  return (
+    <div ref={wrapperRef} className="w-full max-w-[210mm]">
+      <p className="mb-2 text-center text-xs text-muted-foreground">
+        Página {pageNumber}
+      </p>
+      <div
+        className="mx-auto"
+        style={{
+          width: size.w * MM_PX * scale,
+          height: size.h * MM_PX * scale,
+        }}
+      >
+        <div
+          className="relative origin-top-left bg-white shadow-lg"
+          style={{
+            width: size.w * MM_PX,
+            height: size.h * MM_PX,
+            color: "#000",
+            overflow: "hidden",
+            transform: `scale(${scale})`,
+          }}
+        >
+          {page.blocks.map((block) => (
+            <div
+              key={block.id}
+              style={{
+                position: "absolute",
+                left: `${block.x}mm`,
+                top: `${block.y}mm`,
+                width: `${block.w}mm`,
+                height: `${block.h}mm`,
+                overflow: "hidden",
+              }}
+            >
+              <BlockView block={block} ctx={ctx} preview={false} />
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
