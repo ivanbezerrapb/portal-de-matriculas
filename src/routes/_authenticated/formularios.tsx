@@ -3,28 +3,27 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Copy, Link2, Settings, Trash2 } from "lucide-react";
-import {
-  createForm,
-  deleteForm,
-  duplicateForm,
-  listForms,
-} from "@/lib/ext/formularios.functions";
+import { createForm, deleteForm, duplicateForm, listForms } from "@/lib/ext/formularios.functions";
 import { listSchools } from "@/lib/ext/escolas.functions";
-import {
-  Badge,
-  Button,
-  Card,
-  EmptyState,
-  Input,
-  Label,
-  Select,
-  Spinner,
-} from "@/components/ui";
+import { Badge, Button, Card, EmptyState, Input, Label, Select, Spinner } from "@/components/ui";
 
 const ICON_BTN =
   "inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors";
 
 export const Route = createFileRoute("/_authenticated/formularios")({
+  head: () => ({
+    meta: [
+      { title: "Formulários — Grupo Inter" },
+      { name: "description", content: "Crie e publique formulários escolares personalizados." },
+      { property: "og:title", content: "Formulários — Grupo Inter" },
+      {
+        property: "og:description",
+        content: "Crie e publique formulários escolares personalizados.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: FormsPage,
 });
 
@@ -52,16 +51,12 @@ function FormsPage() {
 
   const [title, setTitle] = useState("");
   const [schoolId, setSchoolId] = useState("");
-  const [dup, setDup] = useState<
-    { id: string; title: string; schoolId: string } | null
-  >(null);
+  const [dup, setDup] = useState<{ id: string; title: string; schoolId: string } | null>(null);
 
-  const invalidate = () =>
-    queryClient.invalidateQueries({ queryKey: ["admin-forms"] });
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ["admin-forms"] });
 
   const createMut = useMutation({
-    mutationFn: () =>
-      createForm({ data: { title, school_id: schoolId } }),
+    mutationFn: () => createForm({ data: { title, school_id: schoolId } }),
     onSuccess: () => {
       toast.success("Formulário criado. Agora adicione os campos.");
       setTitle("");
@@ -98,9 +93,7 @@ function FormsPage() {
 
   return (
     <div className="mx-auto max-w-3xl">
-      <h1 className="font-display text-2xl font-bold text-foreground">
-        Formulários
-      </h1>
+      <h1 className="font-display text-2xl font-bold text-foreground">Formulários</h1>
 
       <Card className="mt-6">
         <h2 className="font-semibold text-foreground">Novo formulário</h2>
@@ -127,11 +120,7 @@ function FormsPage() {
           </div>
           <div className="min-w-48 flex-1">
             <Label htmlFor="form-school">Escola</Label>
-            <Select
-              id="form-school"
-              value={schoolId}
-              onChange={(e) => setSchoolId(e.target.value)}
-            >
+            <Select id="form-school" value={schoolId} onChange={(e) => setSchoolId(e.target.value)}>
               <option value="">Selecione...</option>
               {(schools ?? []).map((s) => (
                 <option key={s.id} value={s.id}>
@@ -168,9 +157,7 @@ function FormsPage() {
                       {STATUS_LABEL[f.status] ?? f.status}
                     </Badge>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    {school?.name ?? "—"}
-                  </p>
+                  <p className="text-xs text-muted-foreground">{school?.name ?? "—"}</p>
                 </div>
                 {f.status === "published" ? (
                   <button
@@ -241,12 +228,9 @@ function FormsPage() {
       {dup ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 p-4">
           <Card className="w-full max-w-md">
-            <h2 className="font-semibold text-foreground">
-              Duplicar formulário
-            </h2>
+            <h2 className="font-semibold text-foreground">Duplicar formulário</h2>
             <p className="mt-1 text-xs text-muted-foreground">
-              Os campos e modelos de impressão serão copiados. Os cadastros
-              não.
+              Os campos e modelos de impressão serão copiados. Os cadastros não.
             </p>
             <form
               className="mt-4 flex flex-col gap-3"
@@ -284,11 +268,7 @@ function FormsPage() {
                 </Select>
               </div>
               <div className="mt-2 flex justify-end gap-2">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => setDup(null)}
-                >
+                <Button type="button" variant="ghost" onClick={() => setDup(null)}>
                   Cancelar
                 </Button>
                 <Button type="submit" disabled={dupMut.isPending}>

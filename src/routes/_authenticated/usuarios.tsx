@@ -2,25 +2,22 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
-import {
-  createUser,
-  deleteUser,
-  listUsers,
-  setUserRole,
-} from "@/lib/ext/usuarios.functions";
+import { createUser, deleteUser, listUsers, setUserRole } from "@/lib/ext/usuarios.functions";
 import { listSchools } from "@/lib/ext/escolas.functions";
 import { ROLE_LABELS } from "@/lib/ext/model";
-import {
-  Badge,
-  Button,
-  Card,
-  Input,
-  Label,
-  Select,
-  Spinner,
-} from "@/components/ui";
+import { Badge, Button, Card, Input, Label, Select, Spinner } from "@/components/ui";
 
 export const Route = createFileRoute("/_authenticated/usuarios")({
+  head: () => ({
+    meta: [
+      { title: "Usuários — Grupo Inter" },
+      { name: "description", content: "Gerencie usuários e permissões por escola." },
+      { property: "og:title", content: "Usuários — Grupo Inter" },
+      { property: "og:description", content: "Gerencie usuários e permissões por escola." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: UsersPage,
 });
 
@@ -58,9 +55,7 @@ function UsersPage() {
           password,
           full_name: fullName,
           role,
-          ...(NEEDS_SCHOOL.includes(role) && schoolId
-            ? { school_id: schoolId }
-            : {}),
+          ...(NEEDS_SCHOOL.includes(role) && schoolId ? { school_id: schoolId } : {}),
         },
       }),
     onSuccess: () => {
@@ -97,14 +92,11 @@ function UsersPage() {
     onError: (e) => toast.error(e.message),
   });
 
-  const schoolName = (id: string | null) =>
-    schools?.find((s) => s.id === id)?.name ?? "";
+  const schoolName = (id: string | null) => schools?.find((s) => s.id === id)?.name ?? "";
 
   return (
     <div className="mx-auto max-w-3xl">
-      <h1 className="font-display text-2xl font-bold text-foreground">
-        Usuários
-      </h1>
+      <h1 className="font-display text-2xl font-bold text-foreground">Usuários</h1>
 
       <Card className="mt-6">
         <h2 className="font-semibold text-foreground">Novo usuário</h2>
@@ -121,20 +113,11 @@ function UsersPage() {
         >
           <div>
             <Label>Nome completo</Label>
-            <Input
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              required
-            />
+            <Input value={fullName} onChange={(e) => setFullName(e.target.value)} required />
           </div>
           <div>
             <Label>E-mail</Label>
-            <Input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
+            <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
           </div>
           <div>
             <Label>Senha inicial</Label>
@@ -148,10 +131,7 @@ function UsersPage() {
           </div>
           <div>
             <Label>Perfil</Label>
-            <Select
-              value={role}
-              onChange={(e) => setRole(e.target.value as Role)}
-            >
+            <Select value={role} onChange={(e) => setRole(e.target.value as Role)}>
               {ROLES.map(([value, label]) => (
                 <option key={value} value={value}>
                   {label}
@@ -162,10 +142,7 @@ function UsersPage() {
           {NEEDS_SCHOOL.includes(role) && (
             <div>
               <Label>Escola</Label>
-              <Select
-                value={schoolId}
-                onChange={(e) => setSchoolId(e.target.value)}
-              >
+              <Select value={schoolId} onChange={(e) => setSchoolId(e.target.value)}>
                 <option value="">Selecione...</option>
                 {(schools ?? []).map((s) => (
                   <option key={s.id} value={s.id}>
@@ -193,16 +170,12 @@ function UsersPage() {
             <Card key={u.id}>
               <div className="flex flex-wrap items-center gap-3">
                 <div className="min-w-0 flex-1">
-                  <p className="font-medium text-foreground">
-                    {u.full_name || u.email}
-                  </p>
+                  <p className="font-medium text-foreground">{u.full_name || u.email}</p>
                   <p className="text-xs text-muted-foreground">{u.email}</p>
                 </div>
                 <Button
                   variant="secondary"
-                  onClick={() =>
-                    setAddRoleFor(addRoleFor === u.id ? null : u.id)
-                  }
+                  onClick={() => setAddRoleFor(addRoleFor === u.id ? null : u.id)}
                 >
                   + Perfil
                 </Button>
@@ -220,15 +193,10 @@ function UsersPage() {
 
               <div className="mt-3 flex flex-wrap gap-2">
                 {u.roles.length === 0 && (
-                  <span className="text-sm text-muted-foreground">
-                    Sem perfil atribuído
-                  </span>
+                  <span className="text-sm text-muted-foreground">Sem perfil atribuído</span>
                 )}
                 {u.roles.map((r, i) => (
-                  <span
-                    key={i}
-                    className="inline-flex items-center gap-2"
-                  >
+                  <span key={i} className="inline-flex items-center gap-2">
                     <Badge color="muted">
                       {ROLE_LABELS[r.role] ?? r.role}
                       {r.school_id ? ` · ${schoolName(r.school_id)}` : ""}
@@ -254,10 +222,7 @@ function UsersPage() {
                 <div className="mt-3 flex flex-wrap items-end gap-2 rounded-md bg-muted p-3">
                   <div>
                     <Label>Perfil</Label>
-                    <Select
-                      value={newRole}
-                      onChange={(e) => setNewRole(e.target.value as Role)}
-                    >
+                    <Select value={newRole} onChange={(e) => setNewRole(e.target.value as Role)}>
                       {ROLES.map(([value, label]) => (
                         <option key={value} value={value}>
                           {label}
@@ -291,9 +256,7 @@ function UsersPage() {
                       roleMut.mutate({
                         user_id: u.id,
                         role: newRole,
-                        school_id: NEEDS_SCHOOL.includes(newRole)
-                          ? newRoleSchool
-                          : null,
+                        school_id: NEEDS_SCHOOL.includes(newRole) ? newRoleSchool : null,
                         action: "add",
                       });
                     }}

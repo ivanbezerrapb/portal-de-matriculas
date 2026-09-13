@@ -13,11 +13,19 @@ import { isChildrenCountField, type FormField } from "@/lib/ext/model";
 import { FieldRenderer, formatValue } from "@/components/FieldRenderer";
 import { Button, Card, Select, Spinner } from "@/components/ui";
 
-export const Route = createFileRoute("/_authenticated/cadastros_/$submissionId")(
-  {
-    component: SubmissionDetailPage,
-  },
-);
+export const Route = createFileRoute("/_authenticated/cadastros_/$submissionId")({
+  head: () => ({
+    meta: [
+      { title: "Detalhes do cadastro — Grupo Inter" },
+      { name: "description", content: "Consulte e edite os dados deste cadastro escolar." },
+      { property: "og:title", content: "Detalhes do cadastro — Grupo Inter" },
+      { property: "og:description", content: "Consulte e edite os dados deste cadastro escolar." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
+  component: SubmissionDetailPage,
+});
 
 function SubmissionDetailPage() {
   const { submissionId } = Route.useParams();
@@ -58,12 +66,9 @@ function SubmissionDetailPage() {
   }, [data]);
 
   const updateMut = useMutation({
-    mutationFn: () =>
-      updateSubmission({ data: { id: submissionId, values } }),
+    mutationFn: () => updateSubmission({ data: { id: submissionId, values } }),
     onSuccess: (r) => {
-      toast.success(
-        r.changed > 0 ? "Cadastro atualizado." : "Nada foi alterado.",
-      );
+      toast.success(r.changed > 0 ? "Cadastro atualizado." : "Nada foi alterado.");
       setEditMode(false);
       queryClient.invalidateQueries({
         queryKey: ["submission", submissionId],
@@ -96,24 +101,17 @@ function SubmissionDetailPage() {
   const valueMap = new Map(data.values.map((v) => [v.field_id, v.value ?? ""]));
 
   const canEdit =
-    (perms?.isAdmin ||
-      perms?.isEditor ||
-      perms?.managerSchools.includes(submission.school_id)) ??
+    (perms?.isAdmin || perms?.isEditor || perms?.managerSchools.includes(submission.school_id)) ??
     false;
 
   return (
     <div className="mx-auto max-w-3xl">
-      <Link
-        to="/cadastros"
-        className="text-sm text-muted-foreground hover:text-foreground"
-      >
+      <Link to="/cadastros" className="text-sm text-muted-foreground hover:text-foreground">
         ← Voltar para cadastros
       </Link>
 
       <div className="mt-2 flex flex-wrap items-center gap-3">
-        <h1 className="font-mono text-2xl font-bold text-foreground">
-          {submission.public_id}
-        </h1>
+        <h1 className="font-mono text-2xl font-bold text-foreground">{submission.public_id}</h1>
         <span className="text-sm text-muted-foreground">
           {form?.title ?? ""} · {school?.name ?? ""} · criado em{" "}
           {new Date(submission.created_at).toLocaleDateString("pt-BR")}
@@ -198,20 +196,14 @@ function SubmissionDetailPage() {
                       })()
                     : "")
                 }
-                onChange={(v) =>
-                  setValues((prev) => ({ ...prev, [field.id]: v }))
-                }
+                onChange={(v) => setValues((prev) => ({ ...prev, [field.id]: v }))}
               />
             ))}
             <div className="flex gap-2">
               <Button type="submit" disabled={updateMut.isPending}>
                 Salvar alterações
               </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => setEditMode(false)}
-              >
+              <Button type="button" variant="ghost" onClick={() => setEditMode(false)}>
                 Cancelar
               </Button>
             </div>
@@ -234,13 +226,9 @@ function SubmissionDetailPage() {
       </Card>
 
       <Card className="mt-4">
-        <h2 className="font-semibold text-foreground">
-          Histórico de alterações
-        </h2>
+        <h2 className="font-semibold text-foreground">Histórico de alterações</h2>
         {history.length === 0 ? (
-          <p className="mt-2 text-sm text-muted-foreground">
-            Nenhuma alteração registrada.
-          </p>
+          <p className="mt-2 text-sm text-muted-foreground">Nenhuma alteração registrada.</p>
         ) : (
           <ul className="mt-3 flex flex-col gap-3">
             {history.map((h) => {
@@ -250,13 +238,9 @@ function SubmissionDetailPage() {
                 after: string;
               }[];
               return (
-                <li
-                  key={h.id}
-                  className="rounded-md border border-border p-3 text-sm"
-                >
+                <li key={h.id} className="rounded-md border border-border p-3 text-sm">
                   <p className="text-xs text-muted-foreground">
-                    {new Date(h.created_at).toLocaleString("pt-BR")} ·{" "}
-                    {h.actor_email ?? "sistema"}
+                    {new Date(h.created_at).toLocaleString("pt-BR")} · {h.actor_email ?? "sistema"}
                   </p>
                   <ul className="mt-1.5 flex flex-col gap-1">
                     {changes.map((c, i) => (
