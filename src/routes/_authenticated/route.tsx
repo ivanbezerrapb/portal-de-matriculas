@@ -105,12 +105,29 @@ function AuthenticatedLayout() {
           onClick={() => setMobileOpen(false)}
         />
       ) : null}
-      <aside className={`fixed inset-y-0 left-0 z-50 flex flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width,transform] duration-200 lg:sticky lg:top-0 lg:h-screen ${collapsed ? "w-[72px]" : "w-64"} ${mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}>
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 flex flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width,transform] duration-200 lg:sticky lg:top-0 lg:h-screen ${collapsed ? "w-[72px]" : "w-64"} ${mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}
+      >
         <div className="flex h-20 items-center justify-between border-b border-sidebar-border px-4">
-          <div className={`flex min-w-0 items-center overflow-hidden rounded-lg bg-card ${collapsed ? "h-10 w-10 justify-center p-1.5" : "w-44 px-3 py-2"}`}>
-            <img src={logoAsset.url} alt="Grupo Inter" className={collapsed ? "h-auto w-8 max-w-none object-contain object-left" : "h-auto w-full"} />
+          <div
+            className={`flex min-w-0 items-center overflow-hidden rounded-lg bg-card ${collapsed ? "h-10 w-10 justify-center p-1.5" : "w-44 px-3 py-2"}`}
+          >
+            <img
+              src={logoAsset.url}
+              alt="Grupo Inter"
+              className={
+                collapsed ? "h-auto w-8 max-w-none object-contain object-left" : "h-auto w-full"
+              }
+            />
           </div>
-          <Button variant="ghost" className="h-9 w-9 shrink-0 p-0 text-sidebar-foreground hover:bg-sidebar-accent lg:hidden" onClick={() => setMobileOpen(false)} aria-label="Fechar menu"><X className="h-5 w-5" /></Button>
+          <Button
+            variant="ghost"
+            className="h-9 w-9 shrink-0 p-0 text-sidebar-foreground hover:bg-sidebar-accent lg:hidden"
+            onClick={() => setMobileOpen(false)}
+            aria-label="Fechar menu"
+          >
+            <X className="h-5 w-5" />
+          </Button>
         </div>
         <nav className="flex-1 px-3 py-5" aria-label="Navegação principal">
           {navItems.map(({ to, label, icon: Icon }) => {
@@ -167,13 +184,34 @@ function AuthenticatedLayout() {
       <div className="min-w-0 flex-1">
         <header className="sticky top-0 z-30 flex h-20 items-center justify-between border-b border-border bg-card/95 px-4 backdrop-blur sm:px-6 lg:px-8">
           <div className="flex min-w-0 items-center gap-3">
-            <Button variant="ghost" className="h-10 w-10 shrink-0 p-0 lg:hidden" onClick={() => setMobileOpen(true)} aria-label="Abrir menu"><Menu className="h-5 w-5" /></Button>
-            <Button variant="ghost" className="hidden h-10 w-10 shrink-0 p-0 lg:inline-flex" onClick={() => setCollapsed((value) => !value)} aria-label={collapsed ? "Expandir menu" : "Recolher menu"} title={collapsed ? "Expandir menu" : "Recolher menu"}>
-              {collapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
+            <Button
+              variant="ghost"
+              className="h-10 w-10 shrink-0 p-0 lg:hidden"
+              onClick={() => setMobileOpen(true)}
+              aria-label="Abrir menu"
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+            <Button
+              variant="ghost"
+              className="hidden h-10 w-10 shrink-0 p-0 lg:inline-flex"
+              onClick={() => setCollapsed((value) => !value)}
+              aria-label={collapsed ? "Expandir menu" : "Recolher menu"}
+              title={collapsed ? "Expandir menu" : "Recolher menu"}
+            >
+              {collapsed ? (
+                <PanelLeftOpen className="h-5 w-5" />
+              ) : (
+                <PanelLeftClose className="h-5 w-5" />
+              )}
             </Button>
             <div className="min-w-0">
-              <p className="truncate font-display text-base font-semibold text-foreground">{activeItem?.label ?? "Grupo Inter"}</p>
-              <p className="hidden text-xs text-muted-foreground sm:block">Gestão de formulários escolares</p>
+              <p className="truncate font-display text-base font-semibold text-foreground">
+                {activeItem?.label ?? "Grupo Inter"}
+              </p>
+              <p className="hidden text-xs text-muted-foreground sm:block">
+                Gestão de formulários escolares
+              </p>
             </div>
           </div>
         </header>

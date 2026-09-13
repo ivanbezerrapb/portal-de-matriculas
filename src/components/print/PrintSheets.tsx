@@ -5,11 +5,7 @@ import { getPrintData } from "@/lib/ext/impressao.functions";
 import type { FormField } from "@/lib/ext/model";
 import { formatValue } from "@/components/FieldRenderer";
 import { DynamicPrintPage } from "@/components/print/DynamicPrintPage";
-import {
-  PAGE_MM,
-  parseLayout,
-  type PrintContext,
-} from "@/lib/ext/print-layout";
+import { PAGE_MM, parseLayout, type PrintContext } from "@/lib/ext/print-layout";
 import { Spinner } from "@/components/ui";
 
 export type PrintSheetsState =
@@ -55,10 +51,7 @@ export function PrintSheets({
     (key: string, status: { ready: boolean; overflow: boolean }) => {
       setPageStatus((current) => {
         const previous = current[key];
-        if (
-          previous?.ready === status.ready &&
-          previous.overflow === status.overflow
-        )
+        if (previous?.ready === status.ready && previous.overflow === status.overflow)
           return current;
         return { ...current, [key]: status };
       });
@@ -70,9 +63,7 @@ export function PrintSheets({
   const layout = hasData ? parseLayout(data.template.layout) : null;
   const hasLayout = !!layout && layout.pages.some((p) => p.blocks.length > 0);
   const expectedPages =
-    hasData && hasLayout && layout
-      ? data.submissions.length * layout.pages.length
-      : 0;
+    hasData && hasLayout && layout ? data.submissions.length * layout.pages.length : 0;
   const statuses = Object.values(pageStatus);
   const dynamicReady =
     !hasLayout ||
@@ -91,8 +82,7 @@ export function PrintSheets({
       onStateChange({
         status: "error",
         message:
-          error?.message ??
-          "Nenhum cadastro encontrado para impressão. Verifique suas permissões.",
+          error?.message ?? "Nenhum cadastro encontrado para impressão. Verifique suas permissões.",
       });
       return;
     }
@@ -144,8 +134,7 @@ export function PrintSheets({
     if (offscreen) return null;
     return (
       <p className="mx-auto max-w-xl text-sm text-destructive">
-        {error?.message ??
-          "Nenhum cadastro encontrado para impressão. Verifique suas permissões."}
+        {error?.message ?? "Nenhum cadastro encontrado para impressão. Verifique suas permissões."}
       </p>
     );
   }
@@ -172,9 +161,7 @@ export function PrintSheets({
     @page { size: ${layout?.pageSize ?? template.page_size}; margin: ${hasLayout ? "0" : "12mm"}; }
   `;
 
-  const shellClass = offscreen
-    ? "print-shell fixed top-0 -left-[10000px]"
-    : "print-shell";
+  const shellClass = offscreen ? "print-shell fixed top-0 -left-[10000px]" : "print-shell";
 
   if (hasLayout && layout) {
     return (
@@ -232,18 +219,12 @@ export function PrintSheets({
                 <p className="text-xs uppercase tracking-wide text-muted-foreground">
                   {school?.name ?? ""}
                 </p>
-                <h2 className="font-display text-xl font-bold text-foreground">
-                  {template.title}
-                </h2>
+                <h2 className="font-display text-xl font-bold text-foreground">{template.title}</h2>
                 {template.header_text && (
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {template.header_text}
-                  </p>
+                  <p className="mt-1 text-sm text-muted-foreground">{template.header_text}</p>
                 )}
               </div>
-              <p className="font-mono text-lg font-bold text-foreground">
-                {sub.public_id}
-              </p>
+              <p className="font-mono text-lg font-bold text-foreground">{sub.public_id}</p>
             </div>
 
             <dl

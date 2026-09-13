@@ -17,12 +17,10 @@ export function Button({
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: ButtonVariant }) {
   const styles: Record<ButtonVariant, string> = {
-    primary:
-      "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm shadow-primary/15",
+    primary: "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm shadow-primary/15",
     secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
     outline: "border border-input bg-card hover:bg-accent text-foreground",
-    danger:
-      "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+    danger: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
     ghost: "hover:bg-accent text-foreground",
   };
   return (
@@ -37,21 +35,20 @@ export function Button({
   );
 }
 
-export const Input = forwardRef<
-  HTMLInputElement,
-  InputHTMLAttributes<HTMLInputElement>
->(function Input({ className, ...props }, ref) {
-  return (
-    <input
-      ref={ref}
-      className={cn(
-        "min-h-11 w-full rounded-lg border border-input bg-card px-3 py-2 text-sm text-foreground shadow-xs placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15",
-        className,
-      )}
-      {...props}
-    />
-  );
-});
+export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(
+  function Input({ className, ...props }, ref) {
+    return (
+      <input
+        ref={ref}
+        className={cn(
+          "min-h-11 w-full rounded-lg border border-input bg-card px-3 py-2 text-sm text-foreground shadow-xs placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15",
+          className,
+        )}
+        {...props}
+      />
+    );
+  },
+);
 
 export const Textarea = forwardRef<
   HTMLTextAreaElement,
@@ -69,26 +66,22 @@ export const Textarea = forwardRef<
   );
 });
 
-export const Select = forwardRef<
-  HTMLSelectElement,
-  SelectHTMLAttributes<HTMLSelectElement>
->(function Select({ className, ...props }, ref) {
-  return (
-    <select
-      ref={ref}
-      className={cn(
-        "min-h-11 w-full rounded-lg border border-input bg-card px-3 py-2 text-sm text-foreground shadow-xs focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15",
-        className,
-      )}
-      {...props}
-    />
-  );
-});
+export const Select = forwardRef<HTMLSelectElement, SelectHTMLAttributes<HTMLSelectElement>>(
+  function Select({ className, ...props }, ref) {
+    return (
+      <select
+        ref={ref}
+        className={cn(
+          "min-h-11 w-full rounded-lg border border-input bg-card px-3 py-2 text-sm text-foreground shadow-xs focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15",
+          className,
+        )}
+        {...props}
+      />
+    );
+  },
+);
 
-export function Label({
-  className,
-  ...props
-}: LabelHTMLAttributes<HTMLLabelElement>) {
+export function Label({ className, ...props }: LabelHTMLAttributes<HTMLLabelElement>) {
   return (
     <label
       className={cn("mb-1.5 block text-sm font-semibold text-foreground", className)}
@@ -97,13 +90,7 @@ export function Label({
   );
 }
 
-export function Card({
-  className,
-  children,
-}: {
-  className?: string;
-  children: ReactNode;
-}) {
+export function Card({ className, children }: { className?: string; children: ReactNode }) {
   return (
     <div
       className={cn(
@@ -164,9 +151,7 @@ export function EmptyState({
   return (
     <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border bg-card/50 py-14 text-center">
       <p className="font-medium text-foreground">{title}</p>
-      {description && (
-        <p className="mt-1 text-sm text-muted-foreground">{description}</p>
-      )}
+      {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
       {action && <div className="mt-4">{action}</div>}
     </div>
   );
