@@ -85,6 +85,17 @@ function PublicFormPage() {
           <p className="mt-3 rounded-md bg-muted px-4 py-3 font-mono text-2xl font-bold tracking-wide text-foreground">
             {confirmedId}
           </p>
+          <Button
+            className="mt-6"
+            onClick={() => {
+              setValues({});
+              setErrors({});
+              setConfirmedId(null);
+              window.scrollTo(0, 0);
+            }}
+          >
+            Fazer novo cadastro
+          </Button>
         </Card>
       </div>
     );
