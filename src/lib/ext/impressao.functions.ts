@@ -4,6 +4,23 @@ import { requireAuth } from "./auth";
 
 // ---------- Impressão ----------
 
+// Lista modelos de impressão disponíveis (RLS limita por perfil/escola).
+export const listPrintTemplates = createServerFn({ method: "GET" })
+  .middleware([requireAuth])
+  .inputValidator((data) =>
+    z.object({ form_id: z.string().uuid().optional() }).parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    let query = context.supabase
+      .from("print_templates")
+      .select("id, form_id, name, page_size, columns")
+      .order("name");
+    if (data.form_id) query = query.eq("form_id", data.form_id);
+    const { data: rows, error } = await query;
+    if (error) throw new Error(error.message);
+    return rows;
+  });
+
 // Dados completos para impressão: modelo + cadastros + campos + valores.
 // O RLS do cliente do usuário já limita operadores/gestores à própria escola.
 export const getPrintData = createServerFn({ method: "GET" })
