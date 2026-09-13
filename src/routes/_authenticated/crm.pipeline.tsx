@@ -324,16 +324,17 @@ function PipelinePage() {
                         Cancelar
                       </Button>
                     </div>
-                  </form>
-                ) : (
-                  <Button
-                    variant="ghost"
-                    className="mt-2 w-full justify-start text-muted-foreground"
-                    onClick={() => setNewIn(stage.id)}
-                  >
-                    <Plus className="h-4 w-4" /> Nova oportunidade
-                  </Button>
-                )}
+                    </form>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      className="mt-2 w-full justify-start text-muted-foreground"
+                      onClick={() => setNewIn(stage.id)}
+                    >
+                      <Plus className="h-4 w-4" /> Nova oportunidade
+                    </Button>
+                  )
+                ) : null}
               </div>
             );
           })}
