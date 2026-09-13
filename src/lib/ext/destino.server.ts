@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   answerText,
   evaluateRules,
+  SUBMISSION_ID_FIELD,
   type Destination,
   type DestinationRule,
   type CrmDecision,
@@ -94,23 +95,36 @@ export async function applyDestination(
   const extras = destination?.extra_fields ?? [];
   let details: { label: string; value: string }[] = [];
   if (extras.length > 0) {
-    const { data: fieldRows } = await supabase
-      .from("form_fields")
-      .select("id, label")
-      .in(
-        "id",
-        extras.map((e) => e.field_id),
+    const realIds = extras.filter((e) => e.field_id !== SUBMISSION_ID_FIELD).map((e) => e.field_id);
+    let labels = new Map<string, string>();
+    if (realIds.length > 0) {
+      const { data: fieldRows } = await supabase
+        .from("form_fields")
+        .select("id, label")
+        .in("id", realIds);
+      labels = new Map(
+        ((fieldRows ?? []) as { id: string; label: string }[]).map((f) => [f.id, f.label]),
       );
-    const labels = new Map(
-      ((fieldRows ?? []) as { id: string; label: string }[]).map((f) => [f.id, f.label]),
-    );
+    }
     details = extras
-      .map((extra) => ({
-        label: extra.label?.trim() || (labels.get(extra.field_id) ?? "Informação"),
-        value: answerText(args.values[extra.field_id]),
-      }))
+      .map((extra) => {
+        if (extra.field_id === SUBMISSION_ID_FIELD) {
+          return {
+            label: extra.label?.trim() || "ID do cadastro",
+            value: args.publicId,
+          };
+        }
+        return {
+          label: extra.label?.trim() || (labels.get(extra.field_id) ?? "Informação"),
+          value: answerText(args.values[extra.field_id]),
+        };
+      })
       .filter((d) => d.value !== "");
   }
+
+  // Título padrão da oportunidade: ID do cadastro + responsável.
+  const responsible = pick(destination?.name_field_id);
+  const cardName = responsible ? `${args.publicId} · ${responsible}` : args.publicId;
 
   // Já existe oportunidade para este cadastro? Atualiza os dados do cartão.
   const { data: existing } = await supabase
@@ -122,7 +136,7 @@ export async function applyDestination(
     await supabase
       .from("opportunities")
       .update({
-        name: pick(destination?.name_field_id) ?? args.publicId,
+        name: cardName,
         phone: pick(destination?.phone_field_id),
         email: pick(destination?.email_field_id),
         details,
@@ -165,7 +179,7 @@ export async function applyDestination(
     stage_id: decision.stage_id,
     school_id: args.schoolId,
     submission_id: args.submissionId,
-    name: pick(destination?.name_field_id) ?? args.publicId,
+    name: cardName,
     phone: pick(destination?.phone_field_id),
     email: pick(destination?.email_field_id),
     details,
