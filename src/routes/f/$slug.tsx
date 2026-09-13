@@ -131,7 +131,20 @@ function PublicFormPage() {
       }
     }
     setErrors(newErrors);
-    if (Object.keys(newErrors).length > 0) return;
+    const missingIds = Object.keys(newErrors);
+    if (missingIds.length > 0) {
+      const names = missingIds
+        .map((id) => fields.find((f) => f.id === id)?.label)
+        .filter(Boolean) as string[];
+      toast.error(
+        names.length === 1
+          ? `Preencha o campo: ${names[0]}`
+          : `Faltam ${names.length} campos: ${names.join(", ")}`,
+      );
+      const el = document.getElementById(`field-${missingIds[0]}`);
+      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -172,13 +185,22 @@ function PublicFormPage() {
 
           <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-5">
             {fields.map((field) => (
-              <FieldRenderer
+              <div
                 key={field.id}
-                field={field as FormField}
-                value={values[field.id] ?? (field.type === "multiple_choice" ? [] : "")}
-                error={errors[field.id]}
-                onChange={(v) => setValues((prev) => ({ ...prev, [field.id]: v }))}
-              />
+                id={`field-${field.id}`}
+                className={
+                  errors[field.id]
+                    ? "rounded-lg border border-destructive/50 bg-destructive/5 p-3"
+                    : undefined
+                }
+              >
+                <FieldRenderer
+                  field={field as FormField}
+                  value={values[field.id] ?? (field.type === "multiple_choice" ? [] : "")}
+                  error={errors[field.id]}
+                  onChange={(v) => setValues((prev) => ({ ...prev, [field.id]: v }))}
+                />
+              </div>
             ))}
             <Button type="submit" disabled={submitting} className="mt-2">
               {submitting ? "Enviando..." : "Enviar cadastro"}
