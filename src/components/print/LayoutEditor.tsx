@@ -14,6 +14,7 @@ import {
   listSubmissions,
 } from "@/lib/ext/cadastros.functions";
 import { BlockView } from "@/components/print/BlockView";
+import { DynamicPrintPage } from "@/components/print/DynamicPrintPage";
 import {
   BLOCK_LABELS,
   MM_PX,
@@ -838,6 +839,7 @@ function PreviewPage({
 }) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
+  const [overflow, setOverflow] = useState(false);
 
   useEffect(() => {
     const wrapper = wrapperRef.current;
@@ -857,6 +859,12 @@ function PreviewPage({
       <p className="mb-2 text-center text-xs text-muted-foreground">
         Página {pageNumber}
       </p>
+      {overflow && (
+        <div className="mb-3 border border-destructive bg-destructive/10 p-3 text-sm text-destructive">
+          O conteúdo desta página ultrapassa o limite da folha. Reorganize os
+          blocos antes de imprimir para evitar dados cortados.
+        </div>
+      )}
       <div
         className="mx-auto"
         style={{
@@ -864,32 +872,19 @@ function PreviewPage({
           height: size.h * MM_PX * scale,
         }}
       >
-        <div
-          className="relative origin-top-left bg-white shadow-lg"
+        <DynamicPrintPage
+          page={page}
+          ctx={ctx}
+          width={size.w}
+          height={size.h}
+          className={`origin-top-left bg-white shadow-lg ${
+            overflow ? "outline outline-2 outline-destructive" : ""
+          }`}
           style={{
-            width: size.w * MM_PX,
-            height: size.h * MM_PX,
-            color: "#000",
-            overflow: "hidden",
             transform: `scale(${scale})`,
           }}
-        >
-          {page.blocks.map((block) => (
-            <div
-              key={block.id}
-              style={{
-                position: "absolute",
-                left: `${block.x}mm`,
-                top: `${block.y}mm`,
-                width: `${block.w}mm`,
-                height: `${block.h}mm`,
-                overflow: "hidden",
-              }}
-            >
-              <BlockView block={block} ctx={ctx} preview={false} />
-            </div>
-          ))}
-        </div>
+          onStatusChange={(status) => setOverflow(status.overflow)}
+        />
       </div>
     </div>
   );

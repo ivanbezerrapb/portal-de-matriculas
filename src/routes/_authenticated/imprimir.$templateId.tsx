@@ -1,11 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { z } from "zod";
 import { getPrintData } from "@/lib/ext/impressao.functions";
 import type { FormField } from "@/lib/ext/model";
 import { formatValue } from "@/components/FieldRenderer";
-import { BlockView } from "@/components/print/BlockView";
+import { DynamicPrintPage } from "@/components/print/DynamicPrintPage";
 import {
   PAGE_MM,
   parseLayout,
@@ -25,6 +25,9 @@ function PrintPage() {
   const { ids } = Route.useSearch();
 
   const submissionIds = ids.split(",").filter(Boolean);
+  const [pageStatus, setPageStatus] = useState<
+    Record<string, { ready: boolean; overflow: boolean }>
+  >({});
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["print", templateId, ids],
@@ -34,13 +37,6 @@ function PrintPage() {
       }),
     enabled: submissionIds.length > 0,
   });
-
-  // Abre a janela de impressão automaticamente assim que os dados carregam
-  useEffect(() => {
-    if (!data || data.submissions.length === 0) return;
-    const timer = setTimeout(() => window.print(), 600);
-    return () => clearTimeout(timer);
-  }, [data]);
 
   if (isLoading) {
     return (
@@ -76,6 +72,34 @@ function PrintPage() {
   const layout = parseLayout(template.layout);
   const hasLayout = !!layout && layout.pages.some((p) => p.blocks.length > 0);
   const size = PAGE_MM[layout?.pageSize ?? (template.page_size as "A4" | "A5")];
+  const expectedPages = hasLayout && layout
+    ? submissions.length * layout.pages.length
+    : 0;
+  const statuses = Object.values(pageStatus);
+  const dynamicReady =
+    !hasLayout ||
+    (statuses.length === expectedPages && statuses.every((status) => status.ready));
+  const hasOverflow = statuses.some((status) => status.overflow);
+
+  useEffect(() => {
+    if (!data || data.submissions.length === 0 || !dynamicReady || hasOverflow) return;
+    const timer = setTimeout(() => window.print(), 300);
+    return () => clearTimeout(timer);
+  }, [data, dynamicReady, hasOverflow]);
+
+  const updatePageStatus = useCallback(
+    (key: string, status: { ready: boolean; overflow: boolean }) => {
+      setPageStatus((current) => {
+        const previous = current[key];
+        if (
+          previous?.ready === status.ready &&
+          previous.overflow === status.overflow
+        ) return current;
+        return { ...current, [key]: status };
+      });
+    },
+    [],
+  );
 
   const printCss = `
     @media print {
@@ -96,7 +120,7 @@ function PrintPage() {
       >
         ← Voltar
       </Link>
-      <Button onClick={() => window.print()}>
+      <Button onClick={() => window.print()} disabled={hasOverflow || !dynamicReady}>
         Imprimir {submissions.length} ficha{submissions.length > 1 ? "s" : ""}
       </Button>
     </div>
@@ -107,6 +131,11 @@ function PrintPage() {
       <div className="mx-auto w-fit">
         <style>{printCss}</style>
         {toolbar}
+        {hasOverflow && (
+          <div className="no-print mb-4 max-w-2xl border border-destructive bg-destructive/10 p-3 text-sm text-destructive">
+            Esta ficha possui conteúdo fora do limite da folha. Ajuste o modelo antes de imprimir para evitar dados cortados.
+          </div>
+        )}
         <div id="print-area">
           {submissions.map((sub) => {
             const ctx: PrintContext = {
@@ -117,35 +146,19 @@ function PrintPage() {
               formTitle: form.title,
               createdAt: sub.created_at,
             };
-            return layout.pages.map((page) => (
-              <div
+            return layout.pages.map((page) => {
+              const statusKey = `${sub.id}-${page.id}`;
+              return (
+              <DynamicPrintPage
                 key={`${sub.id}-${page.id}`}
+                page={page}
+                ctx={ctx}
+                width={size.w}
+                height={size.h}
                 className="print-page mx-auto mb-6 bg-white shadow-sm"
-                style={{
-                  position: "relative",
-                  width: `${size.w}mm`,
-                  height: `${size.h}mm`,
-                  overflow: "hidden",
-                  color: "#000",
-                }}
-              >
-                {page.blocks.map((b) => (
-                  <div
-                    key={b.id}
-                    style={{
-                      position: "absolute",
-                      left: `${b.x}mm`,
-                      top: `${b.y}mm`,
-                      width: `${b.w}mm`,
-                      height: `${b.h}mm`,
-                      overflow: "hidden",
-                    }}
-                  >
-                    <BlockView block={b} ctx={ctx} preview={false} />
-                  </div>
-                ))}
-              </div>
-            ));
+                onStatusChange={(status) => updatePageStatus(statusKey, status)}
+              />
+            );});
           })}
         </div>
       </div>
