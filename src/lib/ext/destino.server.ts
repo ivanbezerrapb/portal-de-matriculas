@@ -4,10 +4,12 @@ import {
   answerText,
   evaluateRules,
   SUBMISSION_ID_FIELD,
+  valueByFieldId,
   type Destination,
   type DestinationRule,
   type CrmDecision,
 } from "./destino";
+import { ADDRESS_PART_LABELS, parseAddressPartFieldId } from "./model";
 
 // Busca o destino configurado e as regras do formulário.
 export async function loadDestination(
@@ -87,7 +89,7 @@ export async function applyDestination(
 
   const pick = (fieldId: string | null | undefined): string | null => {
     if (!fieldId) return null;
-    const text = answerText(args.values[fieldId]);
+    const text = answerText(valueByFieldId(args.values, fieldId));
     return text.trim() || null;
   };
 
@@ -96,12 +98,14 @@ export async function applyDestination(
   let details: { label: string; value: string }[] = [];
   if (extras.length > 0) {
     const realIds = extras.filter((e) => e.field_id !== SUBMISSION_ID_FIELD).map((e) => e.field_id);
+    // Ids sintéticos ("<campo>.<parte>") apontam para partes de um campo Endereço.
+    const uuidIds = realIds.map((id) => parseAddressPartFieldId(id)?.fieldId ?? id);
     let labels = new Map<string, string>();
-    if (realIds.length > 0) {
+    if (uuidIds.length > 0) {
       const { data: fieldRows } = await supabase
         .from("form_fields")
         .select("id, label")
-        .in("id", realIds);
+        .in("id", uuidIds);
       labels = new Map(
         ((fieldRows ?? []) as { id: string; label: string }[]).map((f) => [f.id, f.label]),
       );
@@ -114,9 +118,12 @@ export async function applyDestination(
             value: args.publicId,
           };
         }
+        const syn = parseAddressPartFieldId(extra.field_id);
+        const baseLabel = labels.get(syn?.fieldId ?? extra.field_id) ?? "Informação";
+        const label = syn ? `${baseLabel} — ${ADDRESS_PART_LABELS[syn.part]}` : baseLabel;
         return {
-          label: extra.label?.trim() || (labels.get(extra.field_id) ?? "Informação"),
-          value: answerText(args.values[extra.field_id]),
+          label: extra.label?.trim() || label,
+          value: answerText(valueByFieldId(args.values, extra.field_id)),
         };
       })
       .filter((d) => d.value !== "");
