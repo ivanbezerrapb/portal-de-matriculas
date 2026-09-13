@@ -242,6 +242,11 @@ export type PrintContext = {
 export function sourceLabel(source: string, fields: FormField[]): string {
   const special = SPECIAL_SOURCES.find((s) => s.value === source);
   if (special) return special.label;
+  const syn = parseAddressPartFieldId(source);
+  if (syn) {
+    const parent = fields.find((f) => f.id === syn.fieldId)?.label ?? "Endereço";
+    return `${parent} — ${ADDRESS_PART_LABELS[syn.part]}`;
+  }
   return fields.find((f) => f.id === source)?.label ?? "Campo removido";
 }
 

@@ -9,7 +9,13 @@ import {
   updateSubmission,
 } from "@/lib/ext/cadastros.functions";
 import { listPrintTemplates } from "@/lib/ext/impressao.functions";
-import { isChildrenCountField, type FormField } from "@/lib/ext/model";
+import {
+  ADDRESS_PART_LABELS,
+  ADDRESS_PARTS,
+  isChildrenCountField,
+  parseAddress,
+  type FormField,
+} from "@/lib/ext/model";
 import { FieldRenderer, formatValue } from "@/components/FieldRenderer";
 import { Button, Card, Select, Spinner } from "@/components/ui";
 
@@ -232,7 +238,11 @@ function SubmissionDetailPage() {
                   {field.internal && " (interno)"}
                 </dt>
                 <dd className="mt-0.5 whitespace-pre-wrap text-sm text-foreground">
-                  {formatValue(field, valueMap.get(field.id) ?? "")}
+                  {field.type === "address" ? (
+                    <AddressPartsLines raw={valueMap.get(field.id) ?? ""} />
+                  ) : (
+                    formatValue(field, valueMap.get(field.id) ?? "")
+                  )}
                 </dd>
               </div>
             ))}
