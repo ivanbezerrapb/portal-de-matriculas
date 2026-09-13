@@ -45,19 +45,42 @@ const funnelInput = z.object({
   school_id: z.string().uuid(),
   name: z.string().min(2),
   description: z.string().optional().nullable(),
+  is_default: z.boolean().optional(),
 });
+
+// Garante um único funil padrão por escola.
+async function clearDefault(supabase: SupabaseClient, schoolId: string, keepId?: string) {
+  let query = supabase.from("funnels").update({ is_default: false }).eq("school_id", schoolId);
+  if (keepId) query = query.neq("id", keepId);
+  const { error } = await query;
+  if (error) throw new Error(error.message);
+}
+
+async function schoolHasFunnel(supabase: SupabaseClient, schoolId: string) {
+  const { data } = await supabase
+    .from("funnels")
+    .select("id")
+    .eq("school_id", schoolId)
+    .limit(1)
+    .maybeSingle();
+  return Boolean(data);
+}
 
 export const createFunnel = createServerFn({ method: "POST" })
   .middleware([requireAuth])
   .inputValidator((data) => funnelInput.parse(data))
   .handler(async ({ data, context }) => {
     await requireAdmin(context.supabase, context.userId);
+    const first = !(await schoolHasFunnel(context.supabase, data.school_id));
+    const isDefault = data.is_default || first;
+    if (isDefault) await clearDefault(context.supabase, data.school_id);
     const { data: created, error } = await context.supabase
       .from("funnels")
       .insert({
         school_id: data.school_id,
         name: data.name,
         description: data.description || null,
+        is_default: isDefault,
       })
       .select()
       .single();
@@ -79,12 +102,14 @@ export const updateFunnel = createServerFn({ method: "POST" })
   .inputValidator((data) => z.object({ id: z.string().uuid() }).merge(funnelInput).parse(data))
   .handler(async ({ data, context }) => {
     await requireAdmin(context.supabase, context.userId);
+    if (data.is_default) await clearDefault(context.supabase, data.school_id, data.id);
     const { error } = await context.supabase
       .from("funnels")
       .update({
         school_id: data.school_id,
         name: data.name,
         description: data.description || null,
+        ...(data.is_default === undefined ? {} : { is_default: data.is_default }),
       })
       .eq("id", data.id);
     if (error) throw new Error(error.message);
