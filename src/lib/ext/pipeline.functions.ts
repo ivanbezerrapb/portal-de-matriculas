@@ -47,9 +47,32 @@ export const listPipeline = createServerFn({ method: "GET" })
       .order(status === "open" ? "position" : "closed_at");
     if (oppError) throw new Error(oppError.message);
 
+    // Próxima atividade pendente de cada oportunidade.
+    const ids = ((opportunities ?? []) as { id: string }[]).map((o) => o.id);
+    const nextTasks: Record<string, { title: string; due_date: string | null }> = {};
+    if (ids.length > 0) {
+      const { data: tasks } = await context.supabase
+        .from("crm_tasks")
+        .select("opportunity_id, title, due_date")
+        .in("opportunity_id", ids)
+        .eq("done", false)
+        .order("due_date", { nullsFirst: false })
+        .order("created_at");
+      for (const t of (tasks ?? []) as {
+        opportunity_id: string;
+        title: string;
+        due_date: string | null;
+      }[]) {
+        if (!nextTasks[t.opportunity_id]) {
+          nextTasks[t.opportunity_id] = { title: t.title, due_date: t.due_date };
+        }
+      }
+    }
+
     return {
       stages: (stages ?? []) as FunnelStage[],
       opportunities: (opportunities ?? []) as OpportunityRow[],
+      nextTasks,
     };
   });
 
