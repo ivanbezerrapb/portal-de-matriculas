@@ -1,20 +1,26 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Plus, Trash2 } from "lucide-react";
 import { listFunnels } from "@/lib/ext/funis.functions";
 import {
+  closeOpportunity,
   createOpportunity,
   deleteOpportunity,
   listPipeline,
   moveOpportunity,
+  reopenOpportunity,
 } from "@/lib/ext/pipeline.functions";
+import { listCloseReasons } from "@/lib/ext/motivos.functions";
+import { createTask, deleteTask, listTasks, setTaskDone } from "@/lib/ext/tarefas.functions";
+import { getMyPermissions } from "@/lib/ext/cadastros.functions";
 import { Button, Card, EmptyState, Input, Label, Select, Spinner, Textarea } from "@/components/ui";
 
 export const Route = createFileRoute("/_authenticated/crm/pipeline")({
   validateSearch: (search: Record<string, unknown>) => ({
     funil: typeof search["funil"] === "string" ? (search["funil"] as string) : undefined,
+    card: typeof search["card"] === "string" ? (search["card"] as string) : undefined,
   }),
   head: () => ({
     meta: [
