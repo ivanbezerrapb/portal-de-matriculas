@@ -124,6 +124,7 @@ function FormConfigPage() {
           formId={formId}
           fields={data.fields as FormField[]}
           templates={data.templates as PrintTemplate[]}
+          schoolName={school?.name ?? "Escola"}
         />
       )}
       {tab === "publicar" && (
@@ -432,10 +433,12 @@ function TemplatesTab({
   formId,
   fields,
   templates,
+  schoolName,
 }: {
   formId: string;
   fields: FormField[];
   templates: PrintTemplate[];
+  schoolName: string;
 }) {
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState<
@@ -665,11 +668,7 @@ function TemplatesTab({
               onChange={(l) => setEditing({ ...editing, layout: l })}
               fields={fields}
               formTitle={editing.title || "Formulário"}
-              schoolName={
-                (templates[0] as PrintTemplate | undefined)?.form_id
-                  ? "Escola"
-                  : "Escola"
-              }
+              schoolName={schoolName}
               formId={formId}
             />
           </div>
