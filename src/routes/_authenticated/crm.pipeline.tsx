@@ -45,6 +45,16 @@ function formatDate(value: string) {
   return new Date(value).toLocaleDateString("pt-BR");
 }
 
+// Cor da data da atividade: no prazo cinza, hoje verde, vencida vermelha.
+function activityColor(due: string | null): string {
+  if (!due) return "text-muted-foreground";
+  const today = new Date();
+  const hoje = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+  if (due === hoje) return "text-emerald-600";
+  if (due < hoje) return "text-destructive";
+  return "text-muted-foreground";
+}
+
 function PipelinePage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
