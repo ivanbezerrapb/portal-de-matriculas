@@ -42,6 +42,9 @@ const BLOCK_ORDER: PrintBlock["type"][] = [
   "children",
 ];
 
+const MIN_ZOOM = 0.25;
+const MAX_ZOOM = 4;
+
 export function LayoutEditor({
   layout,
   onChange,
@@ -58,12 +61,18 @@ export function LayoutEditor({
   formId: string;
 }) {
   const [pageIdx, setPageIdx] = useState(0);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [zoom, setZoom] = useState<number | "fit">("fit");
   const [fitZoom, setFitZoom] = useState(0.75);
   const [snap, setSnap] = useState(true);
   const [fullscreen, setFullscreen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [marquee, setMarquee] = useState<{
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+  } | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
 
@@ -71,6 +80,17 @@ export function LayoutEditor({
   const page = layout.pages[Math.min(pageIdx, layout.pages.length - 1)];
   const activeZoom = zoom === "fit" ? fitZoom : zoom;
   const scale = MM_PX * activeZoom;
+
+  const layoutRef = useRef(layout);
+  layoutRef.current = layout;
+  const pageIdRef = useRef(page?.id);
+  pageIdRef.current = page?.id;
+  const selectedRef = useRef(selectedIds);
+  selectedRef.current = selectedIds;
+  const scaleRef = useRef(scale);
+  scaleRef.current = scale;
+  const snapRef = useRef(snap);
+  snapRef.current = snap;
 
   useEffect(() => {
     const viewport = viewportRef.current;
@@ -114,16 +134,19 @@ export function LayoutEditor({
     createdAt: new Date().toISOString(),
   };
 
-  const selected = page?.blocks.find((b) => b.id === selectedId) ?? null;
+  const selectedBlocks = (page?.blocks ?? []).filter((b) =>
+    selectedIds.includes(b.id),
+  );
+  const selected = selectedBlocks.length === 1 ? selectedBlocks[0] : null;
 
   function setPages(pages: PrintLayout["pages"]) {
-    onChange({ ...layout, pages });
+    onChange({ ...layoutRef.current, pages });
   }
 
   function updateBlock(id: string, patch: Partial<PrintBlock>) {
     if (!page) return;
     setPages(
-      layout.pages.map((p) =>
+      layoutRef.current.pages.map((p) =>
         p.id === page.id
           ? {
               ...p,
@@ -134,6 +157,24 @@ export function LayoutEditor({
           : p,
       ),
     );
+  }
+
+  function applyPositions(map: Record<string, { x: number; y: number }>) {
+    const pid = pageIdRef.current;
+    if (!pid) return;
+    onChange({
+      ...layoutRef.current,
+      pages: layoutRef.current.pages.map((p) =>
+        p.id === pid
+          ? {
+              ...p,
+              blocks: p.blocks.map((b) =>
+                map[b.id] ? ({ ...b, ...map[b.id] } as PrintBlock) : b,
+              ),
+            }
+          : p,
+      ),
+    });
   }
 
   function addBlock(type: PrintBlock["type"]) {
@@ -148,36 +189,121 @@ export function LayoutEditor({
         p.id === page.id ? { ...p, blocks: [...p.blocks, b] } : p,
       ),
     );
-    setSelectedId(b.id);
+    setSelectedIds([b.id]);
   }
 
-  function removeBlock(id: string) {
-    if (!page) return;
+  function removeBlocks(ids: string[]) {
+    if (!page || ids.length === 0) return;
     setPages(
-      layout.pages.map((p) =>
+      layoutRef.current.pages.map((p) =>
         p.id === page.id
-          ? { ...p, blocks: p.blocks.filter((b) => b.id !== id) }
+          ? { ...p, blocks: p.blocks.filter((b) => !ids.includes(b.id)) }
           : p,
       ),
     );
-    setSelectedId(null);
+    setSelectedIds([]);
   }
 
-  function duplicateBlock(id: string) {
-    if (!page) return;
-    const b = page.blocks.find((x) => x.id === id);
-    if (!b) return;
-    const copy = { ...b, id: uid(), x: b.x + 5, y: b.y + 5 } as PrintBlock;
+  function duplicateBlocks(ids: string[]) {
+    if (!page || ids.length === 0) return;
+    const copies = page.blocks
+      .filter((b) => ids.includes(b.id))
+      .map((b) => ({ ...b, id: uid(), x: b.x + 5, y: b.y + 5 }) as PrintBlock);
     setPages(
       layout.pages.map((p) =>
-        p.id === page.id ? { ...p, blocks: [...p.blocks, copy] } : p,
+        p.id === page.id ? { ...p, blocks: [...p.blocks, ...copies] } : p,
       ),
     );
-    setSelectedId(copy.id);
+    setSelectedIds(copies.map((c) => c.id));
   }
 
   function round(v: number) {
-    return snap ? Math.round(v) : Math.round(v * 10) / 10;
+    return snapRef.current ? Math.round(v) : Math.round(v * 10) / 10;
+  }
+
+  // Teclado: apagar e mover a seleção.
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const ids = selectedRef.current;
+      if (ids.length === 0) return;
+      const target = event.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.tagName === "SELECT" ||
+          target.isContentEditable)
+      )
+        return;
+
+      if (event.key === "Delete" || event.key === "Backspace") {
+        event.preventDefault();
+        removeBlocks(ids);
+        return;
+      }
+      const step = event.shiftKey ? 5 : 1;
+      const deltas: Record<string, [number, number]> = {
+        ArrowLeft: [-step, 0],
+        ArrowRight: [step, 0],
+        ArrowUp: [0, -step],
+        ArrowDown: [0, step],
+      };
+      const d = deltas[event.key];
+      if (!d) return;
+      event.preventDefault();
+      const pid = pageIdRef.current;
+      const current = layoutRef.current.pages.find((p) => p.id === pid);
+      if (!current) return;
+      const map: Record<string, { x: number; y: number }> = {};
+      current.blocks
+        .filter((b) => ids.includes(b.id))
+        .forEach((b) => {
+          map[b.id] = {
+            x: Math.max(0, b.x + d[0]),
+            y: Math.max(0, b.y + d[1]),
+          };
+        });
+      applyPositions(map);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Ctrl + roda do mouse: zoom ancorado no cursor.
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+    const onWheel = (event: WheelEvent) => {
+      if (!event.ctrlKey && !event.metaKey) return;
+      event.preventDefault();
+      const dy =
+        event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? 100 : 1);
+      const currentZoom = scaleRef.current / MM_PX;
+      const next = Math.min(
+        MAX_ZOOM,
+        Math.max(MIN_ZOOM, currentZoom * Math.exp(-dy * 0.0015)),
+      );
+      if (Math.abs(next - currentZoom) < 0.001) return;
+      const rect = viewport.getBoundingClientRect();
+      const px = event.clientX - rect.left + viewport.scrollLeft;
+      const py = event.clientY - rect.top + viewport.scrollTop;
+      const k = next / currentZoom;
+      setZoom(next);
+      requestAnimationFrame(() => {
+        viewport.scrollLeft += px * (k - 1);
+        viewport.scrollTop += py * (k - 1);
+      });
+    };
+    viewport.addEventListener("wheel", onWheel, { passive: false });
+    return () => viewport.removeEventListener("wheel", onWheel);
+  }, []);
+
+  function changeZoom(delta: number) {
+    const current = zoom === "fit" ? fitZoom : zoom;
+    setZoom(
+      Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, Math.round((current + delta) * 100) / 100)),
+    );
   }
 
   function startDrag(
@@ -187,29 +313,100 @@ export function LayoutEditor({
   ) {
     e.preventDefault();
     e.stopPropagation();
-    setSelectedId(block.id);
+
+    const multi = e.ctrlKey || e.metaKey || e.shiftKey;
+    let ids = selectedRef.current;
+    if (multi) {
+      ids = ids.includes(block.id)
+        ? ids.filter((id) => id !== block.id)
+        : [...ids, block.id];
+      setSelectedIds(ids);
+      if (!ids.includes(block.id)) return;
+    } else if (!ids.includes(block.id)) {
+      ids = [block.id];
+      setSelectedIds(ids);
+    }
+
     const startX = e.clientX;
     const startY = e.clientY;
-    const orig = { x: block.x, y: block.y, w: block.w, h: block.h };
+    const blocks = (
+      layoutRef.current.pages.find((p) => p.id === pageIdRef.current)?.blocks ??
+      []
+    ).filter((b) => (mode === "move" ? ids.includes(b.id) : b.id === block.id));
+    const origins = blocks.map((b) => ({ id: b.id, x: b.x, y: b.y, w: b.w, h: b.h }));
 
     function onMove(ev: PointerEvent) {
-      const dx = (ev.clientX - startX) / scale;
-      const dy = (ev.clientY - startY) / scale;
+      const dx = (ev.clientX - startX) / scaleRef.current;
+      const dy = (ev.clientY - startY) / scaleRef.current;
       if (mode === "move") {
-        updateBlock(block.id, {
-          x: Math.max(0, round(orig.x + dx)),
-          y: Math.max(0, round(orig.y + dy)),
+        const map: Record<string, { x: number; y: number }> = {};
+        origins.forEach((o) => {
+          map[o.id] = {
+            x: Math.max(0, round(o.x + dx)),
+            y: Math.max(0, round(o.y + dy)),
+          };
         });
+        applyPositions(map);
       } else {
-        updateBlock(block.id, {
-          w: Math.max(5, round(orig.w + dx)),
-          h: Math.max(4, round(orig.h + dy)),
+        const o = origins[0];
+        if (!o) return;
+        updateBlock(o.id, {
+          w: Math.max(5, round(o.w + dx)),
+          h: Math.max(4, round(o.h + dy)),
         });
       }
     }
     function onUp() {
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
+    }
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  }
+
+  function startMarquee(e: React.PointerEvent) {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    e.preventDefault();
+    const rect = canvas.getBoundingClientRect();
+    const startX = (e.clientX - rect.left) / scale;
+    const startY = (e.clientY - rect.top) / scale;
+    const additive = e.ctrlKey || e.metaKey || e.shiftKey;
+    const base = additive ? selectedRef.current : [];
+    if (!additive) setSelectedIds([]);
+    let moved = false;
+
+    function onMove(ev: PointerEvent) {
+      const cx = (ev.clientX - rect.left) / scaleRef.current;
+      const cy = (ev.clientY - rect.top) / scaleRef.current;
+      const box = {
+        x: Math.min(startX, cx),
+        y: Math.min(startY, cy),
+        w: Math.abs(cx - startX),
+        h: Math.abs(cy - startY),
+      };
+      if (box.w < 1 && box.h < 1) return;
+      moved = true;
+      setMarquee(box);
+      const blocks =
+        layoutRef.current.pages.find((p) => p.id === pageIdRef.current)
+          ?.blocks ?? [];
+      const hit = blocks
+        .filter(
+          (b) =>
+            b.x < box.x + box.w &&
+            b.x + b.w > box.x &&
+            b.y < box.y + box.h &&
+            b.y + b.h > box.y,
+        )
+        .map((b) => b.id);
+      setSelectedIds([...new Set([...base, ...hit])]);
+    }
+    function onUp() {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      setMarquee(null);
+      if (!moved && !additive) setSelectedIds([]);
     }
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
@@ -270,7 +467,7 @@ export function LayoutEditor({
                 key={p.id}
                 onClick={() => {
                   setPageIdx(i);
-                  setSelectedId(null);
+                  setSelectedIds([]);
                 }}
                 className={`rounded-md border px-2.5 py-1 text-xs ${
                   i === pageIdx
@@ -316,20 +513,52 @@ export function LayoutEditor({
             Alinhar à grade
           </label>
 
-          <Select
-            className="w-32"
-            value={String(zoom)}
-            onChange={(e) =>
-              setZoom(
-                e.target.value === "fit" ? "fit" : Number(e.target.value),
-              )
-            }
-          >
-            <option value="fit">Ajustar à tela</option>
-            <option value="0.5">50%</option>
-            <option value="0.75">75%</option>
-            <option value="1">100%</option>
-          </Select>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              className="rounded-md border border-border px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
+              onClick={() => changeZoom(-0.1)}
+              title="Afastar"
+            >
+              <ZoomOut className="h-4 w-4" />
+            </button>
+            <span className="w-12 text-center text-xs tabular-nums text-muted-foreground">
+              {Math.round(activeZoom * 100)}%
+            </span>
+            <button
+              type="button"
+              className="rounded-md border border-border px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
+              onClick={() => changeZoom(0.1)}
+              title="Aproximar"
+            >
+              <ZoomIn className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              className={`rounded-md border px-2 py-1 text-xs ${
+                zoom === "fit"
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border text-muted-foreground"
+              }`}
+              onClick={() => setZoom("fit")}
+            >
+              Ajustar à tela
+            </button>
+          </div>
+
+          {selectedIds.length > 1 && (
+            <div className="flex items-center gap-2 text-xs">
+              <span className="text-muted-foreground">
+                {selectedIds.length} blocos selecionados
+              </span>
+              <button
+                className="rounded-md px-2 py-1 text-destructive"
+                onClick={() => removeBlocks(selectedIds)}
+              >
+                Excluir selecionados ({selectedIds.length})
+              </button>
+            </div>
+          )}
         </div>
 
         <div
@@ -340,9 +569,10 @@ export function LayoutEditor({
         >
           <div
             ref={canvasRef}
-            onPointerDown={() => setSelectedId(null)}
+            onPointerDown={startMarquee}
             style={{
               position: "relative",
+              flex: "none",
               width: size.w * scale,
               height: size.h * scale,
               background: "#fff",
@@ -372,16 +602,18 @@ export function LayoutEditor({
                     top: `${b.y}mm`,
                     width: `${b.w}mm`,
                     height: `${b.h}mm`,
-                    outline:
-                      selectedId === b.id
-                        ? "1.5px solid var(--color-primary)"
-                        : "1px dashed rgba(0,0,0,.18)",
+                    outline: selectedIds.includes(b.id)
+                      ? "1.5px solid var(--color-primary)"
+                      : "1px dashed rgba(0,0,0,.18)",
+                    background: selectedIds.includes(b.id)
+                      ? "rgba(37,99,235,.06)"
+                      : undefined,
                     cursor: "move",
                     overflow: "hidden",
                   }}
                 >
                   <BlockView block={b} ctx={ctx} preview />
-                  {selectedId === b.id && (
+                  {selected?.id === b.id && (
                     <div
                       onPointerDown={(e) => startDrag(e, b, "resize")}
                       style={{
@@ -398,6 +630,20 @@ export function LayoutEditor({
                   )}
                 </div>
               ))}
+              {marquee && (
+                <div
+                  style={{
+                    position: "absolute",
+                    left: `${marquee.x}mm`,
+                    top: `${marquee.y}mm`,
+                    width: `${marquee.w}mm`,
+                    height: `${marquee.h}mm`,
+                    border: "1px solid var(--color-primary)",
+                    background: "rgba(37,99,235,.10)",
+                    pointerEvents: "none",
+                  }}
+                />
+              )}
             </div>
           </div>
         </div>
@@ -405,20 +651,46 @@ export function LayoutEditor({
 
       {/* Inspetor */}
       <div className="w-full shrink-0 lg:w-80">
-        <div className="max-h-full overflow-y-auto rounded-xl border border-border bg-card p-4">
-          {!selected ? (
+        <div className="rounded-xl border border-border bg-card p-4 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto">
+          {selectedBlocks.length > 1 ? (
+            <div>
+              <p className="font-medium text-foreground">
+                {selectedBlocks.length} blocos selecionados
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Arraste qualquer um deles para mover todos juntos, ou use as
+                setas do teclado.
+              </p>
+              <div className="mt-3 flex gap-2">
+                <Button
+                  variant="outline"
+                  className="px-2.5 py-1 text-xs"
+                  onClick={() => duplicateBlocks(selectedIds)}
+                >
+                  Duplicar
+                </Button>
+                <Button
+                  variant="danger"
+                  className="px-2.5 py-1 text-xs"
+                  onClick={() => removeBlocks(selectedIds)}
+                >
+                  Excluir
+                </Button>
+              </div>
+            </div>
+          ) : !selected ? (
             <p className="text-sm text-muted-foreground">
               Clique em um bloco para editar suas propriedades, ou adicione um
-              novo bloco acima. Arraste para posicionar e use o quadradinho do
-              canto para redimensionar.
+              novo bloco acima. Segure Ctrl para selecionar vários, ou arraste
+              sobre a folha vazia para selecionar por área.
             </p>
           ) : (
             <Inspector
               block={selected}
               fields={fields}
               onChange={(patch) => updateBlock(selected.id, patch)}
-              onDuplicate={() => duplicateBlock(selected.id)}
-              onRemove={() => removeBlock(selected.id)}
+              onDuplicate={() => duplicateBlocks([selected.id])}
+              onRemove={() => removeBlocks([selected.id])}
             />
           )}
         </div>
