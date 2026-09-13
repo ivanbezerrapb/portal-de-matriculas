@@ -310,6 +310,43 @@ function SubmissionsPage() {
           </table>
         </div>
       )}
+
+      {picker && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          onClick={() => setPicker(null)}
+        >
+          <div
+            className="w-full max-w-sm rounded-xl border border-border bg-card p-5 shadow-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="font-display text-lg font-semibold text-foreground">
+              Escolha o modelo de impressão
+            </h2>
+            <div className="mt-4 flex flex-col gap-2">
+              {(allTemplates ?? [])
+                .filter((t) => t.form_id === picker.formId)
+                .map((t) => (
+                  <Button
+                    key={t.id}
+                    variant="outline"
+                    className="justify-start"
+                    onClick={() => openPrint(t.id, picker.submissionId)}
+                  >
+                    {t.name}
+                  </Button>
+                ))}
+            </div>
+            <Button
+              variant="ghost"
+              className="mt-4"
+              onClick={() => setPicker(null)}
+            >
+              Cancelar
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
