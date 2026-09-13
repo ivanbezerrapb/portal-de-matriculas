@@ -18,7 +18,7 @@ export function Button({
 }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: ButtonVariant }) {
   const styles: Record<ButtonVariant, string> = {
     primary:
-      "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm",
+      "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm shadow-primary/15",
     secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
     outline: "border border-input bg-card hover:bg-accent text-foreground",
     danger:
@@ -28,7 +28,7 @@ export function Button({
   return (
     <button
       className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+        "inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
         styles[variant],
         className,
       )}
@@ -45,7 +45,7 @@ export const Input = forwardRef<
     <input
       ref={ref}
       className={cn(
-        "w-full rounded-md border border-input bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring",
+        "min-h-11 w-full rounded-lg border border-input bg-card px-3 py-2 text-sm text-foreground shadow-xs placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15",
         className,
       )}
       {...props}
@@ -61,7 +61,7 @@ export const Textarea = forwardRef<
     <textarea
       ref={ref}
       className={cn(
-        "w-full rounded-md border border-input bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring",
+        "w-full rounded-lg border border-input bg-card px-3 py-2 text-sm text-foreground shadow-xs placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15",
         className,
       )}
       {...props}
@@ -77,7 +77,7 @@ export const Select = forwardRef<
     <select
       ref={ref}
       className={cn(
-        "w-full rounded-md border border-input bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring",
+        "min-h-11 w-full rounded-lg border border-input bg-card px-3 py-2 text-sm text-foreground shadow-xs focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15",
         className,
       )}
       {...props}
@@ -91,7 +91,7 @@ export function Label({
 }: LabelHTMLAttributes<HTMLLabelElement>) {
   return (
     <label
-      className={cn("mb-1 block text-sm font-medium text-foreground", className)}
+      className={cn("mb-1.5 block text-sm font-semibold text-foreground", className)}
       {...props}
     />
   );
@@ -107,7 +107,7 @@ export function Card({
   return (
     <div
       className={cn(
-        "rounded-xl border border-border bg-card p-5 shadow-sm",
+        "rounded-lg border border-border bg-card p-5 shadow-[0_10px_30px_-24px_oklch(0.25_0.08_287_/_0.35)]",
         className,
       )}
     >
@@ -132,7 +132,7 @@ export function Badge({
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium",
+        "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold",
         colors[color],
       )}
     >
@@ -162,7 +162,7 @@ export function EmptyState({
   action?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-14 text-center">
+    <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border bg-card/50 py-14 text-center">
       <p className="font-medium text-foreground">{title}</p>
       {description && (
         <p className="mt-1 text-sm text-muted-foreground">{description}</p>
