@@ -28,6 +28,7 @@ import {
 } from "@/lib/ext/destino.functions";
 import {
   CONDITION_OP_LABELS,
+  SUBMISSION_ID_FIELD,
   type ConditionOp,
   type DestinationCondition,
 } from "@/lib/ext/destino";
@@ -802,6 +803,10 @@ function DestinationTab({ formId, schoolId }: { formId: string; schoolId: string
                   }
                 >
                   <option value="">Campo...</option>
+                  {(extra.field_id === SUBMISSION_ID_FIELD ||
+                    !extras.some((x) => x.field_id === SUBMISSION_ID_FIELD)) && (
+                    <option value={SUBMISSION_ID_FIELD}>ID do cadastro</option>
+                  )}
                   {fields
                     .filter(
                       (f) => f.id === extra.field_id || !extras.some((x) => x.field_id === f.id),
