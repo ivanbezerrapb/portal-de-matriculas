@@ -20,6 +20,17 @@ import {
   type PrintTemplate,
 } from "@/lib/ext/model";
 import { Badge, Button, Card, Input, Label, Select, Spinner, Textarea } from "@/components/ui";
+import {
+  getDestination,
+  reprocessSubmissions,
+  saveDestination,
+  saveRules,
+} from "@/lib/ext/destino.functions";
+import {
+  CONDITION_OP_LABELS,
+  type ConditionOp,
+  type DestinationCondition,
+} from "@/lib/ext/destino";
 
 export const Route = createFileRoute("/_authenticated/formularios_/$formId")({
   head: () => ({
@@ -61,7 +72,7 @@ function FormConfigPage() {
     queryKey: ["form", formId],
     queryFn: () => getForm({ data: { id: formId } }),
   });
-  const [tab, setTab] = useState<"campos" | "impressao" | "publicar">("campos");
+  const [tab, setTab] = useState<"campos" | "impressao" | "publicar" | "destino">("campos");
 
   if (isLoading || !data) {
     return (
@@ -92,6 +103,7 @@ function FormConfigPage() {
             ["campos", "Campos"],
             ["impressao", "Modelos de impressão"],
             ["publicar", "Publicar"],
+            ["destino", "Destino"],
           ] as const
         ).map(([key, label]) => (
           <button
@@ -118,6 +130,9 @@ function FormConfigPage() {
           form={data.form}
           onChanged={() => queryClient.invalidateQueries({ queryKey: ["form", formId] })}
         />
+      )}
+      {tab === "destino" && (
+        <DestinationTab formId={formId} schoolId={data.form.school_id as string} />
       )}
     </div>
   );
@@ -591,6 +606,414 @@ function PublishTab({
           )}
         </div>
       </Card>
+    </div>
+  );
+}
+
+// ---------- Aba Destino ----------
+
+type RuleDraft = {
+  label: string;
+  send: boolean;
+  funnel_id: string;
+  stage_id: string;
+  conditions: DestinationCondition[];
+};
+
+const OPS = Object.keys(CONDITION_OP_LABELS) as ConditionOp[];
+
+function DestinationTab({ formId, schoolId }: { formId: string; schoolId: string }) {
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ["destination", formId],
+    queryFn: () => getDestination({ data: { form_id: formId } }),
+  });
+
+  const [nameField, setNameField] = useState<string>("");
+  const [phoneField, setPhoneField] = useState<string>("");
+  const [emailField, setEmailField] = useState<string>("");
+  const [defaultSend, setDefaultSend] = useState(true);
+  const [defaultFunnel, setDefaultFunnel] = useState<string>("");
+  const [defaultStage, setDefaultStage] = useState<string>("");
+  const [rules, setRules] = useState<RuleDraft[]>([]);
+  const [loaded, setLoaded] = useState(false);
+
+  if (data && !loaded) {
+    const d = data.destination;
+    setNameField(d?.name_field_id ?? "");
+    setPhoneField(d?.phone_field_id ?? "");
+    setEmailField(d?.email_field_id ?? "");
+    setDefaultSend(d?.default_send ?? true);
+    setDefaultFunnel(d?.default_funnel_id ?? "");
+    setDefaultStage(d?.default_stage_id ?? "");
+    setRules(
+      data.rules.map((r) => ({
+        label: r.label ?? "",
+        send: r.send,
+        funnel_id: r.funnel_id ?? "",
+        stage_id: r.stage_id ?? "",
+        conditions: r.conditions ?? [],
+      })),
+    );
+    setLoaded(true);
+  }
+
+  const saveMut = useMutation({
+    mutationFn: async () => {
+      await saveDestination({
+        data: {
+          form_id: formId,
+          name_field_id: nameField || null,
+          phone_field_id: phoneField || null,
+          email_field_id: emailField || null,
+          default_send: defaultSend,
+          default_funnel_id: defaultFunnel || null,
+          default_stage_id: defaultStage || null,
+        },
+      });
+      await saveRules({
+        data: {
+          form_id: formId,
+          rules: rules.map((r) => ({
+            label: r.label || null,
+            send: r.send,
+            funnel_id: r.funnel_id || null,
+            stage_id: r.stage_id || null,
+            conditions: r.conditions,
+          })),
+        },
+      });
+    },
+    onSuccess: () => {
+      toast.success("Destino salvo.");
+      refetch();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const reprocessMut = useMutation({
+    mutationFn: () => reprocessSubmissions({ data: { form_id: formId } }),
+    onSuccess: (r) =>
+      toast.success(
+        `${r.total} cadastros revistos: ${r.sent} no CRM, ${r.blocked} bloqueados, ${r.skipped} sem destino.`,
+      ),
+    onError: (e) => toast.error(e.message),
+  });
+
+  if (isLoading || !data) {
+    return (
+      <div className="mt-10 flex justify-center">
+        <Spinner />
+      </div>
+    );
+  }
+
+  const fields = data.fields.filter((f) => !f.internal);
+  const funnels = data.funnels.filter((f) => f.school_id === schoolId);
+  const stagesOf = (funnelId: string) => data.stages.filter((s) => s.funnel_id === funnelId);
+
+  const updateRule = (index: number, patch: Partial<RuleDraft>) =>
+    setRules((prev) => prev.map((r, i) => (i === index ? { ...r, ...patch } : r)));
+
+  const move = (index: number, delta: number) => {
+    const target = index + delta;
+    if (target < 0 || target >= rules.length) return;
+    const next = [...rules];
+    const a = next[index]!;
+    const b = next[target]!;
+    next[index] = b;
+    next[target] = a;
+    setRules(next);
+  };
+
+  return (
+    <div className="mt-6 flex flex-col gap-4">
+      <Card>
+        <h2 className="font-semibold text-foreground">Dados do cartão no CRM</h2>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Escolha de quais respostas saem o nome, o telefone e o e-mail da oportunidade.
+        </p>
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          {(
+            [
+              ["Nome", nameField, setNameField],
+              ["Telefone", phoneField, setPhoneField],
+              ["E-mail", emailField, setEmailField],
+            ] as const
+          ).map(([label, value, setter]) => (
+            <div key={label}>
+              <Label>{label}</Label>
+              <Select value={value} onChange={(e) => setter(e.target.value)}>
+                <option value="">Não usar</option>
+                {fields.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {f.label}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      <Card>
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="font-semibold text-foreground">Regras</h2>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Vale a primeira regra cujas condições forem todas atendidas.
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() =>
+              setRules((prev) => [
+                ...prev,
+                { label: "", send: true, funnel_id: "", stage_id: "", conditions: [] },
+              ])
+            }
+          >
+            Adicionar regra
+          </Button>
+        </div>
+
+        {rules.length === 0 ? (
+          <p className="mt-4 text-sm text-muted-foreground">
+            Nenhuma regra. Todos os cadastros seguem o destino padrão abaixo.
+          </p>
+        ) : (
+          <div className="mt-4 flex flex-col gap-4">
+            {rules.map((rule, index) => (
+              <div key={index} className="rounded-lg border border-border p-4">
+                <div className="flex flex-wrap items-end gap-3">
+                  <div className="min-w-48 flex-1">
+                    <Label>Nome da regra</Label>
+                    <Input
+                      value={rule.label}
+                      placeholder={`Regra ${index + 1}`}
+                      onChange={(e) => updateRule(index, { label: e.target.value })}
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button type="button" variant="ghost" onClick={() => move(index, -1)}>
+                      ↑
+                    </Button>
+                    <Button type="button" variant="ghost" onClick={() => move(index, 1)}>
+                      ↓
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => setRules((prev) => prev.filter((_, i) => i !== index))}
+                    >
+                      Remover
+                    </Button>
+                  </div>
+                </div>
+
+                <p className="mt-4 text-xs font-medium text-muted-foreground">Condições</p>
+                <div className="mt-2 flex flex-col gap-2">
+                  {rule.conditions.map((cond, ci) => (
+                    <div key={ci} className="flex flex-wrap items-center gap-2">
+                      <Select
+                        className="max-w-56"
+                        value={cond.field_id}
+                        onChange={(e) =>
+                          updateRule(index, {
+                            conditions: rule.conditions.map((c, i) =>
+                              i === ci ? { ...c, field_id: e.target.value } : c,
+                            ),
+                          })
+                        }
+                      >
+                        <option value="">Campo...</option>
+                        {fields.map((f) => (
+                          <option key={f.id} value={f.id}>
+                            {f.label}
+                          </option>
+                        ))}
+                      </Select>
+                      <Select
+                        className="max-w-40"
+                        value={cond.op}
+                        onChange={(e) =>
+                          updateRule(index, {
+                            conditions: rule.conditions.map((c, i) =>
+                              i === ci ? { ...c, op: e.target.value as ConditionOp } : c,
+                            ),
+                          })
+                        }
+                      >
+                        {OPS.map((op) => (
+                          <option key={op} value={op}>
+                            {CONDITION_OP_LABELS[op]}
+                          </option>
+                        ))}
+                      </Select>
+                      {cond.op !== "empty" && cond.op !== "not_empty" ? (
+                        <Input
+                          className="max-w-56"
+                          value={cond.value}
+                          placeholder={cond.op === "in" ? "Opções separadas por vírgula" : "Valor"}
+                          onChange={(e) =>
+                            updateRule(index, {
+                              conditions: rule.conditions.map((c, i) =>
+                                i === ci ? { ...c, value: e.target.value } : c,
+                              ),
+                            })
+                          }
+                        />
+                      ) : null}
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() =>
+                          updateRule(index, {
+                            conditions: rule.conditions.filter((_, i) => i !== ci),
+                          })
+                        }
+                      >
+                        ✕
+                      </Button>
+                    </div>
+                  ))}
+                  <div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() =>
+                        updateRule(index, {
+                          conditions: [
+                            ...rule.conditions,
+                            { field_id: "", op: "eq", value: "" } as DestinationCondition,
+                          ],
+                        })
+                      }
+                    >
+                      Adicionar condição
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="mt-4 flex flex-wrap items-end gap-3">
+                  <div>
+                    <Label>Ação</Label>
+                    <Select
+                      value={rule.send ? "sim" : "nao"}
+                      onChange={(e) => updateRule(index, { send: e.target.value === "sim" })}
+                    >
+                      <option value="sim">Enviar ao CRM</option>
+                      <option value="nao">Não enviar</option>
+                    </Select>
+                  </div>
+                  {rule.send ? (
+                    <>
+                      <div className="min-w-44 flex-1">
+                        <Label>Funil</Label>
+                        <Select
+                          value={rule.funnel_id}
+                          onChange={(e) =>
+                            updateRule(index, { funnel_id: e.target.value, stage_id: "" })
+                          }
+                        >
+                          <option value="">Selecione...</option>
+                          {funnels.map((f) => (
+                            <option key={f.id} value={f.id}>
+                              {f.name}
+                            </option>
+                          ))}
+                        </Select>
+                      </div>
+                      <div className="min-w-44 flex-1">
+                        <Label>Etapa</Label>
+                        <Select
+                          value={rule.stage_id}
+                          onChange={(e) => updateRule(index, { stage_id: e.target.value })}
+                        >
+                          <option value="">Selecione...</option>
+                          {stagesOf(rule.funnel_id).map((s) => (
+                            <option key={s.id} value={s.id}>
+                              {s.name}
+                            </option>
+                          ))}
+                        </Select>
+                      </div>
+                    </>
+                  ) : null}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+
+      <Card>
+        <h2 className="font-semibold text-foreground">Destino padrão</h2>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Usado quando nenhuma regra acima for atendida.
+        </p>
+        <div className="mt-4 flex flex-wrap items-end gap-3">
+          <div>
+            <Label>Ação</Label>
+            <Select
+              value={defaultSend ? "sim" : "nao"}
+              onChange={(e) => setDefaultSend(e.target.value === "sim")}
+            >
+              <option value="sim">Enviar ao CRM</option>
+              <option value="nao">Não enviar</option>
+            </Select>
+          </div>
+          {defaultSend ? (
+            <>
+              <div className="min-w-44 flex-1">
+                <Label>Funil</Label>
+                <Select
+                  value={defaultFunnel}
+                  onChange={(e) => {
+                    setDefaultFunnel(e.target.value);
+                    setDefaultStage("");
+                  }}
+                >
+                  <option value="">Selecione...</option>
+                  {funnels.map((f) => (
+                    <option key={f.id} value={f.id}>
+                      {f.name}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <div className="min-w-44 flex-1">
+                <Label>Etapa</Label>
+                <Select value={defaultStage} onChange={(e) => setDefaultStage(e.target.value)}>
+                  <option value="">Selecione...</option>
+                  {stagesOf(defaultFunnel).map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+            </>
+          ) : null}
+        </div>
+      </Card>
+
+      <div className="flex flex-wrap gap-2">
+        <Button onClick={() => saveMut.mutate()} disabled={saveMut.isPending}>
+          Salvar destino
+        </Button>
+        <Button
+          variant="secondary"
+          onClick={() => {
+            if (window.confirm("Aplicar as regras aos cadastros já existentes deste formulário?")) {
+              reprocessMut.mutate();
+            }
+          }}
+          disabled={reprocessMut.isPending}
+        >
+          Aplicar aos cadastros existentes
+        </Button>
+      </div>
     </div>
   );
 }

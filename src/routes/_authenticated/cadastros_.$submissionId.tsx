@@ -118,6 +118,23 @@ function SubmissionDetailPage() {
         </span>
       </div>
 
+      {(() => {
+        const status = (submission as { crm_status?: string }).crm_status ?? "none";
+        const reason = (submission as { crm_reason?: string | null }).crm_reason ?? null;
+        const label =
+          status === "sent"
+            ? "Enviado ao CRM"
+            : status === "blocked"
+              ? "Não enviado ao CRM"
+              : "Fora do CRM";
+        return (
+          <p className="mt-2 text-xs text-muted-foreground">
+            {label}
+            {reason ? ` · ${reason}` : ""}
+          </p>
+        );
+      })()}
+
       <div className="mt-4 flex flex-wrap items-center gap-2">
         {canEdit && !editMode && (
           <Button variant="secondary" onClick={() => setEditMode(true)}>
