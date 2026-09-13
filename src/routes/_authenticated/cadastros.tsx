@@ -1,9 +1,9 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { PrintSheets, type PrintSheetsState } from "@/components/print/PrintSheets";
-import { listSubmissions } from "@/lib/ext/cadastros.functions";
+import { listSubmissions, setEnrollment } from "@/lib/ext/cadastros.functions";
 import { listSchools } from "@/lib/ext/escolas.functions";
 import { listForms } from "@/lib/ext/formularios.functions";
 import { listPrintTemplates } from "@/lib/ext/impressao.functions";
@@ -26,6 +26,7 @@ export const Route = createFileRoute("/_authenticated/cadastros")({
 
 function SubmissionsPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [schoolId, setSchoolId] = useState("");
   const [formId, setFormId] = useState("");
@@ -120,6 +121,20 @@ function SubmissionsPage() {
       (perms?.managerSchools.length ?? 0) > 0 ||
       (perms?.operatorSchools.length ?? 0) > 0) ??
     false;
+
+  const canEnroll =
+    (perms?.isAdmin || perms?.isEditor || (perms?.managerSchools.length ?? 0) > 0) ?? false;
+
+  const enrollM = useMutation({
+    mutationFn: (d: { id: string; enrolled: boolean }) => setEnrollment({ data: d }),
+    onSuccess: (_r, d) => {
+      toast.success(d.enrolled ? "Matrícula registrada." : "Matrícula desfeita.");
+      queryClient.invalidateQueries({ queryKey: ["submissions"] });
+      queryClient.invalidateQueries({ queryKey: ["pipeline"] });
+      queryClient.invalidateQueries({ queryKey: ["crm-tasks"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   function toggle(id: string) {
     setSelected((prev) => {
