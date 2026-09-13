@@ -4,17 +4,14 @@ import { useState } from "react";
 import { toast } from "sonner";
 import {
   deletePrintTemplate,
-  duplicatePrintTemplate,
   getForm,
   saveFormFields,
-  savePrintTemplate,
   setFormStatus,
   updateFormInfo,
 } from "@/lib/ext/formularios.functions";
 import {
   applyTemplateToForm,
   listTemplates,
-  saveFormTemplateAsLibrary,
 } from "@/lib/ext/templates.functions";
 import {
   FIELD_TYPE_LABELS,
@@ -24,12 +21,6 @@ import {
   type FormField,
   type PrintTemplate,
 } from "@/lib/ext/model";
-import { LayoutEditor } from "@/components/print/LayoutEditor";
-import {
-  emptyLayout,
-  parseLayout,
-  type PrintLayout,
-} from "@/lib/ext/print-layout";
 import {
   Badge,
   Button,
@@ -128,9 +119,7 @@ function FormConfigPage() {
       {tab === "impressao" && (
         <TemplatesTab
           formId={formId}
-          fields={data.fields as FormField[]}
           templates={data.templates as PrintTemplate[]}
-          schoolName={school?.name ?? "Escola"}
         />
       )}
       {tab === "publicar" && (
@@ -422,67 +411,19 @@ function FieldsTab({
 
 // ---------- Aba Modelos de impressão ----------
 
-const emptyTemplate = {
-  name: "",
-  title: "",
-  header_text: "",
-  footer_text: "",
-  show_logo: true,
-  columns: 1 as 1 | 2,
-  page_size: "A4" as "A4" | "A5",
-  show_signature: true,
-  field_ids: [] as string[],
-  layout: emptyLayout("A4") as PrintLayout,
-};
-
 function TemplatesTab({
   formId,
-  fields,
   templates,
-  schoolName,
 }: {
   formId: string;
-  fields: FormField[];
   templates: PrintTemplate[];
-  schoolName: string;
 }) {
   const queryClient = useQueryClient();
-  const [editing, setEditing] = useState<
-    (typeof emptyTemplate & { id?: string }) | null
-  >(null);
-
-  const saveMut = useMutation({
-    mutationFn: (t: typeof emptyTemplate & { id?: string }) =>
-      savePrintTemplate({
-        data: {
-          ...(t.id ? { id: t.id } : {}),
-          form_id: formId,
-          name: t.name,
-          title: t.title,
-          header_text: t.header_text || null,
-          footer_text: t.footer_text || null,
-          show_logo: t.show_logo,
-          columns: t.columns,
-          page_size: t.page_size,
-          show_signature: t.show_signature,
-          field_ids: t.field_ids,
-          layout: t.layout.pages.some((p) => p.blocks.length > 0)
-            ? t.layout
-            : null,
-        },
-      }),
-    onSuccess: () => {
-      toast.success("Modelo salvo.");
-      setEditing(null);
-      queryClient.invalidateQueries({ queryKey: ["form", formId] });
-    },
-    onError: (e) => toast.error(e.message),
-  });
 
   const deleteMut = useMutation({
     mutationFn: (id: string) => deletePrintTemplate({ data: { id } }),
     onSuccess: () => {
-      toast.success("Modelo excluído.");
+      toast.success("Modelo removido deste formulário.");
       queryClient.invalidateQueries({ queryKey: ["form", formId] });
     },
     onError: (e) => toast.error(e.message),
@@ -500,56 +441,26 @@ function TemplatesTab({
         data: { template_id: templateId, form_id: formId },
       }),
     onSuccess: () => {
-      toast.success("Template aplicado a este formulário.");
+      toast.success("Template associado a este formulário.");
       setLibraryId("");
       queryClient.invalidateQueries({ queryKey: ["form", formId] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const dupMut = useMutation({
-    mutationFn: (v: { id: string; name: string }) =>
-      duplicatePrintTemplate({ data: v }),
-    onSuccess: () => {
-      toast.success("Modelo duplicado.");
-      queryClient.invalidateQueries({ queryKey: ["form", formId] });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const toLibraryMut = useMutation({
-    mutationFn: (v: { print_template_id: string; name: string }) =>
-      saveFormTemplateAsLibrary({ data: v }),
-    onSuccess: () => {
-      toast.success("Salvo na biblioteca de templates.");
-      queryClient.invalidateQueries({ queryKey: ["template-library"] });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
   return (
     <div className="mt-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-muted-foreground">
-          Monte como a ficha impressa vai sair: quais campos, em qual ordem e
-          com qual layout.
-        </p>
-        <Button
-          variant="secondary"
-          onClick={() =>
-            setEditing({
-              ...emptyTemplate,
-              field_ids: fields.map((f) => f.id),
-            })
-          }
-        >
-          + Novo modelo
-        </Button>
-      </div>
+      <p className="text-sm text-muted-foreground">
+        Os modelos de impressão são criados no menu{" "}
+        <Link to="/templates" className="text-primary hover:underline">
+          Templates
+        </Link>
+        . Aqui você apenas associa um template a este formulário.
+      </p>
 
       <Card className="mt-4 flex flex-wrap items-end gap-3">
         <div className="min-w-[240px] flex-1">
-          <Label>Usar um template pronto</Label>
+          <Label>Associar um template</Label>
           <Select
             value={libraryId}
             onChange={(e) => setLibraryId(e.target.value)}
@@ -567,16 +478,15 @@ function TemplatesTab({
           disabled={!libraryId || applyMut.isPending}
           onClick={() => applyMut.mutate(libraryId)}
         >
-          Aplicar a este formulário
+          Associar a este formulário
         </Button>
       </Card>
 
-
       <div className="mt-4 flex flex-col gap-3">
-        {templates.length === 0 && !editing && (
+        {templates.length === 0 && (
           <Card>
             <p className="text-sm text-muted-foreground">
-              Nenhum modelo ainda. Clique em "Novo modelo".
+              Nenhum template associado ainda.
             </p>
           </Card>
         )}
@@ -590,207 +500,18 @@ function TemplatesTab({
               </p>
             </div>
             <Button
-              variant="secondary"
-              onClick={() =>
-                setEditing({
-                  id: t.id,
-                  name: t.name,
-                  title: t.title,
-                  header_text: t.header_text ?? "",
-                  footer_text: t.footer_text ?? "",
-                  show_logo: t.show_logo,
-                  columns: t.columns,
-                  page_size: t.page_size,
-                  show_signature: t.show_signature,
-                  field_ids: t.field_ids ?? [],
-                  layout: parseLayout(t.layout) ?? emptyLayout(t.page_size),
-                })
-              }
-            >
-              Editar
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={() => {
-                const name = window.prompt(
-                  "Nome do novo modelo:",
-                  `Cópia de ${t.name}`,
-                );
-                if (name?.trim()) dupMut.mutate({ id: t.id, name: name.trim() });
-              }}
-            >
-              Duplicar
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={() => {
-                const name = window.prompt(
-                  "Nome do template na biblioteca:",
-                  t.name,
-                );
-                if (name?.trim()) {
-                  toLibraryMut.mutate({
-                    print_template_id: t.id,
-                    name: name.trim(),
-                  });
-                }
-              }}
-            >
-              Salvar como template
-            </Button>
-            <Button
               variant="ghost"
               onClick={() => {
-                if (window.confirm(`Excluir o modelo "${t.name}"?`)) {
+                if (window.confirm(`Remover o modelo "${t.name}"?`)) {
                   deleteMut.mutate(t.id);
                 }
               }}
             >
-              Excluir
+              Remover
             </Button>
           </Card>
         ))}
       </div>
-
-      {editing && (
-        <Card className="mt-4">
-          <h3 className="font-semibold text-foreground">
-            {editing.id ? "Editar modelo" : "Novo modelo"}
-          </h3>
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <div>
-              <Label>Nome do modelo</Label>
-              <Input
-                value={editing.name}
-                onChange={(e) =>
-                  setEditing({ ...editing, name: e.target.value })
-                }
-                placeholder="Ex.: Ficha do aluno"
-              />
-            </div>
-            <div>
-              <Label>Título impresso na ficha</Label>
-              <Input
-                value={editing.title}
-                onChange={(e) =>
-                  setEditing({ ...editing, title: e.target.value })
-                }
-                placeholder="Ex.: Ficha de Matrícula"
-              />
-            </div>
-            <div>
-              <Label>Texto do cabeçalho (opcional)</Label>
-              <Input
-                value={editing.header_text}
-                onChange={(e) =>
-                  setEditing({ ...editing, header_text: e.target.value })
-                }
-              />
-            </div>
-            <div>
-              <Label>Texto do rodapé (opcional)</Label>
-              <Input
-                value={editing.footer_text}
-                onChange={(e) =>
-                  setEditing({ ...editing, footer_text: e.target.value })
-                }
-              />
-            </div>
-            <div>
-              <Label>Tamanho do papel</Label>
-              <Select
-                value={editing.page_size}
-                onChange={(e) => {
-                  const ps = e.target.value as "A4" | "A5";
-                  setEditing({
-                    ...editing,
-                    page_size: ps,
-                    layout: { ...editing.layout, pageSize: ps },
-                  });
-                }}
-              >
-                <option value="A4">A4</option>
-                <option value="A5">A5</option>
-              </Select>
-            </div>
-            <div>
-              <Label>Colunas</Label>
-              <Select
-                value={String(editing.columns)}
-                onChange={(e) =>
-                  setEditing({
-                    ...editing,
-                    columns: Number(e.target.value) as 1 | 2,
-                  })
-                }
-              >
-                <option value="1">1 coluna</option>
-                <option value="2">2 colunas</option>
-              </Select>
-            </div>
-          </div>
-
-          <div className="mt-4 flex gap-6 text-sm">
-            <label className="flex items-center gap-1.5">
-              <input
-                type="checkbox"
-                className="accent-[var(--color-primary)]"
-                checked={editing.show_logo}
-                onChange={(e) =>
-                  setEditing({ ...editing, show_logo: e.target.checked })
-                }
-              />
-              Mostrar logo da escola
-            </label>
-            <label className="flex items-center gap-1.5">
-              <input
-                type="checkbox"
-                className="accent-[var(--color-primary)]"
-                checked={editing.show_signature}
-                onChange={(e) =>
-                  setEditing({ ...editing, show_signature: e.target.checked })
-                }
-              />
-              Linha de assinatura
-            </label>
-          </div>
-
-          <div className="mt-5">
-            <Label>Layout da folha</Label>
-            <p className="mb-3 text-xs text-muted-foreground">
-              Adicione blocos, arraste para posicionar e redimensione pelo canto.
-              Se você não adicionar nenhum bloco, a impressão usa o formato
-              simples (lista de campos).
-            </p>
-            <LayoutEditor
-              layout={editing.layout}
-              onChange={(l) => setEditing({ ...editing, layout: l })}
-              fields={fields}
-              formTitle={editing.title || "Formulário"}
-              schoolName={schoolName}
-              formId={formId}
-            />
-          </div>
-
-          <div className="mt-5 flex gap-2">
-            <Button
-              disabled={saveMut.isPending}
-              onClick={() => {
-                if (!editing.name.trim() || !editing.title.trim()) {
-                  toast.error("Preencha o nome do modelo e o título impresso.");
-                  return;
-                }
-                saveMut.mutate(editing);
-              }}
-            >
-              Salvar modelo
-            </Button>
-            <Button variant="ghost" onClick={() => setEditing(null)}>
-              Cancelar
-            </Button>
-          </div>
-        </Card>
-      )}
     </div>
   );
 }
