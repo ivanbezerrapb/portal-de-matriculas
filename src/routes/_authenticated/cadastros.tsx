@@ -249,7 +249,7 @@ function SubmissionsPage() {
               <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
                 <th className="px-4 py-3"></th>
                 <th className="px-4 py-3">ID</th>
-                <th className="px-4 py-3">Formulário</th>
+                <th className="px-4 py-3">Responsável</th>
                 <th className="px-4 py-3">Escola</th>
                 <th className="px-4 py-3">Crianças</th>
                 <th className="px-4 py-3">Data</th>
@@ -258,7 +258,9 @@ function SubmissionsPage() {
             </thead>
             <tbody>
               {submissions.map((s) => {
-                const form = s.forms as unknown as { title: string } | null;
+                const responsible = (
+                  s as unknown as { responsible_name: string | null }
+                ).responsible_name;
                 const school = s.schools as unknown as { name: string } | null;
                 const childrenCount = (
                   s as unknown as { children_count: number | null }
@@ -287,7 +289,7 @@ function SubmissionsPage() {
                       </Link>
                     </td>
                     <td className="px-4 py-2.5 text-foreground">
-                      {form?.title ?? "—"}
+                      {responsible ?? "—"}
                     </td>
                     <td className="px-4 py-2.5 text-muted-foreground">
                       {school?.name ?? "—"}
@@ -296,7 +298,10 @@ function SubmissionsPage() {
                       {childrenCount ?? "—"}
                     </td>
                     <td className="px-4 py-2.5 text-muted-foreground">
-                      {new Date(s.created_at).toLocaleDateString("pt-BR")}
+                      {new Date(s.created_at).toLocaleString("pt-BR", {
+                        dateStyle: "short",
+                        timeStyle: "short",
+                      })}
                     </td>
                     <td className="px-2 py-2.5 text-right">
                       {canPrint && (
