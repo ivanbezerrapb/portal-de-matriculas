@@ -204,17 +204,33 @@ export const closeOpportunity = createServerFn({ method: "POST" })
     if (reasonError || !reason) throw new Error("Motivo não encontrado.");
     if (reason.kind !== data.result) throw new Error("Motivo não corresponde ao resultado.");
 
-    const { error } = await context.supabase
+    const now = new Date().toISOString();
+    const { data: updated, error } = await context.supabase
       .from("opportunities")
       .update({
         status: data.result,
         close_reason_id: data.reason_id,
         close_note: data.note?.trim() || null,
-        closed_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+        closed_at: now,
+        updated_at: now,
       })
-      .eq("id", data.id);
+      .eq("id", data.id)
+      .select("submission_id")
+      .maybeSingle();
     if (error) throw new Error(error.message);
+
+    // Ganho no CRM = matrícula realizada no cadastro.
+    if (updated?.submission_id) {
+      const won = data.result === "won";
+      await context.supabase
+        .from("submissions")
+        .update({
+          enrolled: won,
+          enrolled_at: won ? now : null,
+          enrolled_by: won ? context.userId : null,
+        })
+        .eq("id", updated.submission_id);
+    }
     return { ok: true };
   });
 
