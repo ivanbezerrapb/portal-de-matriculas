@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
-import { ArrowDown, ArrowUp, Copy, Pencil, Plus, Trash2, X } from "lucide-react";
+import { ArrowDown, ArrowLeft, ArrowUp, Copy, Pencil, Plus, Trash2, X } from "lucide-react";
 import {
   createFunnel,
   createStage,
@@ -119,7 +119,7 @@ function FunilPage() {
   const [creating, setCreating] = useState(false);
   const [funnelForm, setFunnelForm] = useState({ school_id: "", name: "", description: "" });
   const [editingFunnel, setEditingFunnel] = useState<string | null>(null);
-  const [addingStageIn, setAddingStageIn] = useState<string | null>(null);
+  const [addingStage, setAddingStage] = useState(false);
   const [editingStage, setEditingStage] = useState<string | null>(null);
 
   const { data: perms } = useQuery({
@@ -155,8 +155,13 @@ function FunilPage() {
     "Funil criado.",
   );
   const updateFunnelM = useAction(
-    (d: { id: string; school_id: string; name: string; description: string }) =>
-      updateFunnel({ data: d }),
+    (d: {
+      id: string;
+      school_id: string;
+      name: string;
+      description: string;
+      is_default: boolean;
+    }) => updateFunnel({ data: d }),
     "Funil atualizado.",
   );
   const duplicateFunnelM = useAction(
@@ -184,6 +189,10 @@ function FunilPage() {
     "Ordem atualizada.",
   );
 
+  function stagesOf(funnelId: string) {
+    return stages.filter((s) => s.funnel_id === funnelId).sort((a, b) => a.position - b.position);
+  }
+
   function move(funnelId: string, list: FunnelStage[], index: number, delta: number) {
     const next = [...list];
     const target = index + delta;
@@ -195,6 +204,185 @@ function FunilPage() {
   }
 
   const loading = funnelsQuery.isLoading || schoolsQuery.isLoading;
+  const current = funnels.find((f) => f.id === editingFunnel) ?? null;
+
+  if (current) {
+    const funnelStages = stagesOf(current.id);
+    return (
+      <div className="space-y-6">
+        <div>
+          <Button variant="ghost" onClick={() => setEditingFunnel(null)} className="mb-2 px-0">
+            <ArrowLeft className="h-4 w-4" /> Voltar para os funis
+          </Button>
+          <p className="text-sm font-medium text-primary">CRM › Funil</p>
+          <h1 className="font-display text-2xl font-bold text-foreground">{current.name}</h1>
+        </div>
+
+        <Card>
+          <h2 className="mb-3 font-display text-base font-semibold text-foreground">
+            Dados do funil
+          </h2>
+          <form
+            className="space-y-3"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const fd = new FormData(e.currentTarget as HTMLFormElement);
+              updateFunnelM.mutate({
+                id: current.id,
+                name: String(fd.get("name") ?? ""),
+                school_id: String(fd.get("school_id") ?? ""),
+                description: String(fd.get("description") ?? ""),
+                is_default: fd.get("is_default") === "on",
+              });
+            }}
+          >
+            <div className="flex flex-wrap gap-3">
+              <div className="min-w-48 flex-1">
+                <Label>Nome do funil</Label>
+                <Input name="name" defaultValue={current.name} required disabled={!isAdmin} />
+              </div>
+              <div className="min-w-48 flex-1">
+                <Label>Escola</Label>
+                <Select
+                  name="school_id"
+                  defaultValue={current.school_id}
+                  required
+                  disabled={!isAdmin}
+                >
+                  {schools.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+            </div>
+            <div>
+              <Label>Descrição</Label>
+              <Textarea
+                name="description"
+                rows={2}
+                defaultValue={current.description ?? ""}
+                disabled={!isAdmin}
+              />
+            </div>
+            <label className="flex items-center gap-2 text-sm text-foreground">
+              <input
+                type="checkbox"
+                name="is_default"
+                defaultChecked={current.is_default}
+                disabled={!isAdmin}
+                className="h-4 w-4"
+              />
+              Funil padrão desta escola (recebe os novos cadastros)
+            </label>
+            {isAdmin && (
+              <Button type="submit" disabled={updateFunnelM.isPending}>
+                Salvar
+              </Button>
+            )}
+          </form>
+        </Card>
+
+        <Card>
+          <h2 className="mb-3 font-display text-base font-semibold text-foreground">Etapas</h2>
+          <div className="space-y-2">
+            {funnelStages.map((stage, index) =>
+              editingStage === stage.id ? (
+                <StageForm
+                  key={stage.id}
+                  value={{
+                    name: stage.name,
+                    description: stage.description ?? "",
+                    color: stage.color,
+                  }}
+                  saving={updateStageM.isPending}
+                  submitLabel="Salvar etapa"
+                  onCancel={() => setEditingStage(null)}
+                  onSubmit={(draft) =>
+                    updateStageM.mutate(
+                      { id: stage.id, ...draft },
+                      { onSuccess: () => setEditingStage(null) },
+                    )
+                  }
+                />
+              ) : (
+                <div
+                  key={stage.id}
+                  className="flex flex-wrap items-center gap-3 rounded-lg border border-border px-3 py-2"
+                >
+                  <span
+                    className="h-3 w-3 shrink-0 rounded-full"
+                    style={{ backgroundColor: stage.color }}
+                  />
+                  <div className="min-w-40 flex-1">
+                    <p className="text-sm font-semibold text-foreground">{stage.name}</p>
+                    {stage.description && (
+                      <p className="text-xs text-muted-foreground">{stage.description}</p>
+                    )}
+                  </div>
+                  {isAdmin && (
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        aria-label="Mover para cima"
+                        disabled={index === 0}
+                        onClick={() => move(current.id, funnelStages, index, -1)}
+                      >
+                        <ArrowUp className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        aria-label="Mover para baixo"
+                        disabled={index === funnelStages.length - 1}
+                        onClick={() => move(current.id, funnelStages, index, 1)}
+                      >
+                        <ArrowDown className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        aria-label="Editar etapa"
+                        onClick={() => setEditingStage(stage.id)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        aria-label="Remover etapa"
+                        onClick={() => deleteStageM.mutate({ id: stage.id })}
+                      >
+                        <X className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              ),
+            )}
+
+            {isAdmin &&
+              (addingStage ? (
+                <StageForm
+                  value={emptyStage}
+                  saving={createStageM.isPending}
+                  submitLabel="Adicionar etapa"
+                  onCancel={() => setAddingStage(false)}
+                  onSubmit={(draft) =>
+                    createStageM.mutate(
+                      { funnel_id: current.id, ...draft },
+                      { onSuccess: () => setAddingStage(false) },
+                    )
+                  }
+                />
+              ) : (
+                <Button variant="outline" onClick={() => setAddingStage(true)}>
+                  <Plus className="h-4 w-4" /> Adicionar etapa
+                </Button>
+              ))}
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -286,203 +474,74 @@ function FunilPage() {
           }
         />
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {funnels.map((funnel) => {
-            const funnelStages = stages
-              .filter((s) => s.funnel_id === funnel.id)
-              .sort((a, b) => a.position - b.position);
+            const funnelStages = stagesOf(funnel.id);
             const school = schools.find((s) => s.id === funnel.school_id);
             return (
               <Card key={funnel.id}>
-                {editingFunnel === funnel.id ? (
-                  <form
-                    className="space-y-3"
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      const form = e.currentTarget as HTMLFormElement;
-                      const fd = new FormData(form);
-                      updateFunnelM.mutate(
-                        {
-                          id: funnel.id,
-                          name: String(fd.get("name") ?? ""),
-                          school_id: String(fd.get("school_id") ?? ""),
-                          description: String(fd.get("description") ?? ""),
-                        },
-                        { onSuccess: () => setEditingFunnel(null) },
-                      );
-                    }}
-                  >
-                    <div className="flex flex-wrap gap-3">
-                      <div className="min-w-48 flex-1">
-                        <Label>Nome do funil</Label>
-                        <Input name="name" defaultValue={funnel.name} required />
-                      </div>
-                      <div className="min-w-48 flex-1">
-                        <Label>Escola</Label>
-                        <Select name="school_id" defaultValue={funnel.school_id} required>
-                          {schools.map((s) => (
-                            <option key={s.id} value={s.id}>
-                              {s.name}
-                            </option>
-                          ))}
-                        </Select>
-                      </div>
-                    </div>
-                    <div>
-                      <Label>Descrição</Label>
-                      <Textarea
-                        name="description"
-                        rows={2}
-                        defaultValue={funnel.description ?? ""}
-                      />
-                    </div>
-                    <div className="flex gap-2">
-                      <Button type="submit" disabled={updateFunnelM.isPending}>
-                        Salvar
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => setEditingFunnel(null)}
-                      >
-                        Cancelar
-                      </Button>
-                    </div>
-                  </form>
-                ) : (
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-56 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
                       <h2 className="font-display text-lg font-semibold text-foreground">
                         {funnel.name}
                       </h2>
-                      <p className="text-sm text-muted-foreground">
-                        {school?.name ?? "Escola não encontrada"}
-                        {funnel.description ? ` · ${funnel.description}` : ""}
-                      </p>
+                      {funnel.is_default && (
+                        <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">
+                          Padrão da escola
+                        </span>
+                      )}
                     </div>
-                    {isAdmin && (
-                      <div className="flex gap-1">
-                        <Button
-                          variant="ghost"
-                          aria-label="Editar funil"
-                          onClick={() => setEditingFunnel(funnel.id)}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          aria-label="Duplicar funil"
-                          onClick={() => duplicateFunnelM.mutate({ id: funnel.id })}
-                        >
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          aria-label="Excluir funil"
-                          onClick={() => {
-                            if (confirm(`Excluir o funil "${funnel.name}" e suas etapas?`))
-                              deleteFunnelM.mutate({ id: funnel.id });
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                <div className="mt-4 space-y-2">
-                  {funnelStages.map((stage, index) =>
-                    editingStage === stage.id ? (
-                      <StageForm
-                        key={stage.id}
-                        value={{
-                          name: stage.name,
-                          description: stage.description ?? "",
-                          color: stage.color,
-                        }}
-                        saving={updateStageM.isPending}
-                        submitLabel="Salvar etapa"
-                        onCancel={() => setEditingStage(null)}
-                        onSubmit={(draft) =>
-                          updateStageM.mutate(
-                            { id: stage.id, ...draft },
-                            { onSuccess: () => setEditingStage(null) },
-                          )
-                        }
-                      />
-                    ) : (
-                      <div
-                        key={stage.id}
-                        className="flex flex-wrap items-center gap-3 rounded-lg border border-border px-3 py-2"
-                      >
+                    <p className="text-sm text-muted-foreground">
+                      {school?.name ?? "Escola não encontrada"}
+                      {funnel.description ? ` · ${funnel.description}` : ""}
+                    </p>
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      {funnelStages.map((s) => (
                         <span
-                          className="h-3 w-3 shrink-0 rounded-full"
-                          style={{ backgroundColor: stage.color }}
+                          key={s.id}
+                          title={s.name}
+                          className="h-2.5 w-2.5 rounded-full"
+                          style={{ backgroundColor: s.color }}
                         />
-                        <div className="min-w-40 flex-1">
-                          <p className="text-sm font-semibold text-foreground">{stage.name}</p>
-                          {stage.description && (
-                            <p className="text-xs text-muted-foreground">{stage.description}</p>
-                          )}
-                        </div>
-                        {isAdmin && (
-                          <div className="flex gap-1">
-                            <Button
-                              variant="ghost"
-                              aria-label="Mover para cima"
-                              disabled={index === 0}
-                              onClick={() => move(funnel.id, funnelStages, index, -1)}
-                            >
-                              <ArrowUp className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              aria-label="Mover para baixo"
-                              disabled={index === funnelStages.length - 1}
-                              onClick={() => move(funnel.id, funnelStages, index, 1)}
-                            >
-                              <ArrowDown className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              aria-label="Editar etapa"
-                              onClick={() => setEditingStage(stage.id)}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              aria-label="Remover etapa"
-                              onClick={() => deleteStageM.mutate({ id: stage.id })}
-                            >
-                              <X className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    ),
-                  )}
-
-                  {isAdmin &&
-                    (addingStageIn === funnel.id ? (
-                      <StageForm
-                        value={emptyStage}
-                        saving={createStageM.isPending}
-                        submitLabel="Adicionar etapa"
-                        onCancel={() => setAddingStageIn(null)}
-                        onSubmit={(draft) =>
-                          createStageM.mutate(
-                            { funnel_id: funnel.id, ...draft },
-                            { onSuccess: () => setAddingStageIn(null) },
-                          )
-                        }
-                      />
-                    ) : (
-                      <Button variant="outline" onClick={() => setAddingStageIn(funnel.id)}>
-                        <Plus className="h-4 w-4" /> Adicionar etapa
+                      ))}
+                      <span className="text-xs text-muted-foreground">
+                        {funnelStages.length} etapa{funnelStages.length === 1 ? "" : "s"}
+                      </span>
+                    </div>
+                  </div>
+                  {isAdmin && (
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        aria-label="Editar funil"
+                        onClick={() => {
+                          setEditingStage(null);
+                          setAddingStage(false);
+                          setEditingFunnel(funnel.id);
+                        }}
+                      >
+                        <Pencil className="h-4 w-4" />
                       </Button>
-                    ))}
+                      <Button
+                        variant="ghost"
+                        aria-label="Duplicar funil"
+                        onClick={() => duplicateFunnelM.mutate({ id: funnel.id })}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        aria-label="Excluir funil"
+                        onClick={() => {
+                          if (confirm(`Excluir o funil "${funnel.name}" e suas etapas?`))
+                            deleteFunnelM.mutate({ id: funnel.id });
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </Card>
             );
