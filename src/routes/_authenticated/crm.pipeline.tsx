@@ -368,7 +368,82 @@ function PipelinePage() {
                   Fechar
                 </Button>
               </div>
-...
+
+              {stage && (
+                <span
+                  className="mt-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium"
+                  style={{ backgroundColor: `${stage.color}1a`, color: stage.color }}
+                >
+                  <span
+                    className="h-1.5 w-1.5 rounded-full"
+                    style={{ backgroundColor: stage.color }}
+                  />
+                  {stage.name}
+                </span>
+              )}
+
+              <dl className="mt-4 space-y-3 text-sm">
+                {card.phone && (
+                  <div>
+                    <dt className="text-xs text-muted-foreground">Telefone</dt>
+                    <dd className="text-foreground">{card.phone}</dd>
+                  </div>
+                )}
+                {card.email && (
+                  <div>
+                    <dt className="text-xs text-muted-foreground">E-mail</dt>
+                    <dd className="text-foreground">{card.email}</dd>
+                  </div>
+                )}
+                {details.map((d, i) => (
+                  <div key={i}>
+                    <dt className="text-xs text-muted-foreground">{d.label}</dt>
+                    <dd className="whitespace-pre-line text-foreground">{d.value}</dd>
+                  </div>
+                ))}
+                {card.notes && (
+                  <div>
+                    <dt className="text-xs text-muted-foreground">Observação</dt>
+                    <dd className="whitespace-pre-line text-foreground">{card.notes}</dd>
+                  </div>
+                )}
+                <div>
+                  <dt className="text-xs text-muted-foreground">Entrada</dt>
+                  <dd className="text-foreground">{formatDate(card.created_at)}</dd>
+                </div>
+                {card.status !== "open" && (
+                  <>
+                    <div>
+                      <dt className="text-xs text-muted-foreground">Resultado</dt>
+                      <dd
+                        className={`font-semibold ${
+                          card.status === "won" ? "text-emerald-600" : "text-destructive"
+                        }`}
+                      >
+                        {card.status === "won" ? "Ganha" : "Perdida"}
+                        {card.crm_close_reasons?.label
+                          ? ` · ${card.crm_close_reasons.label}`
+                          : ""}
+                      </dd>
+                    </div>
+                    {card.close_note && (
+                      <div>
+                        <dt className="text-xs text-muted-foreground">
+                          Observação do fechamento
+                        </dt>
+                        <dd className="whitespace-pre-line text-foreground">{card.close_note}</dd>
+                      </div>
+                    )}
+                    {card.closed_at && (
+                      <div>
+                        <dt className="text-xs text-muted-foreground">Fechada em</dt>
+                        <dd className="text-foreground">{formatDate(card.closed_at)}</dd>
+                      </div>
+                    )}
+                  </>
+                )}
+              </dl>
+
               {card.submission_id && (
                 <Link
                   to="/cadastros/$submissionId"
