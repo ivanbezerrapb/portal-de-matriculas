@@ -1,5 +1,6 @@
 // Regras de destino: decidem se um cadastro vira oportunidade no CRM
 // e em qual funil/etapa ele entra. Módulo puro (usado no servidor).
+import { formatAddress, parseAddress } from "./model";
 
 export type ConditionOp = "eq" | "neq" | "contains" | "empty" | "not_empty" | "in" | "gt" | "lt";
 
