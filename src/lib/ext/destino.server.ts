@@ -1,6 +1,12 @@
 // Somente servidor: aplica as regras de destino a um cadastro.
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { evaluateRules, type Destination, type DestinationRule, type CrmDecision } from "./destino";
+import {
+  answerText,
+  evaluateRules,
+  type Destination,
+  type DestinationRule,
+  type CrmDecision,
+} from "./destino";
 
 // Busca o destino configurado e as regras do formulário.
 export async function loadDestination(
