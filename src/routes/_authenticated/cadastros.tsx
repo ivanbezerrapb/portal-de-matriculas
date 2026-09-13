@@ -314,9 +314,7 @@ function SubmissionsPage() {
                           className="accent-[var(--color-primary)]"
                           checked={enrolled}
                           disabled={!canEnroll || enrollM.isPending}
-                          onChange={(e) =>
-                            enrollM.mutate({ id: s.id, enrolled: e.target.checked })
-                          }
+                          onChange={(e) => enrollM.mutate({ id: s.id, enrolled: e.target.checked })}
                           aria-label={`Matrícula de ${s.public_id}`}
                         />
                         {enrolled ? (
