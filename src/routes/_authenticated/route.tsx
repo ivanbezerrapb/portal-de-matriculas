@@ -82,7 +82,7 @@ function AuthenticatedLayout() {
       key: "crm",
       label: "CRM",
       icon: Kanban,
-      badge: "Em breve",
+      
       children: [
         { to: "/crm/pipeline", label: "Pipeline", icon: Kanban },
         { to: "/crm/funil", label: "Funil", icon: Filter },
