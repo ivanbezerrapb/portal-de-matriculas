@@ -34,6 +34,11 @@ function mm(v: number) {
   return `${v}mm`;
 }
 
+// Tamanho de fonte que respeita o fator de ajuste da caixa (--pscale).
+function fsize(pt: number) {
+  return `calc(${pt * 0.3528}mm * var(--pscale, 1))`;
+}
+
 export function BlockView({
   block,
   ctx,
@@ -48,7 +53,7 @@ export function BlockView({
       return (
         <div
           style={{
-            fontSize: mm(block.fontSize * 0.3528),
+            fontSize: fsize(block.fontSize),
             fontWeight: block.bold ? 700 : 400,
             fontStyle: block.italic ? "italic" : "normal",
             textDecoration: block.underline ? "underline" : "none",
@@ -66,15 +71,14 @@ export function BlockView({
       );
 
     case "field": {
-      const label =
-        block.labelText || sourceLabel(block.source, ctx.fields);
+      const label = block.labelText || sourceLabel(block.source, ctx.fields);
       const value = preview
         ? resolveSource(block.source, ctx) || `[${label}]`
         : resolveSource(block.source, ctx);
       return (
         <div
           style={{
-            fontSize: mm(block.fontSize * 0.3528),
+            fontSize: fsize(block.fontSize),
             textAlign: block.align,
             whiteSpace: "pre-wrap",
             lineHeight: 1.35,
@@ -144,10 +148,7 @@ export function BlockView({
           }}
         >
           {Array.from({ length: count }).map((_, i) => (
-            <div
-              key={i}
-              style={{ borderBottom: "0.25mm dotted #333", height: "1px" }}
-            />
+            <div key={i} style={{ borderBottom: "0.25mm dotted #333", height: "1px" }} />
           ))}
         </div>
       );
@@ -168,7 +169,7 @@ export function BlockView({
           <div style={{ width: "100%", borderTop: "0.3mm solid #000" }} />
           <div
             style={{
-              fontSize: mm(block.fontSize * 0.3528),
+              fontSize: fsize(block.fontSize),
               marginTop: "1mm",
               textAlign: "center",
             }}
@@ -206,7 +207,7 @@ function TableView({
         width: "100%",
         height: "100%",
         borderCollapse: "collapse",
-        fontSize: `${block.fontSize * 0.3528}mm`,
+        fontSize: fsize(block.fontSize),
         tableLayout: "fixed",
       }}
     >
@@ -222,8 +223,7 @@ function TableView({
               const isHeader = block.header && ri === 0;
               const value = c.source
                 ? preview
-                  ? resolveSource(c.source, ctx) ||
-                    `[${sourceLabel(c.source, ctx.fields)}]`
+                  ? resolveSource(c.source, ctx) || `[${sourceLabel(c.source, ctx.fields)}]`
                   : resolveSource(c.source, ctx)
                 : c.text;
               return (
@@ -262,7 +262,7 @@ function ChildrenView({
   preview: boolean;
 }) {
   const list = childrenOf(block, ctx);
-  const fs = `${block.fontSize * 0.3528}mm`;
+  const fs = fsize(block.fontSize);
 
   if (list.length === 0) {
     return (
