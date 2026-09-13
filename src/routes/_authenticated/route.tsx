@@ -94,22 +94,45 @@ function AuthenticatedLayout() {
   type NavEntry = NavLeaf | NavGroup;
 
   const isAdmin = perms?.isAdmin ?? false;
+  const isManager = (perms?.managerSchools.length ?? 0) > 0;
+  const isInfo = (perms?.infoSchools.length ?? 0) > 0;
+  const isSecretary = !isAdmin && !isManager && !isInfo;
 
+  const roleLabel = isAdmin
+    ? "Administrador"
+    : isManager
+      ? "Gerente"
+      : isInfo
+        ? "Central de Informações"
+        : "Secretaria";
+
+  // Cada perfil enxerga apenas as telas que pode usar.
   const navEntries: NavEntry[] = [
-    { to: "/dashboard", label: "Início", icon: LayoutDashboard },
-    { to: "/cadastros", label: "Cadastros", icon: ClipboardList },
-    {
-      key: "crm",
-      label: "CRM",
-      icon: Kanban,
-
-      children: [
-        { to: "/crm/pipeline", label: "Pipeline", icon: Kanban },
-        { to: "/crm/funil", label: "Funil", icon: Filter },
-        { to: "/crm/tarefas", label: "Tarefas", icon: ListTodo },
-        { to: "/crm/motivos", label: "Motivos", icon: Trophy },
-      ],
-    },
+    ...(isAdmin || isManager
+      ? [{ to: "/dashboard", label: "Início", icon: LayoutDashboard } as NavLeaf]
+      : []),
+    ...(isAdmin || isManager || isSecretary
+      ? [{ to: "/cadastros", label: "Cadastros", icon: ClipboardList } as NavLeaf]
+      : []),
+    ...(isAdmin || isInfo
+      ? [
+          {
+            key: "crm",
+            label: "CRM",
+            icon: Kanban,
+            children: [
+              { to: "/crm/pipeline", label: "Pipeline", icon: Kanban },
+              ...(isAdmin
+                ? [
+                    { to: "/crm/funil", label: "Funil", icon: Filter },
+                    { to: "/crm/tarefas", label: "Tarefas", icon: ListTodo },
+                    { to: "/crm/motivos", label: "Motivos", icon: Trophy },
+                  ]
+                : [{ to: "/crm/tarefas", label: "Tarefas", icon: ListTodo }]),
+            ],
+          } as NavGroup,
+        ]
+      : []),
     ...(isAdmin
       ? [
           {
