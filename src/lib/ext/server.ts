@@ -121,6 +121,7 @@ export async function writeChildrenCountValue(
 export type Perms = {
   isAdmin: boolean;
   isEditor: boolean;
+  infoSchools: string[];
   managerSchools: string[];
   operatorSchools: string[];
   roles: { role: string; school_id: string | null }[];
@@ -141,6 +142,9 @@ export async function getPerms(
     isEditor: rows.some((r) => r.role === "submission_editor"),
     managerSchools: rows
       .filter((r) => r.role === "school_manager" && r.school_id)
+      .map((r) => r.school_id as string),
+    infoSchools: rows
+      .filter((r) => r.role === "info_center" && r.school_id)
       .map((r) => r.school_id as string),
     operatorSchools: rows
       .filter((r) => r.role === "print_operator" && r.school_id)

@@ -56,7 +56,7 @@ export const createUser = createServerFn({ method: "POST" })
           "admin",
           "school_manager",
           "print_operator",
-          "submission_editor",
+          "info_center",
         ]),
         school_id: z.string().uuid().optional().nullable(),
       })
@@ -76,7 +76,9 @@ export const createUser = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
 
     const needsSchool =
-      data.role === "school_manager" || data.role === "print_operator";
+      data.role === "school_manager" ||
+      data.role === "print_operator" ||
+      data.role === "info_center";
     const { error: roleError } = await admin.from("user_roles").insert({
       user_id: created.user.id,
       role: data.role,
@@ -97,7 +99,7 @@ export const setUserRole = createServerFn({ method: "POST" })
           "admin",
           "school_manager",
           "print_operator",
-          "submission_editor",
+          "info_center",
         ]),
         school_id: z.string().uuid().optional().nullable(),
         action: z.enum(["add", "remove"]),
@@ -111,7 +113,9 @@ export const setUserRole = createServerFn({ method: "POST" })
 
     if (data.action === "add") {
       const needsSchool =
-        data.role === "school_manager" || data.role === "print_operator";
+        data.role === "school_manager" ||
+      data.role === "print_operator" ||
+      data.role === "info_center";
       const { error } = await admin.from("user_roles").upsert(
         {
           user_id: data.user_id,

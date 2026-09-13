@@ -21,9 +21,9 @@ export const Route = createFileRoute("/_authenticated/usuarios")({
   component: UsersPage,
 });
 
-type Role = "admin" | "school_manager" | "print_operator" | "submission_editor";
+type Role = "admin" | "school_manager" | "print_operator" | "info_center";
 const ROLES = Object.entries(ROLE_LABELS) as [Role, string][];
-const NEEDS_SCHOOL: Role[] = ["school_manager", "print_operator"];
+const NEEDS_SCHOOL: Role[] = ["school_manager", "print_operator", "info_center"];
 
 function UsersPage() {
   const queryClient = useQueryClient();

@@ -101,7 +101,7 @@ function SubmissionDetailPage() {
   const valueMap = new Map(data.values.map((v) => [v.field_id, v.value ?? ""]));
 
   const canEdit =
-    (perms?.isAdmin || perms?.isEditor || perms?.managerSchools.includes(submission.school_id)) ??
+    (perms?.isAdmin || perms?.managerSchools.includes(submission.school_id)) ??
     false;
 
   return (
