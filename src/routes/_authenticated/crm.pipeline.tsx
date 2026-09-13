@@ -241,6 +241,7 @@ function PipelinePage() {
 
                 <div className="flex-1 space-y-2">
                   {cards.map((card) => {
+                    const activity = nextTasks[card.id];
                     const body = (
                       <>
                         <p className="text-sm font-semibold text-foreground">{card.name}</p>
