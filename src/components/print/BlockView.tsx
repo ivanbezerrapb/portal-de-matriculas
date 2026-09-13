@@ -58,6 +58,7 @@ export function BlockView({
             lineHeight: 1.35,
             width: "100%",
             height: "100%",
+            overflowWrap: "anywhere",
           }}
         >
           {block.text}
@@ -79,6 +80,7 @@ export function BlockView({
             lineHeight: 1.35,
             width: "100%",
             height: "100%",
+            overflowWrap: "anywhere",
           }}
         >
           {block.showLabel && <span>{label}: </span>}
@@ -236,6 +238,7 @@ function TableView({
                     verticalAlign: "top",
                     padding: "1mm",
                     whiteSpace: "pre-wrap",
+                    overflowWrap: "anywhere",
                   }}
                 >
                   {value}
@@ -297,7 +300,7 @@ function ChildrenView({
           </tr>
           {list.map((c, i) => (
             <tr key={i}>
-              <td style={cellStyle}>{c.nome}</td>
+              <td style={{ ...cellStyle, overflowWrap: "anywhere" }}>{c.nome}</td>
               <td style={cellStyle}>{formatBR(c.nascimento)}</td>
               <td style={cellStyle}>{c.serie}</td>
               <td style={cellStyle}>{c.turno}</td>
