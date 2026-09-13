@@ -201,6 +201,68 @@ function FormsPage() {
           })}
         </div>
       )}
+
+      {dup ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 p-4">
+          <Card className="w-full max-w-md">
+            <h2 className="font-semibold text-foreground">
+              Duplicar formulário
+            </h2>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Os campos e modelos de impressão serão copiados. Os cadastros
+              não.
+            </p>
+            <form
+              className="mt-4 flex flex-col gap-3"
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!dup.schoolId) {
+                  toast.error("Selecione a escola.");
+                  return;
+                }
+                dupMut.mutate();
+              }}
+            >
+              <div>
+                <Label htmlFor="dup-title">Novo título</Label>
+                <Input
+                  id="dup-title"
+                  value={dup.title}
+                  onChange={(e) => setDup({ ...dup, title: e.target.value })}
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="dup-school">Escola</Label>
+                <Select
+                  id="dup-school"
+                  value={dup.schoolId}
+                  onChange={(e) => setDup({ ...dup, schoolId: e.target.value })}
+                >
+                  <option value="">Selecione...</option>
+                  {(schools ?? []).map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <div className="mt-2 flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setDup(null)}
+                >
+                  Cancelar
+                </Button>
+                <Button type="submit" disabled={dupMut.isPending}>
+                  Duplicar
+                </Button>
+              </div>
+            </form>
+          </Card>
+        </div>
+      ) : null}
     </div>
   );
 }
