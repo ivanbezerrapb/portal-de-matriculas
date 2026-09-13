@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
+import { Copy, Link2, Settings, Trash2 } from "lucide-react";
 import {
   createForm,
   deleteForm,
@@ -20,6 +21,9 @@ import {
   Select,
   Spinner,
 } from "@/components/ui";
+
+const ICON_BTN =
+  "inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors";
 
 export const Route = createFileRoute("/_authenticated/formularios")({
   component: FormsPage,
