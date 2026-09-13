@@ -131,7 +131,20 @@ function PublicFormPage() {
       }
     }
     setErrors(newErrors);
-    if (Object.keys(newErrors).length > 0) return;
+    const missingIds = Object.keys(newErrors);
+    if (missingIds.length > 0) {
+      const names = missingIds
+        .map((id) => fields.find((f) => f.id === id)?.label)
+        .filter(Boolean) as string[];
+      toast.error(
+        names.length === 1
+          ? `Preencha o campo: ${names[0]}`
+          : `Faltam ${names.length} campos: ${names.join(", ")}`,
+      );
+      const el = document.getElementById(`field-${missingIds[0]}`);
+      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
 
     setSubmitting(true);
     try {
