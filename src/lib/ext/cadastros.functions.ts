@@ -65,6 +65,7 @@ export const listSubmissions = createServerFn({ method: "GET" })
       const { data: vals } = await context.supabase
         .from("submission_values")
         .select("submission_id, field_id, value")
+        .eq("part", "")
         .in(
           "submission_id",
           rows.map((r) => r.id),
@@ -101,7 +102,11 @@ export const getSubmission = createServerFn({ method: "GET" })
         .select("*")
         .eq("form_id", submission.form_id)
         .order("position"),
-      context.supabase.from("submission_values").select("*").eq("submission_id", data.id),
+      context.supabase
+        .from("submission_values")
+        .select("*")
+        .eq("submission_id", data.id)
+        .eq("part", ""),
       context.supabase
         .from("audit_log")
         .select("*")
@@ -149,7 +154,8 @@ export const updateSubmission = createServerFn({ method: "POST" })
     const { data: current } = await context.supabase
       .from("submission_values")
       .select("field_id, value")
-      .eq("submission_id", data.id);
+      .eq("submission_id", data.id)
+      .eq("part", "");
     const currentMap = new Map((current ?? []).map((v) => [v.field_id, v.value ?? ""]));
 
     const { data: fields } = await context.supabase

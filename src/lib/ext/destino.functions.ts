@@ -171,7 +171,8 @@ export const reprocessSubmissions = createServerFn({ method: "POST" })
       const { data: values } = await supabase
         .from("submission_values")
         .select("field_id, value")
-        .eq("submission_id", sub.id);
+        .eq("submission_id", sub.id)
+        .eq("part", "");
       const map: Record<string, string> = {};
       for (const v of (values ?? []) as { field_id: string; value: string }[]) {
         map[v.field_id] = v.value;

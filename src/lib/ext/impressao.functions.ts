@@ -63,6 +63,7 @@ export const getPrintData = createServerFn({ method: "GET" })
     const { data: values } = await context.supabase
       .from("submission_values")
       .select("*")
+      .eq("part", "")
       .in("submission_id", data.submission_ids);
 
     const orderedFields = (() => {
