@@ -281,6 +281,144 @@ function ChildrenField({
   );
 }
 
+const UFS = [
+  "AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB","PR","PE","PI","RJ",
+  "RN","RS","RO","RR","SC","SP","SE","TO",
+];
+
+function maskCep(raw: string): string {
+  const digits = raw.replace(/\D/g, "").slice(0, 8);
+  return digits.length > 5 ? `${digits.slice(0, 5)}-${digits.slice(5)}` : digits;
+}
+
+// Bloco "Endereço": CEP busca automática (ViaCEP) + campos editáveis.
+function AddressField({
+  field,
+  value,
+  onChange,
+}: {
+  field: FormField;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const address = parseAddress(value);
+  const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
+
+  const commit = (patch: Partial<AddressEntry>) =>
+    onChange(JSON.stringify({ ...address, ...patch }));
+
+  async function lookupCep(cep: string, current: AddressEntry) {
+    const digits = cep.replace(/\D/g, "");
+    if (digits.length !== 8) return;
+    setStatus("loading");
+    try {
+      const res = await fetch(`https://viacep.com.br/ws/${digits}/json/`);
+      const data = (await res.json()) as Record<string, unknown>;
+      if (data["erro"]) {
+        setStatus("error");
+        return;
+      }
+      setStatus("idle");
+      onChange(
+        JSON.stringify({
+          ...current,
+          rua: String(data["logradouro"] ?? current.rua),
+          bairro: String(data["bairro"] ?? current.bairro),
+          cidade: String(data["localidade"] ?? current.cidade),
+          estado: String(data["uf"] ?? current.estado),
+        }),
+      );
+      document.getElementById(`${field.id}-numero`)?.focus();
+    } catch {
+      setStatus("error");
+    }
+  }
+
+  return (
+    <div className="grid gap-3 sm:grid-cols-6">
+      <div className="sm:col-span-2">
+        <Label htmlFor={`${field.id}-cep`}>CEP</Label>
+        <Input
+          id={`${field.id}-cep`}
+          inputMode="numeric"
+          placeholder="00000-000"
+          value={address.cep}
+          onChange={(e) => {
+            const cep = maskCep(e.target.value);
+            const next = { ...address, cep };
+            setStatus("idle");
+            onChange(JSON.stringify(next));
+            if (cep.replace(/\D/g, "").length === 8) void lookupCep(cep, next);
+          }}
+        />
+        {status === "loading" && (
+          <p className="mt-1 text-xs text-muted-foreground">Buscando CEP...</p>
+        )}
+        {status === "error" && (
+          <p className="mt-1 text-xs text-muted-foreground">
+            CEP não encontrado — preencha os campos manualmente.
+          </p>
+        )}
+      </div>
+      <div className="sm:col-span-3">
+        <Label htmlFor={`${field.id}-rua`}>Rua</Label>
+        <Input
+          id={`${field.id}-rua`}
+          value={address.rua}
+          onChange={(e) => commit({ rua: e.target.value })}
+        />
+      </div>
+      <div className="sm:col-span-1">
+        <Label htmlFor={`${field.id}-numero`}>Número</Label>
+        <Input
+          id={`${field.id}-numero`}
+          value={address.numero}
+          onChange={(e) => commit({ numero: e.target.value })}
+        />
+      </div>
+      <div className="sm:col-span-2">
+        <Label htmlFor={`${field.id}-complemento`}>Complemento (opcional)</Label>
+        <Input
+          id={`${field.id}-complemento`}
+          value={address.complemento}
+          onChange={(e) => commit({ complemento: e.target.value })}
+        />
+      </div>
+      <div className="sm:col-span-2">
+        <Label htmlFor={`${field.id}-bairro`}>Bairro</Label>
+        <Input
+          id={`${field.id}-bairro`}
+          value={address.bairro}
+          onChange={(e) => commit({ bairro: e.target.value })}
+        />
+      </div>
+      <div className="sm:col-span-1">
+        <Label htmlFor={`${field.id}-cidade`}>Cidade</Label>
+        <Input
+          id={`${field.id}-cidade`}
+          value={address.cidade}
+          onChange={(e) => commit({ cidade: e.target.value })}
+        />
+      </div>
+      <div className="sm:col-span-1">
+        <Label htmlFor={`${field.id}-estado`}>Estado</Label>
+        <Select
+          id={`${field.id}-estado`}
+          value={address.estado}
+          onChange={(e) => commit({ estado: e.target.value })}
+        >
+          <option value="">UF</option>
+          {UFS.map((uf) => (
+            <option key={uf} value={uf}>
+              {uf}
+            </option>
+          ))}
+        </Select>
+      </div>
+    </div>
+  );
+}
+
 function formatDateBR(raw: string): string {
   if (!/^\d{4}-\d{2}-\d{2}/.test(raw)) return raw;
   const [y, m, d] = raw.slice(0, 10).split("-");
