@@ -8,12 +8,7 @@ import {
   type RefCallback,
 } from "react";
 import { BlockView } from "@/components/print/BlockView";
-import {
-  MM_PX,
-  type PrintBlock,
-  type PrintContext,
-  type PrintPage,
-} from "@/lib/ext/print-layout";
+import { MM_PX, type PrintBlock, type PrintContext, type PrintPage } from "@/lib/ext/print-layout";
 
 export type PositionedPrintBlock = {
   block: PrintBlock;

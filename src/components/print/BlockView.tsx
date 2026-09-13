@@ -71,8 +71,7 @@ export function BlockView({
       );
 
     case "field": {
-      const label =
-        block.labelText || sourceLabel(block.source, ctx.fields);
+      const label = block.labelText || sourceLabel(block.source, ctx.fields);
       const value = preview
         ? resolveSource(block.source, ctx) || `[${label}]`
         : resolveSource(block.source, ctx);
@@ -149,10 +148,7 @@ export function BlockView({
           }}
         >
           {Array.from({ length: count }).map((_, i) => (
-            <div
-              key={i}
-              style={{ borderBottom: "0.25mm dotted #333", height: "1px" }}
-            />
+            <div key={i} style={{ borderBottom: "0.25mm dotted #333", height: "1px" }} />
           ))}
         </div>
       );
@@ -227,8 +223,7 @@ function TableView({
               const isHeader = block.header && ri === 0;
               const value = c.source
                 ? preview
-                  ? resolveSource(c.source, ctx) ||
-                    `[${sourceLabel(c.source, ctx.fields)}]`
+                  ? resolveSource(c.source, ctx) || `[${sourceLabel(c.source, ctx.fields)}]`
                   : resolveSource(c.source, ctx)
                 : c.text;
               return (
