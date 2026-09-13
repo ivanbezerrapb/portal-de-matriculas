@@ -153,3 +153,20 @@ export const ROLE_LABELS: Record<string, string> = {
   print_operator: "Operador de impressão",
   submission_editor: "Editor de cadastros",
 };
+
+export type Funnel = {
+  id: string;
+  school_id: string;
+  name: string;
+  description: string | null;
+  created_at: string;
+};
+
+export type FunnelStage = {
+  id: string;
+  funnel_id: string;
+  name: string;
+  description: string | null;
+  color: string;
+  position: number;
+};
