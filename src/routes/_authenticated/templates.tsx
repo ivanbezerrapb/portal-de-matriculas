@@ -105,6 +105,19 @@ function TemplatesLibraryPage() {
     enabled: Boolean(editing?.ref_form_id),
   });
   const refFields = (refForm?.fields ?? []) as FormField[];
+  // Sem formulário de referência, usamos os campos gravados no próprio template
+  // para que o layout já montado continue visível e editável.
+  const fallbackFields: FormField[] = (editing?.prev_field_labels ?? []).map((p, i) => ({
+    id: p.id,
+    form_id: "",
+    label: p.label,
+    help_text: null,
+    type: (p.type ?? "text") as FormField["type"],
+    options: null,
+    required: false,
+    internal: p.internal ?? false,
+    position: i,
+  }));
 
   const saveMut = useMutation({
     mutationFn: (t: Editing) =>
