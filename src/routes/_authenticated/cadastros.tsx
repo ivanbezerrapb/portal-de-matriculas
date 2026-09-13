@@ -252,6 +252,7 @@ function SubmissionsPage() {
                 <th className="px-4 py-3">Formulário</th>
                 <th className="px-4 py-3">Escola</th>
                 <th className="px-4 py-3">Data</th>
+                <th className="px-4 py-3"></th>
               </tr>
             </thead>
             <tbody>
@@ -289,6 +290,18 @@ function SubmissionsPage() {
                     </td>
                     <td className="px-4 py-2.5 text-muted-foreground">
                       {new Date(s.created_at).toLocaleDateString("pt-BR")}
+                    </td>
+                    <td className="px-2 py-2.5 text-right">
+                      {canPrint && (
+                        <button
+                          title="Imprimir este cadastro"
+                          aria-label={`Imprimir ${s.public_id}`}
+                          onClick={() => printRow(s.id, s.form_id)}
+                          className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+                        >
+                          <PrinterIcon />
+                        </button>
+                      )}
                     </td>
                   </tr>
                 );
