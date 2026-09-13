@@ -149,11 +149,33 @@ export const updateSubmission = createServerFn({ method: "POST" })
       if (upsertError) throw new Error(upsertError.message);
     }
 
-    if (changes.length > 0) {
+    // Recalcula a coluna children_count a partir dos campos "N Filhos" enviados.
+    let childrenCount: number | null | undefined;
+    for (const fieldId of childrenFieldIds) {
+      const raw = data.values[fieldId];
+      if (raw == null) continue;
+      if (childrenCount === undefined) childrenCount = null;
+      const text = Array.isArray(raw) ? JSON.stringify(raw) : raw.trim();
+      if (!text) continue;
+      const { parseChildren } = await import("./model");
+      const n = parseChildren(text).length;
+      if (n > 0) childrenCount = Math.max(childrenCount ?? 0, n);
+    }
+
+    if (changes.length > 0 || childrenCount !== undefined) {
       await context.supabase
         .from("submissions")
-        .update({ updated_at: new Date().toISOString(), updated_by: context.userId })
+        .update({
+          updated_at: new Date().toISOString(),
+          updated_by: context.userId,
+          ...(childrenCount !== undefined
+            ? { children_count: childrenCount }
+            : {}),
+        })
         .eq("id", data.id);
+    }
+
+    if (changes.length > 0) {
       await context.supabase.from("audit_log").insert({
         submission_id: data.id,
         actor_id: context.userId,
