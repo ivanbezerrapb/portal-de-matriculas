@@ -32,7 +32,54 @@ export const listSubmissions = createServerFn({ method: "GET" })
     if (data.to) query = query.lte("created_at", `${data.to}T23:59:59`);
     const { data: rows, error } = await query;
     if (error) throw new Error(error.message);
-    return rows;
+    if (!rows || rows.length === 0) return rows;
+
+    // Nome do responsável de cada cadastro
+    const formIds = [...new Set(rows.map((r) => r.form_id))];
+    const { data: ff } = await context.supabase
+      .from("form_fields")
+      .select("id, form_id, label, type, position")
+      .in("form_id", formIds)
+      .order("position");
+
+    const norm = (s: string) =>
+      s
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .trim()
+        .toLowerCase();
+
+    const fieldByForm = new Map<string, string>();
+    for (const f of ff ?? []) {
+      if (fieldByForm.has(f.form_id)) continue;
+      if (norm(f.label) === "nome do responsavel") fieldByForm.set(f.form_id, f.id);
+    }
+    for (const f of ff ?? []) {
+      if (fieldByForm.has(f.form_id)) continue;
+      if (f.type === "short_text") fieldByForm.set(f.form_id, f.id);
+    }
+
+    const fieldIds = [...new Set([...fieldByForm.values()])];
+    const valueMap = new Map<string, string>();
+    if (fieldIds.length > 0) {
+      const { data: vals } = await context.supabase
+        .from("submission_values")
+        .select("submission_id, field_id, value")
+        .in(
+          "submission_id",
+          rows.map((r) => r.id),
+        )
+        .in("field_id", fieldIds);
+      for (const v of vals ?? []) {
+        valueMap.set(`${v.submission_id}:${v.field_id}`, v.value ?? "");
+      }
+    }
+
+    return rows.map((r) => {
+      const fid = fieldByForm.get(r.form_id);
+      const name = fid ? valueMap.get(`${r.id}:${fid}`) : "";
+      return { ...r, responsible_name: name?.trim() || null };
+    });
   });
 
 // ---------- Detalhe ----------
