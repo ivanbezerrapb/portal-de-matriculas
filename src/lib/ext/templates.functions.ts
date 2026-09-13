@@ -193,7 +193,7 @@ export const saveTemplate = createServerFn({ method: "POST" })
       saved = row;
     }
 
-    const applied = await applyToSchools(
+    const applied = await propagate(
       context.supabase as unknown as Supa,
       saved,
       data.school_ids,
