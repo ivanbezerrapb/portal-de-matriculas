@@ -4,12 +4,18 @@ import { useState } from "react";
 import { toast } from "sonner";
 import {
   deletePrintTemplate,
+  duplicatePrintTemplate,
   getForm,
   saveFormFields,
   savePrintTemplate,
   setFormStatus,
   updateFormInfo,
 } from "@/lib/ext/formularios.functions";
+import {
+  applyTemplateToForm,
+  listTemplates,
+  saveFormTemplateAsLibrary,
+} from "@/lib/ext/templates.functions";
 import {
   FIELD_TYPE_LABELS,
   joinChildOptions,
