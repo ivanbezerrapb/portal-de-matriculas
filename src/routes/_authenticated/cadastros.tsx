@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
+import { toast } from "sonner";
 import { listSubmissions } from "@/lib/ext/cadastros.functions";
 import { listSchools } from "@/lib/ext/escolas.functions";
 import { listForms } from "@/lib/ext/formularios.functions";
@@ -29,6 +30,10 @@ function SubmissionsPage() {
   const [to, setTo] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [printTemplateId, setPrintTemplateId] = useState("");
+  const [picker, setPicker] = useState<{
+    submissionId: string;
+    formId: string;
+  } | null>(null);
 
   const { data: perms } = useQuery({
     queryKey: ["my-permissions"],
@@ -67,6 +72,37 @@ function SubmissionsPage() {
     queryFn: () => listPrintTemplates({ data: { form_id: singleFormId! } }),
     enabled: !!singleFormId,
   });
+
+  // Todos os modelos acessíveis, para o botão de impressão de cada linha.
+  const { data: allTemplates } = useQuery({
+    queryKey: ["print-templates-all"],
+    queryFn: () => listPrintTemplates({ data: {} }),
+  });
+
+  function openPrint(templateId: string, submissionId: string) {
+    window.open(
+      `/imprimir/${templateId}?ids=${submissionId}`,
+      "_blank",
+      "noopener",
+    );
+    setPicker(null);
+  }
+
+  function printRow(submissionId: string, rowFormId: string) {
+    const list = (allTemplates ?? []).filter((t) => t.form_id === rowFormId);
+    if (list.length === 0) {
+      toast.error(
+        "Este formulário ainda não tem modelo de impressão. Crie um em Formulários › Modelos de impressão.",
+      );
+      return;
+    }
+    const first = list[0];
+    if (list.length === 1 && first) {
+      openPrint(first.id, submissionId);
+      return;
+    }
+    setPicker({ submissionId, formId: rowFormId });
+  }
 
   const canPrint =
     (perms?.isAdmin ||
@@ -216,6 +252,7 @@ function SubmissionsPage() {
                 <th className="px-4 py-3">Formulário</th>
                 <th className="px-4 py-3">Escola</th>
                 <th className="px-4 py-3">Data</th>
+                <th className="px-4 py-3"></th>
               </tr>
             </thead>
             <tbody>
@@ -254,6 +291,18 @@ function SubmissionsPage() {
                     <td className="px-4 py-2.5 text-muted-foreground">
                       {new Date(s.created_at).toLocaleDateString("pt-BR")}
                     </td>
+                    <td className="px-2 py-2.5 text-right">
+                      {canPrint && (
+                        <button
+                          title="Imprimir este cadastro"
+                          aria-label={`Imprimir ${s.public_id}`}
+                          onClick={() => printRow(s.id, s.form_id)}
+                          className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+                        >
+                          <PrinterIcon />
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 );
               })}
@@ -261,6 +310,63 @@ function SubmissionsPage() {
           </table>
         </div>
       )}
+
+      {picker && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          onClick={() => setPicker(null)}
+        >
+          <div
+            className="w-full max-w-sm rounded-xl border border-border bg-card p-5 shadow-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="font-display text-lg font-semibold text-foreground">
+              Escolha o modelo de impressão
+            </h2>
+            <div className="mt-4 flex flex-col gap-2">
+              {(allTemplates ?? [])
+                .filter((t) => t.form_id === picker.formId)
+                .map((t) => (
+                  <Button
+                    key={t.id}
+                    variant="outline"
+                    className="justify-start"
+                    onClick={() => openPrint(t.id, picker.submissionId)}
+                  >
+                    {t.name}
+                  </Button>
+                ))}
+            </div>
+            <Button
+              variant="ghost"
+              className="mt-4"
+              onClick={() => setPicker(null)}
+            >
+              Cancelar
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
+  );
+}
+
+function PrinterIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M6 9V3h12v6" />
+      <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+      <rect x="6" y="14" width="12" height="8" rx="1" />
+    </svg>
   );
 }

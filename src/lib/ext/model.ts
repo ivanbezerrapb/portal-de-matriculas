@@ -134,6 +134,7 @@ export type PrintTemplate = {
   page_size: "A4" | "A5";
   show_signature: boolean;
   field_ids: string[];
+  layout?: unknown;
 };
 
 export const ROLE_LABELS: Record<string, string> = {

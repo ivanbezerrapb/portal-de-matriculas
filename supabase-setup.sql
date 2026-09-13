@@ -90,6 +90,7 @@ create table public.print_templates (
   page_size text not null default 'A4' check (page_size in ('A4','A5')),
   show_signature boolean not null default false,
   field_ids jsonb not null default '[]',
+  layout jsonb,
   created_at timestamptz not null default now()
 );
 

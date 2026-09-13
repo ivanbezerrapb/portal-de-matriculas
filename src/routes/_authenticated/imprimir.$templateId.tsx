@@ -4,6 +4,12 @@ import { z } from "zod";
 import { getPrintData } from "@/lib/ext/impressao.functions";
 import type { FormField } from "@/lib/ext/model";
 import { formatValue } from "@/components/FieldRenderer";
+import { BlockView } from "@/components/print/BlockView";
+import {
+  PAGE_MM,
+  parseLayout,
+  type PrintContext,
+} from "@/lib/ext/print-layout";
 import { Button, Spinner } from "@/components/ui";
 
 export const Route = createFileRoute("/_authenticated/imprimir/$templateId")({
@@ -59,31 +65,90 @@ function PrintPage() {
     logo_url: string | null;
   } | null;
   const typedFields = fields as FormField[];
+  const layout = parseLayout(template.layout);
+  const hasLayout = !!layout && layout.pages.some((p) => p.blocks.length > 0);
+  const size = PAGE_MM[layout?.pageSize ?? (template.page_size as "A4" | "A5")];
 
+  const printCss = `
+    @media print {
+      body * { visibility: hidden; }
+      #print-area, #print-area * { visibility: visible; }
+      #print-area { position: absolute; inset: 0; width: 100%; }
+      .print-page { page-break-after: always; box-shadow: none !important; border: none !important; margin: 0 !important; }
+      .no-print { display: none !important; }
+    }
+    @page { size: ${layout?.pageSize ?? template.page_size}; margin: ${hasLayout ? "0" : "12mm"}; }
+  `;
+
+  const toolbar = (
+    <div className="no-print mb-4 flex items-center justify-between">
+      <Link
+        to="/cadastros"
+        className="text-sm text-muted-foreground hover:text-foreground"
+      >
+        ← Voltar
+      </Link>
+      <Button onClick={() => window.print()}>
+        Imprimir {submissions.length} ficha{submissions.length > 1 ? "s" : ""}
+      </Button>
+    </div>
+  );
+
+  if (hasLayout && layout) {
+    return (
+      <div className="mx-auto w-fit">
+        <style>{printCss}</style>
+        {toolbar}
+        <div id="print-area">
+          {submissions.map((sub) => {
+            const ctx: PrintContext = {
+              fields: typedFields,
+              values: sub.values,
+              publicId: sub.public_id,
+              schoolName: school?.name ?? "",
+              formTitle: form.title,
+              createdAt: sub.created_at,
+            };
+            return layout.pages.map((page) => (
+              <div
+                key={`${sub.id}-${page.id}`}
+                className="print-page mx-auto mb-6 bg-white shadow-sm"
+                style={{
+                  position: "relative",
+                  width: `${size.w}mm`,
+                  height: `${size.h}mm`,
+                  overflow: "hidden",
+                  color: "#000",
+                }}
+              >
+                {page.blocks.map((b) => (
+                  <div
+                    key={b.id}
+                    style={{
+                      position: "absolute",
+                      left: `${b.x}mm`,
+                      top: `${b.y}mm`,
+                      width: `${b.w}mm`,
+                      height: `${b.h}mm`,
+                      overflow: "hidden",
+                    }}
+                  >
+                    <BlockView block={b} ctx={ctx} preview={false} />
+                  </div>
+                ))}
+              </div>
+            ));
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  // Formato simples (modelos antigos, sem layout montado)
   return (
     <div className="mx-auto max-w-4xl">
-      <style>{`
-        @media print {
-          body * { visibility: hidden; }
-          #print-area, #print-area * { visibility: visible; }
-          #print-area { position: absolute; inset: 0; width: 100%; }
-          .print-page { page-break-after: always; box-shadow: none !important; border: none !important; }
-          .no-print { display: none !important; }
-        }
-        @page { size: ${template.page_size}; margin: 12mm; }
-      `}</style>
-
-      <div className="no-print mb-4 flex items-center justify-between">
-        <Link
-          to="/cadastros"
-          className="text-sm text-muted-foreground hover:text-foreground"
-        >
-          ← Voltar
-        </Link>
-        <Button onClick={() => window.print()}>
-          Imprimir {submissions.length} ficha{submissions.length > 1 ? "s" : ""}
-        </Button>
-      </div>
+      <style>{printCss}</style>
+      {toolbar}
 
       <div id="print-area" className="flex flex-col gap-6">
         {submissions.map((sub) => (

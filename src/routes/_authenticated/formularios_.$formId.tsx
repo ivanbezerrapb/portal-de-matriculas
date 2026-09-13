@@ -18,6 +18,12 @@ import {
   type FormField,
   type PrintTemplate,
 } from "@/lib/ext/model";
+import { LayoutEditor } from "@/components/print/LayoutEditor";
+import {
+  emptyLayout,
+  parseLayout,
+  type PrintLayout,
+} from "@/lib/ext/print-layout";
 import {
   Badge,
   Button,
@@ -419,6 +425,7 @@ const emptyTemplate = {
   page_size: "A4" as "A4" | "A5",
   show_signature: true,
   field_ids: [] as string[],
+  layout: emptyLayout("A4") as PrintLayout,
 };
 
 function TemplatesTab({
@@ -450,6 +457,9 @@ function TemplatesTab({
           page_size: t.page_size,
           show_signature: t.show_signature,
           field_ids: t.field_ids,
+          layout: t.layout.pages.some((p) => p.blocks.length > 0)
+            ? t.layout
+            : null,
         },
       }),
     onSuccess: () => {
@@ -520,6 +530,7 @@ function TemplatesTab({
                   page_size: t.page_size,
                   show_signature: t.show_signature,
                   field_ids: t.field_ids ?? [],
+                  layout: parseLayout(t.layout) ?? emptyLayout(t.page_size),
                 })
               }
             >
@@ -587,12 +598,14 @@ function TemplatesTab({
               <Label>Tamanho do papel</Label>
               <Select
                 value={editing.page_size}
-                onChange={(e) =>
+                onChange={(e) => {
+                  const ps = e.target.value as "A4" | "A5";
                   setEditing({
                     ...editing,
-                    page_size: e.target.value as "A4" | "A5",
-                  })
-                }
+                    page_size: ps,
+                    layout: { ...editing.layout, pageSize: ps },
+                  });
+                }}
               >
                 <option value="A4">A4</option>
                 <option value="A5">A5</option>
@@ -640,96 +653,20 @@ function TemplatesTab({
             </label>
           </div>
 
-          <div className="mt-4">
-            <Label>Campos que aparecem na impressão (na ordem)</Label>
-            <div className="mt-2 flex flex-col gap-1.5">
-              {editing.field_ids.map((fid, idx) => {
-                const field = fields.find((f) => f.id === fid);
-                if (!field) return null;
-                return (
-                  <div
-                    key={fid}
-                    className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5 text-sm"
-                  >
-                    <span className="flex-1 text-foreground">
-                      {field.label}
-                      {field.internal && (
-                        <span className="ml-2 text-xs text-muted-foreground">
-                          (interno)
-                        </span>
-                      )}
-                    </span>
-                    <button
-                      className="text-muted-foreground hover:text-foreground disabled:opacity-30"
-                      disabled={idx === 0}
-                      onClick={() => {
-                        const ids = [...editing.field_ids];
-                        const prev = ids[idx - 1];
-                        const cur = ids[idx];
-                        if (prev == null || cur == null) return;
-                        ids[idx - 1] = cur;
-                        ids[idx] = prev;
-                        setEditing({ ...editing, field_ids: ids });
-                      }}
-                    >
-                      ↑
-                    </button>
-                    <button
-                      className="text-muted-foreground hover:text-foreground disabled:opacity-30"
-                      disabled={idx === editing.field_ids.length - 1}
-                      onClick={() => {
-                        const ids = [...editing.field_ids];
-                        const next = ids[idx + 1];
-                        const cur = ids[idx];
-                        if (next == null || cur == null) return;
-                        ids[idx + 1] = cur;
-                        ids[idx] = next;
-                        setEditing({ ...editing, field_ids: ids });
-                      }}
-                    >
-                      ↓
-                    </button>
-                    <button
-                      className="text-destructive hover:underline"
-                      onClick={() =>
-                        setEditing({
-                          ...editing,
-                          field_ids: editing.field_ids.filter(
-                            (id) => id !== fid,
-                          ),
-                        })
-                      }
-                    >
-                      Remover
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-            {fields.filter((f) => !editing.field_ids.includes(f.id)).length >
-              0 && (
-              <Select
-                className="mt-2"
-                value=""
-                onChange={(e) => {
-                  if (!e.target.value) return;
-                  setEditing({
-                    ...editing,
-                    field_ids: [...editing.field_ids, e.target.value],
-                  });
-                }}
-              >
-                <option value="">+ Adicionar campo ao modelo...</option>
-                {fields
-                  .filter((f) => !editing.field_ids.includes(f.id))
-                  .map((f) => (
-                    <option key={f.id} value={f.id}>
-                      {f.label}
-                      {f.internal ? " (interno)" : ""}
-                    </option>
-                  ))}
-              </Select>
-            )}
+          <div className="mt-5">
+            <Label>Layout da folha</Label>
+            <p className="mb-3 text-xs text-muted-foreground">
+              Adicione blocos, arraste para posicionar e redimensione pelo canto.
+              Se você não adicionar nenhum bloco, a impressão usa o formato
+              simples (lista de campos).
+            </p>
+            <LayoutEditor
+              layout={editing.layout}
+              onChange={(l) => setEditing({ ...editing, layout: l })}
+              fields={fields}
+              formTitle={editing.title || "Formulário"}
+              schoolName="Escola"
+            />
           </div>
 
           <div className="mt-5 flex gap-2">
