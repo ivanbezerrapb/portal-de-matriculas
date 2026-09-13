@@ -216,48 +216,34 @@ function PipelinePage() {
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={(e) => {
                   e.preventDefault();
-                  if (!dragging) return;
+                  if (!dragging || statusFilter !== "open") return;
                   moveM.mutate({ id: dragging, stage_id: stage.id, position: cards.length });
                   setDragging(null);
                 }}
               >
-                <div className="mb-3 flex items-center gap-2">
-                  <span className="h-3 w-3 rounded-full" style={{ backgroundColor: stage.color }} />
-                  <p className="flex-1 text-sm font-semibold text-foreground">{stage.name}</p>
-                  <span className="rounded-full bg-card px-2 py-0.5 text-xs text-muted-foreground">
-                    {cards.length}
-                  </span>
-                </div>
-
-                <div className="flex-1 space-y-2">
-                  {cards.map((card) => {
-                    const body = (
-                      <>
-                        <p className="text-sm font-semibold text-foreground">{card.name}</p>
-                        {card.phone && (
-                          <p className="text-xs text-muted-foreground">{card.phone}</p>
-                        )}
-                        <div className="mt-2 flex flex-wrap items-center gap-2">
-                          <span
-                            className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium"
-                            style={{ backgroundColor: `${stage.color}1a`, color: stage.color }}
-                          >
-                            <span
-                              className="h-1.5 w-1.5 rounded-full"
-                              style={{ backgroundColor: stage.color }}
-                            />
-                            {stage.name}
-                          </span>
+...
                           <span className="text-[11px] text-muted-foreground">
                             {formatDate(card.created_at)}
                           </span>
                         </div>
+                        {card.status !== "open" && (
+                          <p
+                            className={`mt-2 text-[11px] font-semibold ${
+                              card.status === "won" ? "text-emerald-600" : "text-destructive"
+                            }`}
+                          >
+                            {card.status === "won" ? "Ganha" : "Perdida"}
+                            {card.crm_close_reasons?.label
+                              ? ` · ${card.crm_close_reasons.label}`
+                              : ""}
+                          </p>
+                        )}
                       </>
                     );
                     return (
                       <div
                         key={card.id}
-                        draggable
+                        draggable={statusFilter === "open"}
                         onDragStart={() => setDragging(card.id)}
                         onDragEnd={() => setDragging(null)}
                         className="group rounded-lg border border-border bg-card p-3 shadow-sm"
@@ -269,20 +255,22 @@ function PipelinePage() {
                         >
                           {body}
                         </button>
-                        <button
-                          type="button"
-                          aria-label="Remover oportunidade"
-                          className="mt-2 hidden text-xs text-destructive group-hover:inline-flex"
-                          onClick={() => deleteM.mutate({ id: card.id })}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
+                        {statusFilter === "open" && (
+                          <button
+                            type="button"
+                            aria-label="Remover oportunidade"
+                            className="mt-2 hidden text-xs text-destructive group-hover:inline-flex"
+                            onClick={() => deleteM.mutate({ id: card.id })}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        )}
                       </div>
                     );
                   })}
                 </div>
 
-                {newIn === stage.id ? (
+                {statusFilter === "open" && newIn === stage.id ? (
                   <form
                     className="mt-2 space-y-2 rounded-lg border border-border bg-card p-3"
                     onSubmit={(e) => {
