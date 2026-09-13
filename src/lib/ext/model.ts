@@ -112,6 +112,16 @@ export type FormField = {
   position: number;
 };
 
+// Campo interno automático que guarda a quantidade de crianças como resposta.
+export const CHILDREN_COUNT_LABEL = "Quantidade de crianças";
+
+export function isChildrenCountField(f: {
+  label: string;
+  internal: boolean;
+}): boolean {
+  return f.internal && f.label === CHILDREN_COUNT_LABEL;
+}
+
 export type Submission = {
   id: string;
   form_id: string;
