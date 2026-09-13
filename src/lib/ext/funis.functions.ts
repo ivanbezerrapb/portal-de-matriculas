@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAuth } from "./auth";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Funnel, FunnelStage } from "./model";
 
 async function requireAdmin(supabase: SupabaseClient, userId: string) {
   const { getPerms } = await import("./server");
