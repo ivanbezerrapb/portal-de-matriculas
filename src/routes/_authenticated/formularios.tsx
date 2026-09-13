@@ -183,6 +183,18 @@ function FormsPage() {
                   Configurar
                 </Link>
                 <Button
+                  variant="secondary"
+                  onClick={() =>
+                    setDup({
+                      id: f.id,
+                      title: `Cópia de ${f.title}`,
+                      schoolId: f.school_id,
+                    })
+                  }
+                >
+                  Duplicar
+                </Button>
+                <Button
                   variant="ghost"
                   onClick={() => {
                     if (
