@@ -27,7 +27,7 @@ export const listFunnels = createServerFn({ method: "GET" })
       .order("created_at");
     if (error) throw new Error(error.message);
     const ids = (funnels ?? []).map((f: { id: string }) => f.id);
-    let stages: unknown[] = [];
+    let stages: FunnelStage[] = [];
     if (ids.length) {
       const { data, error: stagesError } = await context.supabase
         .from("funnel_stages")
@@ -35,9 +35,9 @@ export const listFunnels = createServerFn({ method: "GET" })
         .in("funnel_id", ids)
         .order("position");
       if (stagesError) throw new Error(stagesError.message);
-      stages = data ?? [];
+      stages = (data ?? []) as FunnelStage[];
     }
-    return { funnels: funnels ?? [], stages };
+    return { funnels: (funnels ?? []) as Funnel[], stages };
   });
 
 const funnelInput = z.object({
