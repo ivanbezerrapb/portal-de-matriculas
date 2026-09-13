@@ -48,18 +48,32 @@ function formatDate(value: string) {
 function PipelinePage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { funil } = Route.useSearch();
+  const { funil, card } = Route.useSearch();
   const [dragging, setDragging] = useState<string | null>(null);
   const [newIn, setNewIn] = useState<string | null>(null);
-  const [openCard, setOpenCard] = useState<string | null>(null);
+  const [openCard, setOpenCard] = useState<string | null>(card ?? null);
+  const [statusFilter, setStatusFilter] = useState<"open" | "won" | "lost">("open");
+  const [closing, setClosing] = useState<{ id: string; result: "won" | "lost" } | null>(null);
+
+  // Abre o painel quando o endereço traz ?card=... (ex.: vindo da tela Tarefas).
+  useEffect(() => {
+    if (card) setOpenCard(card);
+  }, [card]);
+
+  const { data: perms } = useQuery({
+    queryKey: ["my-permissions"],
+    queryFn: () => getMyPermissions(),
+  });
+  const canClose = perms?.isAdmin || (perms?.managerSchools.length ?? 0) > 0;
 
   const funnelsQuery = useQuery({ queryKey: ["funnels"], queryFn: () => listFunnels() });
   const funnels = funnelsQuery.data?.funnels ?? [];
   const selected = funil ?? funnels.find((f) => f.is_default)?.id ?? funnels[0]?.id;
 
   const pipelineQuery = useQuery({
-    queryKey: ["pipeline", selected],
-    queryFn: () => listPipeline({ data: { funnel_id: selected! } }),
+    queryKey: ["pipeline", selected, statusFilter],
+    queryFn: () =>
+      listPipeline({ data: { funnel_id: selected!, status: statusFilter } }),
     enabled: Boolean(selected),
   });
 
