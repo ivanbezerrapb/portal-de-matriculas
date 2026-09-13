@@ -173,6 +173,7 @@ export type Opportunity = {
   phone: string | null;
   email: string | null;
   notes: string | null;
+  details: { label: string; value: string }[];
   position: number;
   created_at: string;
 };

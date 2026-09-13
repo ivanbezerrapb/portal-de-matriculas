@@ -45,6 +45,7 @@ function PipelinePage() {
   const { funil } = Route.useSearch();
   const [dragging, setDragging] = useState<string | null>(null);
   const [newIn, setNewIn] = useState<string | null>(null);
+  const [openCard, setOpenCard] = useState<string | null>(null);
 
   const funnelsQuery = useQuery({ queryKey: ["funnels"], queryFn: () => listFunnels() });
   const funnels = funnelsQuery.data?.funnels ?? [];
@@ -203,17 +204,13 @@ function PipelinePage() {
                         onDragEnd={() => setDragging(null)}
                         className="group rounded-lg border border-border bg-card p-3 shadow-sm"
                       >
-                        {card.submission_id ? (
-                          <Link
-                            to="/cadastros/$submissionId"
-                            params={{ submissionId: card.submission_id }}
-                            className="block"
-                          >
-                            {body}
-                          </Link>
-                        ) : (
-                          body
-                        )}
+                        <button
+                          type="button"
+                          className="block w-full cursor-pointer text-left"
+                          onClick={() => setOpenCard(card.id)}
+                        >
+                          {body}
+                        </button>
                         <button
                           type="button"
                           aria-label="Remover oportunidade"
@@ -276,6 +273,85 @@ function PipelinePage() {
           )}
         </div>
       )}
+
+      {(() => {
+        const card = opportunities.find((o) => o.id === openCard);
+        if (!card) return null;
+        const stage = stages.find((s) => s.id === card.stage_id);
+        const details = (card.details ?? []) as { label: string; value: string }[];
+        return (
+          <div
+            className="fixed inset-0 z-50 flex justify-end bg-foreground/40"
+            onClick={() => setOpenCard(null)}
+          >
+            <div
+              className="h-full w-full max-w-md overflow-y-auto bg-card p-6 shadow-xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <h2 className="font-display text-xl font-bold text-foreground">{card.name}</h2>
+                <Button variant="ghost" onClick={() => setOpenCard(null)}>
+                  Fechar
+                </Button>
+              </div>
+
+              {stage && (
+                <span
+                  className="mt-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium"
+                  style={{ backgroundColor: `${stage.color}1a`, color: stage.color }}
+                >
+                  <span
+                    className="h-1.5 w-1.5 rounded-full"
+                    style={{ backgroundColor: stage.color }}
+                  />
+                  {stage.name}
+                </span>
+              )}
+
+              <dl className="mt-4 space-y-3 text-sm">
+                {card.phone && (
+                  <div>
+                    <dt className="text-xs text-muted-foreground">Telefone</dt>
+                    <dd className="text-foreground">{card.phone}</dd>
+                  </div>
+                )}
+                {card.email && (
+                  <div>
+                    <dt className="text-xs text-muted-foreground">E-mail</dt>
+                    <dd className="text-foreground">{card.email}</dd>
+                  </div>
+                )}
+                {details.map((d, i) => (
+                  <div key={i}>
+                    <dt className="text-xs text-muted-foreground">{d.label}</dt>
+                    <dd className="whitespace-pre-line text-foreground">{d.value}</dd>
+                  </div>
+                ))}
+                {card.notes && (
+                  <div>
+                    <dt className="text-xs text-muted-foreground">Observação</dt>
+                    <dd className="whitespace-pre-line text-foreground">{card.notes}</dd>
+                  </div>
+                )}
+                <div>
+                  <dt className="text-xs text-muted-foreground">Entrada</dt>
+                  <dd className="text-foreground">{formatDate(card.created_at)}</dd>
+                </div>
+              </dl>
+
+              {card.submission_id && (
+                <Link
+                  to="/cadastros/$submissionId"
+                  params={{ submissionId: card.submission_id }}
+                  className="mt-6 inline-flex text-sm font-medium text-primary hover:underline"
+                >
+                  Abrir cadastro
+                </Link>
+              )}
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

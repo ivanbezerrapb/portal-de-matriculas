@@ -63,6 +63,12 @@ export const saveDestination = createServerFn({ method: "POST" })
         name_field_id: uuidOrNull,
         phone_field_id: uuidOrNull,
         email_field_id: uuidOrNull,
+        extra_fields: z.array(
+          z.object({
+            field_id: z.string().uuid(),
+            label: z.string().nullable().optional(),
+          }),
+        ),
         default_send: z.boolean(),
         default_funnel_id: uuidOrNull,
         default_stage_id: uuidOrNull,
@@ -77,6 +83,10 @@ export const saveDestination = createServerFn({ method: "POST" })
         name_field_id: data.name_field_id ?? null,
         phone_field_id: data.phone_field_id ?? null,
         email_field_id: data.email_field_id ?? null,
+        extra_fields: data.extra_fields.map((e) => ({
+          field_id: e.field_id,
+          label: e.label?.trim() || null,
+        })),
         default_send: data.default_send,
         default_funnel_id: data.default_funnel_id ?? null,
         default_stage_id: data.default_stage_id ?? null,

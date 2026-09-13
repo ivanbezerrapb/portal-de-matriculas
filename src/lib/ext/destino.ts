@@ -31,15 +31,52 @@ export type DestinationRule = {
   conditions: DestinationCondition[];
 };
 
+// Campo extra levado para o cartão do CRM.
+export type ExtraField = {
+  field_id: string;
+  label: string | null;
+};
+
 export type Destination = {
   form_id: string;
   name_field_id: string | null;
   phone_field_id: string | null;
   email_field_id: string | null;
+  extra_fields: ExtraField[];
   default_send: boolean;
   default_funnel_id: string | null;
   default_stage_id: string | null;
 };
+
+// Texto legível de uma resposta (inclui múltipla escolha e "N Filhos").
+export function answerText(raw: string | string[] | null | undefined): string {
+  if (raw == null) return "";
+  if (Array.isArray(raw)) return raw.join(", ");
+  const s = String(raw).trim();
+  if (s.startsWith("[")) {
+    try {
+      const arr = JSON.parse(s);
+      if (Array.isArray(arr)) {
+        return arr
+          .map((item) => {
+            if (item && typeof item === "object") {
+              const c = item as Record<string, unknown>;
+              const parts = [c["nome"], c["nascimento"], c["serie"], c["turno"]]
+                .map((v) => (v == null ? "" : String(v).trim()))
+                .filter(Boolean);
+              return parts.join(" · ");
+            }
+            return String(item);
+          })
+          .filter(Boolean)
+          .join(" | ");
+      }
+    } catch {
+      // texto normal
+    }
+  }
+  return s;
+}
 
 export type CrmDecision = {
   send: boolean;
