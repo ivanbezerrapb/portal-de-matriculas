@@ -128,9 +128,7 @@ function FormConfigPage() {
       {tab === "impressao" && (
         <TemplatesTab
           formId={formId}
-          fields={data.fields as FormField[]}
           templates={data.templates as PrintTemplate[]}
-          schoolName={school?.name ?? "Escola"}
         />
       )}
       {tab === "publicar" && (
