@@ -185,6 +185,7 @@ function FieldsTab({
       if (idx < 0 || target < 0 || target >= prev.length) return prev;
       const next = [...prev];
       const item = next[idx];
+      if (!item) return prev;
       next.splice(idx, 1);
       next.splice(target, 0, item);
       return next;
