@@ -88,6 +88,7 @@ function PipelinePage() {
 
   const stages = pipelineQuery.data?.stages ?? [];
   const opportunities = pipelineQuery.data?.opportunities ?? [];
+  const nextTasks = pipelineQuery.data?.nextTasks ?? {};
 
   function refresh() {
     void queryClient.invalidateQueries({ queryKey: ["pipeline", selected] });
