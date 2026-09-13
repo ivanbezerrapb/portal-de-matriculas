@@ -747,7 +747,8 @@ function DestinationTab({ formId, schoolId }: { formId: string; schoolId: string
       <Card>
         <h2 className="font-semibold text-foreground">Dados do cartão no CRM</h2>
         <p className="mt-1 text-xs text-muted-foreground">
-          Escolha de quais respostas saem o nome, o telefone e o e-mail da oportunidade.
+          Escolha de quais respostas saem o nome, o telefone e o e-mail. O título da oportunidade
+          será: ID do cadastro · Nome.
         </p>
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
           {(
