@@ -4,7 +4,8 @@
 
 - Integração com o Supabase externo: **funcionando** (credenciais salvas e conexão testada com sucesso).
 - Banco de dados: o arquivo `supabase-setup.sql` está pronto no projeto, mas **ainda precisa ser executado por você** no SQL Editor do Supabase (painel do seu projeto → SQL Editor → colar o conteúdo → Run).
-- Já construído no app: conexão, autenticação (login/senha), página inicial, formulário público (`/f/...`), área logada com menu por perfil, painel inicial, gestão de escolas e lista de formulários.
+- Já construído no app: conexão, autenticação (login/senha), formulário público (`/f/...`), área logada com menu por perfil, painel inicial, gestão de escolas e lista de formulários.
+- Decisão nova: **sem página inicial (landing)** — o endereço `/` abre direto a tela de login; quem já estiver logado cai no painel.
 
 ## O que falta construir
 
