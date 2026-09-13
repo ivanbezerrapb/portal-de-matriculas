@@ -1,5 +1,6 @@
 // Renderização de um bloco do layout — usada no editor e na impressão.
 import { formatValue } from "@/components/FieldRenderer";
+import { parseAddress, parseAddressPartFieldId } from "@/lib/ext/model";
 import {
   childrenOf,
   formatDateTimeBR,
@@ -23,6 +24,9 @@ export function resolveSource(source: string, ctx: PrintContext): string {
     case "__today":
       return new Date().toLocaleDateString("pt-BR");
     default: {
+      // Parte de um campo Endereço ("<campo>.<parte>", ex.: CEP, Rua).
+      const syn = parseAddressPartFieldId(source);
+      if (syn) return parseAddress(ctx.values[syn.fieldId] ?? "")[syn.part];
       const field = ctx.fields.find((f) => f.id === source);
       if (!field) return "";
       return formatValue(field, ctx.values[field.id] ?? "");

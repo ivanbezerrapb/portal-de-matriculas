@@ -29,7 +29,7 @@ import {
   type PrintLayout,
   type TableBlock,
 } from "@/lib/ext/print-layout";
-import type { FormField } from "@/lib/ext/model";
+import { fieldOptionsWithAddressParts, type FormField } from "@/lib/ext/model";
 import { Button, Input, Label, Select, Textarea } from "@/components/ui";
 
 const BLOCK_ORDER: PrintBlock["type"][] = [
@@ -983,9 +983,9 @@ function Inspector({
                 ))}
               </optgroup>
               <optgroup label="Campos do formulário">
-                {fields.map((f) => (
-                  <option key={f.id} value={f.id}>
-                    {f.label}
+                {fieldOptionsWithAddressParts(fields).map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.label}
                   </option>
                 ))}
               </optgroup>
@@ -1449,9 +1449,9 @@ function TableControls({
                 ))}
               </optgroup>
               <optgroup label="Campos do formulário">
-                {fields.map((f) => (
-                  <option key={f.id} value={f.id}>
-                    {f.label}
+                {fieldOptionsWithAddressParts(fields).map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.label}
                   </option>
                 ))}
               </optgroup>
