@@ -6,7 +6,7 @@ import {
   type CSSProperties,
 } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Eye, Maximize2, Minimize2, X } from "lucide-react";
+import { Eye, Maximize2, Minimize2, X, ZoomIn, ZoomOut } from "lucide-react";
 import { toast } from "sonner";
 import { getSupabase } from "@/lib/ext/browser";
 import {
