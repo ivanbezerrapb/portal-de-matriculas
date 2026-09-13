@@ -9,7 +9,12 @@ import {
 
 type Supa = { from: (t: string) => any };
 
-const labelPair = z.object({ id: z.string(), label: z.string() });
+const labelPair = z.object({
+  id: z.string(),
+  label: z.string(),
+  type: z.string().optional(),
+  internal: z.boolean().optional(),
+});
 
 const libraryInput = z.object({
   name: z.string().min(1),
@@ -33,17 +38,37 @@ async function applyToForm(
 ): Promise<void> {
   const { data: fields } = await supabase
     .from("form_fields")
-    .select("id, label")
+    .select("id, label, type, internal")
     .eq("form_id", formId)
     .order("position");
 
-  const target = (fields ?? []) as { id: string; label: string }[];
+  const target = (fields ?? []) as {
+    id: string;
+    label: string;
+    type: string;
+    internal: boolean;
+  }[];
   const sourceLabels = (lib.field_labels ?? []) as {
     id: string;
     label: string;
+    type?: string;
+    internal?: boolean;
   }[];
   const map = mapFieldsByLabel(sourceLabels, target);
-  const layout = remapLayoutFields(parseLayout(lib.layout), map);
+  const sourceLayout = parseLayout(lib.layout);
+  const targetChildrenId = target.find(
+    (field) => field.type === "children" && !field.internal,
+  )?.id;
+  if (targetChildrenId) {
+    for (const page of sourceLayout?.pages ?? []) {
+      for (const block of page.blocks) {
+        if (block.type === "children" && block.fieldId) {
+          map[block.fieldId] = targetChildrenId;
+        }
+      }
+    }
+  }
+  const layout = remapLayoutFields(sourceLayout, map);
   const mapped = [
     ...new Set(
       sourceLabels
@@ -299,7 +324,7 @@ export const saveFormTemplateAsLibrary = createServerFn({ method: "POST" })
 
     const { data: fields } = await context.supabase
       .from("form_fields")
-      .select("id, label")
+      .select("id, label, type, internal")
       .eq("form_id", tpl.form_id)
       .order("position");
 

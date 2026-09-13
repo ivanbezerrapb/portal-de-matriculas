@@ -249,12 +249,16 @@ export function childrenOf(
   block: ChildrenBlock,
   ctx: PrintContext,
 ): ChildEntry[] {
-  const fallback = ctx.fields.find((f) => f.type === "children")?.id ?? "";
+  const fallback = ctx.fields.find(
+    (f) => f.type === "children" && !f.internal,
+  )?.id ?? "";
   // O template pode vir de outro formulário: se o campo indicado não existir
-  // (ou estiver vazio) neste formulário, usamos o campo de crianças dele.
+  // ou não for do tipo "N Filhos", usamos o campo de crianças deste formulário.
   let fieldId = block.fieldId || fallback;
-  const known = ctx.fields.some((f) => f.id === fieldId);
-  if (!known || !(ctx.values[fieldId] ?? "").trim()) {
+  const configuredField = ctx.fields.find((f) => f.id === fieldId);
+  const validChildrenField =
+    configuredField?.type === "children" && !configuredField.internal;
+  if (!validChildrenField || !(ctx.values[fieldId] ?? "").trim()) {
     if (fallback && (ctx.values[fallback] ?? "").trim()) fieldId = fallback;
   }
   if (!fieldId) return [];
@@ -331,16 +335,32 @@ export function remapLayoutFields(
 
 // Monta o mapa antigo -> novo casando campos pelo rótulo (sem acentos/maiúsculas).
 export function mapFieldsByLabel(
-  sourceLabels: { id: string; label: string }[],
-  targetFields: { id: string; label: string }[],
+  sourceLabels: {
+    id: string;
+    label: string;
+    type?: string;
+    internal?: boolean;
+  }[],
+  targetFields: {
+    id: string;
+    label: string;
+    type?: string;
+    internal?: boolean;
+  }[],
 ): Record<string, string | undefined> {
-  const byLabel = new Map(
-    targetFields.map((f) => [normalizeLabel(f.label), f.id]),
-  );
   const map: Record<string, string | undefined> = {};
   for (const s of sourceLabels) {
-    const hit = byLabel.get(normalizeLabel(s.label));
-    if (hit) map[s.id] = hit;
+    const candidates = targetFields.filter(
+      (f) => normalizeLabel(f.label) === normalizeLabel(s.label),
+    );
+    const sameType = s.type
+      ? candidates.find(
+          (f) => f.type === s.type && Boolean(f.internal) === Boolean(s.internal),
+        ) ?? candidates.find((f) => f.type === s.type && !f.internal)
+      : undefined;
+    const visible = candidates.find((f) => !f.internal);
+    const hit = sameType ?? visible ?? candidates[0];
+    if (hit) map[s.id] = hit.id;
   }
   return map;
 }

@@ -13,7 +13,9 @@ import { listSchools } from "@/lib/ext/escolas.functions";
 import { LayoutEditor } from "@/components/print/LayoutEditor";
 import {
   emptyLayout,
+  mapFieldsByLabel,
   parseLayout,
+  remapLayoutFields,
   type PrintLayout,
 } from "@/lib/ext/print-layout";
 import type { FormField } from "@/lib/ext/model";
@@ -43,7 +45,12 @@ type Editing = {
   layout: PrintLayout;
   school_ids: string[];
   ref_form_id: string;
-  prev_field_labels: { id: string; label: string }[];
+  prev_field_labels: {
+    id: string;
+    label: string;
+    type?: string;
+    internal?: boolean;
+  }[];
 };
 
 const emptyEditing: Editing = {
@@ -105,7 +112,12 @@ function TemplatesLibraryPage() {
             ? t.layout
             : null,
           field_labels: [
-            ...refFields.map((f) => ({ id: f.id, label: f.label })),
+            ...refFields.map((f) => ({
+              id: f.id,
+              label: f.label,
+              type: f.type,
+              internal: f.internal,
+            })),
             ...t.prev_field_labels.filter(
               (p) => !refFields.some((f) => f.id === p.id),
             ),
@@ -143,13 +155,6 @@ function TemplatesLibraryPage() {
     },
     onError: (e: Error) => toast.error(e.message),
   });
-
-  // Ao abrir um template sem formulário de referência, sugere o primeiro.
-  useEffect(() => {
-    if (editing && !editing.ref_form_id && forms && forms.length > 0) {
-      setEditing({ ...editing, ref_form_id: forms[0].id });
-    }
-  }, [editing, forms]);
 
   const schoolName = (id: string) =>
     (schools ?? []).find((s) => s.id === id)?.name ?? "";
@@ -217,7 +222,14 @@ function TemplatesLibraryPage() {
                   prev_field_labels: ((t.field_labels ?? []) as {
                     id: string;
                     label: string;
-                  }[]).map((p) => ({ id: p.id, label: p.label })),
+                    type?: string;
+                    internal?: boolean;
+                  }[]).map((p) => ({
+                    id: p.id,
+                    label: p.label,
+                    type: p.type,
+                    internal: p.internal,
+                  })),
                 })
               }
             >
@@ -314,9 +326,52 @@ function TemplatesLibraryPage() {
               <Label>Formulário de referência</Label>
               <Select
                 value={editing.ref_form_id}
-                onChange={(e) =>
-                  setEditing({ ...editing, ref_form_id: e.target.value })
-                }
+                onChange={async (e) => {
+                  const nextFormId = e.target.value;
+                  if (!nextFormId) {
+                    setEditing({ ...editing, ref_form_id: "" });
+                    return;
+                  }
+                  try {
+                    const nextForm = await getForm({ data: { id: nextFormId } });
+                    const nextFields = (nextForm.fields ?? []) as FormField[];
+                    const sourceFields =
+                      editing.ref_form_id && refFields.length > 0
+                        ? refFields
+                        : editing.prev_field_labels;
+                    const map = mapFieldsByLabel(sourceFields, nextFields);
+                    const targetChildrenId = nextFields.find(
+                      (field) => field.type === "children" && !field.internal,
+                    )?.id;
+                    if (targetChildrenId) {
+                      for (const page of editing.layout.pages) {
+                        for (const block of page.blocks) {
+                          if (block.type === "children" && block.fieldId) {
+                            map[block.fieldId] = targetChildrenId;
+                          }
+                        }
+                      }
+                    }
+                    setEditing({
+                      ...editing,
+                      ref_form_id: nextFormId,
+                      layout:
+                        remapLayoutFields(editing.layout, map) ?? editing.layout,
+                      prev_field_labels: nextFields.map((field) => ({
+                        id: field.id,
+                        label: field.label,
+                        type: field.type,
+                        internal: field.internal,
+                      })),
+                    });
+                  } catch (error) {
+                    toast.error(
+                      error instanceof Error
+                        ? error.message
+                        : "Não foi possível trocar o formulário.",
+                    );
+                  }
+                }}
               >
                 <option value="">Selecione…</option>
                 {(forms ?? []).map((f) => (
