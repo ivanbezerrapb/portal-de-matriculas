@@ -55,7 +55,7 @@ export function useDynamicPrintLayout(
       if (!isDynamic(block)) return;
       const node = nodes.current.get(block.id);
       if (!node) return;
-      next[block.id] = Math.max(block.h, node.offsetHeight / MM_PX);
+      next[block.id] = Math.max(block.h, node.scrollHeight / MM_PX);
     });
     setHeights((current) => {
       const changed =
