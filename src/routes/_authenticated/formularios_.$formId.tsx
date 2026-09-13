@@ -419,6 +419,7 @@ const emptyTemplate = {
   page_size: "A4" as "A4" | "A5",
   show_signature: true,
   field_ids: [] as string[],
+  layout: emptyLayout("A4") as PrintLayout,
 };
 
 function TemplatesTab({
