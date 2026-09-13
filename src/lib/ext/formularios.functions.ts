@@ -65,6 +65,95 @@ export const createForm = createServerFn({ method: "POST" })
     return created;
   });
 
+export const duplicateForm = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((data) =>
+    z
+      .object({
+        id: z.string().uuid(),
+        title: z.string().min(2),
+        school_id: z.string().uuid(),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    const { data: source, error: srcErr } = await context.supabase
+      .from("forms")
+      .select("*")
+      .eq("id", data.id)
+      .single();
+    if (srcErr) throw new Error(srcErr.message);
+
+    const { data: created, error } = await context.supabase
+      .from("forms")
+      .insert({
+        school_id: data.school_id,
+        title: data.title,
+        description: source.description ?? null,
+        status: "draft",
+        created_by: context.userId,
+      })
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+
+    const { data: fields, error: fieldsErr } = await context.supabase
+      .from("form_fields")
+      .select("*")
+      .eq("form_id", data.id)
+      .order("position");
+    if (fieldsErr) throw new Error(fieldsErr.message);
+
+    const idMap = new Map<string, string>();
+    for (const f of fields ?? []) {
+      const { data: newField, error: insErr } = await context.supabase
+        .from("form_fields")
+        .insert({
+          form_id: created.id,
+          label: f.label,
+          help_text: f.help_text,
+          type: f.type,
+          options: f.options,
+          required: f.required,
+          internal: f.internal,
+          position: f.position,
+        })
+        .select("id")
+        .single();
+      if (insErr) throw new Error(insErr.message);
+      idMap.set(f.id, newField.id);
+    }
+
+    const { data: templates, error: tplErr } = await context.supabase
+      .from("print_templates")
+      .select("*")
+      .eq("form_id", data.id)
+      .order("created_at");
+    if (tplErr) throw new Error(tplErr.message);
+
+    for (const t of templates ?? []) {
+      const { error: insErr } = await context.supabase
+        .from("print_templates")
+        .insert({
+          form_id: created.id,
+          name: t.name,
+          title: t.title,
+          header_text: t.header_text,
+          footer_text: t.footer_text,
+          show_logo: t.show_logo,
+          columns: t.columns,
+          page_size: t.page_size,
+          show_signature: t.show_signature,
+          field_ids: ((t.field_ids ?? []) as string[])
+            .map((fid) => idMap.get(fid))
+            .filter((v): v is string => Boolean(v)),
+        });
+      if (insErr) throw new Error(insErr.message);
+    }
+
+    return created;
+  });
+
 export const updateFormInfo = createServerFn({ method: "POST" })
   .middleware([requireAuth])
   .inputValidator((data) =>
