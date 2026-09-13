@@ -119,6 +119,28 @@ function PipelinePage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const closeM = useMutation({
+    mutationFn: (d: { id: string; result: "won" | "lost"; reason_id: string; note?: string }) =>
+      closeOpportunity({ data: d }),
+    onSuccess: () => {
+      toast.success("Oportunidade fechada.");
+      setClosing(null);
+      setOpenCard(null);
+      refresh();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const reopenM = useMutation({
+    mutationFn: (d: { id: string }) => reopenOpportunity({ data: d }),
+    onSuccess: () => {
+      toast.success("Oportunidade reaberta.");
+      setOpenCard(null);
+      refresh();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
