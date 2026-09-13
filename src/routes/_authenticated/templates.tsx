@@ -105,6 +105,19 @@ function TemplatesLibraryPage() {
     enabled: Boolean(editing?.ref_form_id),
   });
   const refFields = (refForm?.fields ?? []) as FormField[];
+  // Sem formulário de referência, usamos os campos gravados no próprio template
+  // para que o layout já montado continue visível e editável.
+  const fallbackFields: FormField[] = (editing?.prev_field_labels ?? []).map((p, i) => ({
+    id: p.id,
+    form_id: "",
+    label: p.label,
+    help_text: null,
+    type: (p.type ?? "text") as FormField["type"],
+    options: null,
+    required: false,
+    internal: p.internal ?? false,
+    position: i,
+  }));
 
   const saveMut = useMutation({
     mutationFn: (t: Editing) =>
@@ -130,6 +143,7 @@ function TemplatesLibraryPage() {
             ...t.prev_field_labels.filter((p) => !refFields.some((f) => f.id === p.id)),
           ],
           school_ids: t.school_ids,
+          ref_form_id: t.ref_form_id || null,
         },
       }),
     onSuccess: (res) => {
@@ -217,7 +231,7 @@ function TemplatesLibraryPage() {
                   show_signature: t.show_signature,
                   layout: parseLayout(t.layout) ?? emptyLayout(t.page_size as "A4" | "A5"),
                   school_ids: (t.school_ids ?? []) as string[],
-                  ref_form_id: "",
+                  ref_form_id: (t.ref_form_id ?? "") as string,
                   prev_field_labels: (
                     (t.field_labels ?? []) as {
                       id: string;
@@ -318,6 +332,7 @@ function TemplatesLibraryPage() {
                 value={editing.ref_form_id}
                 onChange={async (e) => {
                   const nextFormId = e.target.value;
+                  if (nextFormId === editing.ref_form_id) return;
                   if (!nextFormId) {
                     setEditing({ ...editing, ref_form_id: "" });
                     return;
@@ -436,6 +451,21 @@ function TemplatesLibraryPage() {
                 schoolName="Escola"
                 formId={editing.ref_form_id}
               />
+            ) : fallbackFields.length > 0 ? (
+              <>
+                <p className="mb-2 text-xs text-muted-foreground">
+                  Layout salvo neste template. Escolha o formulário de referência acima para poder
+                  incluir novos campos.
+                </p>
+                <LayoutEditor
+                  layout={editing.layout}
+                  onChange={(l) => setEditing({ ...editing, layout: l })}
+                  fields={fallbackFields}
+                  formTitle={editing.title || "Formulário"}
+                  schoolName="Escola"
+                  formId=""
+                />
+              </>
             ) : (
               <p className="text-sm text-muted-foreground">
                 Escolha um formulário de referência para montar o layout.
