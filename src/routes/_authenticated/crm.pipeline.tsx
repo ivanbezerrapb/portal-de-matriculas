@@ -45,6 +45,16 @@ function formatDate(value: string) {
   return new Date(value).toLocaleDateString("pt-BR");
 }
 
+// Cor da data da atividade: no prazo cinza, hoje verde, vencida vermelha.
+function activityColor(due: string | null): string {
+  if (!due) return "text-muted-foreground";
+  const today = new Date();
+  const hoje = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+  if (due === hoje) return "text-emerald-600";
+  if (due < hoje) return "text-destructive";
+  return "text-muted-foreground";
+}
+
 function PipelinePage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -78,6 +88,7 @@ function PipelinePage() {
 
   const stages = pipelineQuery.data?.stages ?? [];
   const opportunities = pipelineQuery.data?.opportunities ?? [];
+  const nextTasks = pipelineQuery.data?.nextTasks ?? {};
 
   function refresh() {
     void queryClient.invalidateQueries({ queryKey: ["pipeline", selected] });
@@ -230,6 +241,7 @@ function PipelinePage() {
 
                 <div className="flex-1 space-y-2">
                   {cards.map((card) => {
+                    const activity = nextTasks[card.id];
                     const body = (
                       <>
                         <p className="text-sm font-semibold text-foreground">{card.name}</p>
@@ -247,9 +259,18 @@ function PipelinePage() {
                             />
                             {stage.name}
                           </span>
-                          <span className="text-[11px] text-muted-foreground">
-                            {formatDate(card.created_at)}
-                          </span>
+                          {activity ? (
+                            <span
+                              className={`text-[11px] font-medium ${activityColor(activity.due_date)}`}
+                            >
+                              {activity.title}
+                              {activity.due_date
+                                ? ` · ${new Date(`${activity.due_date}T00:00:00`).toLocaleDateString("pt-BR")}`
+                                : ""}
+                            </span>
+                          ) : (
+                            <span className="text-[11px] text-muted-foreground">Sem atividade</span>
+                          )}
                         </div>
                         {card.status !== "open" && (
                           <p
