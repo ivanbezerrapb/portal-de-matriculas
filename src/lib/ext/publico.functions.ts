@@ -126,47 +126,16 @@ export const submitPublicForm = createServerFn({ method: "POST" })
       if (valuesError) throw new Error(valuesError.message);
     }
 
-    // Cria a oportunidade no funil padrão da escola (primeira etapa).
+    // Aplica as regras de destino (funil/etapa) configuradas no formulário.
     try {
-      const { data: funnel } = await supabase
-        .from("funnels")
-        .select("id")
-        .eq("school_id", form.school_id)
-        .eq("is_default", true)
-        .maybeSingle();
-      if (funnel) {
-        const { data: stage } = await supabase
-          .from("funnel_stages")
-          .select("id")
-          .eq("funnel_id", funnel.id)
-          .order("position")
-          .limit(1)
-          .maybeSingle();
-        if (stage) {
-          const valueOf = (type: string) => {
-            const field = publicFields.find((f) => f.type === type);
-            const v = field ? data.values[field.id] : undefined;
-            return typeof v === "string" && v.trim() ? v.trim() : null;
-          };
-          const { data: last } = await supabase
-            .from("opportunities")
-            .select("position")
-            .eq("stage_id", stage.id)
-            .order("position", { ascending: false })
-            .limit(1)
-            .maybeSingle();
-          await supabase.from("opportunities").insert({
-            funnel_id: funnel.id,
-            stage_id: stage.id,
-            school_id: form.school_id,
-            submission_id: submission.id,
-            name: valueOf("short_text") ?? publicId,
-            phone: valueOf("phone"),
-            email: valueOf("email"),
-            position: (last?.position ?? -1) + 1,
-          });
-        }
-      }
+      const { applyDestination } = await import("./destino.server");
+      await applyDestination(supabase, {
+        submissionId: submission.id,
+        formId: form.id,
+        schoolId: form.school_id,
+        publicId: publicId as string,
+        values: data.values,
+      });
     } catch {
       // O cadastro já foi salvo; falha ao criar a oportunidade não bloqueia o envio.
     }
