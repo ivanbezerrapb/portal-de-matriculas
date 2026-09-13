@@ -96,6 +96,22 @@ export function parseAddressPartFieldId(
   return { fieldId: m[1] as string, part };
 }
 
+// Lista de opções para seletores de campo, expandindo endereço em partes.
+export function fieldOptionsWithAddressParts<T extends { id: string; label: string; type: string }>(
+  fields: T[],
+): { id: string; label: string }[] {
+  return fields.flatMap((f) => {
+    if (f.type !== "address") return [{ id: f.id, label: f.label }];
+    return [
+      { id: f.id, label: f.label },
+      ...ADDRESS_PARTS.map((p) => ({
+        id: addressPartFieldId(f.id, p),
+        label: `${f.label} — ${ADDRESS_PART_LABELS[p]}`,
+      })),
+    ];
+  });
+}
+
 // Linhas por parte para gravar junto com a linha principal (JSON completo).
 export function addressPartRows(
   submissionId: string,
