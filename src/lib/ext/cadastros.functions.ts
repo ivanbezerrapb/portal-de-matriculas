@@ -368,9 +368,7 @@ export const deleteSubmission = createServerFn({ method: "POST" })
 export const getDashboardStats = createServerFn({ method: "GET" })
   .middleware([requireAuth])
   .inputValidator((data) =>
-    z
-      .object({ schoolIds: z.array(z.string().uuid()).optional() })
-      .parse(data ?? {}),
+    z.object({ schoolIds: z.array(z.string().uuid()).optional() }).parse(data ?? {}),
   )
   .handler(async ({ data, context }) => {
     const year = new Date().getFullYear();
@@ -431,7 +429,6 @@ export const getDashboardStats = createServerFn({ method: "GET" })
       bySchool: [...bySchool.values()].sort((a, b) => b.count - a.count),
     };
   });
-
 
 // ---------- Permissões do usuário logado ----------
 
