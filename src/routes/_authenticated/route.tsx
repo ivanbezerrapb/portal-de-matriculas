@@ -310,13 +310,7 @@ function AuthenticatedLayout() {
                 {perms.fullName || perms.email}
               </p>
               <p className="mt-0.5 text-xs text-sidebar-foreground/60">
-                {perms.isAdmin
-                  ? "Administrador"
-                  : perms.isEditor
-                    ? "Editor de cadastros"
-                    : perms.managerSchools.length > 0
-                      ? "Gestor de escola"
-                      : "Operador de impressão"}
+                {roleLabel}
               </p>
             </div>
           ) : (
