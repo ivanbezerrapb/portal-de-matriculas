@@ -338,14 +338,14 @@ export function mapFieldsByLabel(
   sourceLabels: {
     id: string;
     label: string;
-    type?: string;
-    internal?: boolean;
+    type?: string | undefined;
+    internal?: boolean | undefined;
   }[],
   targetFields: {
     id: string;
     label: string;
-    type?: string;
-    internal?: boolean;
+    type?: string | undefined;
+    internal?: boolean | undefined;
   }[],
 ): Record<string, string | undefined> {
   const map: Record<string, string | undefined> = {};
