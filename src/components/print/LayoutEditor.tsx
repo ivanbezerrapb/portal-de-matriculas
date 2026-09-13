@@ -1,7 +1,18 @@
 // Editor visual (arrastar e soltar) do layout de impressão.
-import { useRef, useState, type CSSProperties } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Eye, Maximize2, Minimize2, X } from "lucide-react";
 import { toast } from "sonner";
 import { getSupabase } from "@/lib/ext/browser";
+import {
+  getSubmission,
+  listSubmissions,
+} from "@/lib/ext/cadastros.functions";
 import { BlockView } from "@/components/print/BlockView";
 import {
   BLOCK_LABELS,
@@ -37,22 +48,62 @@ export function LayoutEditor({
   fields,
   formTitle,
   schoolName,
+  formId,
 }: {
   layout: PrintLayout;
   onChange: (l: PrintLayout) => void;
   fields: FormField[];
   formTitle: string;
   schoolName: string;
+  formId: string;
 }) {
   const [pageIdx, setPageIdx] = useState(0);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [zoom, setZoom] = useState(0.75);
+  const [zoom, setZoom] = useState<number | "fit">("fit");
+  const [fitZoom, setFitZoom] = useState(0.75);
   const [snap, setSnap] = useState(true);
+  const [fullscreen, setFullscreen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const canvasRef = useRef<HTMLDivElement>(null);
+  const viewportRef = useRef<HTMLDivElement>(null);
 
   const size = PAGE_MM[layout.pageSize];
   const page = layout.pages[Math.min(pageIdx, layout.pages.length - 1)];
-  const scale = MM_PX * zoom;
+  const activeZoom = zoom === "fit" ? fitZoom : zoom;
+  const scale = MM_PX * activeZoom;
+
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    if (!viewport || zoom !== "fit") return;
+
+    const fit = () => {
+      const availableWidth = Math.max(280, viewport.clientWidth - 32);
+      const availableHeight = Math.max(320, viewport.clientHeight - 32);
+      setFitZoom(
+        Math.max(
+          0.25,
+          Math.min(
+            1,
+            availableWidth / (size.w * MM_PX),
+            availableHeight / (size.h * MM_PX),
+          ),
+        ),
+      );
+    };
+    fit();
+    const observer = new ResizeObserver(fit);
+    observer.observe(viewport);
+    return () => observer.disconnect();
+  }, [fullscreen, size.h, size.w, zoom]);
+
+  useEffect(() => {
+    if (!fullscreen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setFullscreen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [fullscreen]);
 
   const ctx: PrintContext = {
     fields,
@@ -165,9 +216,40 @@ export function LayoutEditor({
   }
 
   return (
-    <div className="flex flex-col gap-4 lg:flex-row">
+    <div
+      className={
+        fullscreen
+          ? "fixed inset-0 z-50 flex flex-col overflow-hidden bg-background p-4"
+          : "flex flex-col"
+      }
+    >
+      <div className="mb-3 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
+        <p className="min-w-0 truncate text-sm text-muted-foreground">
+          {fullscreen ? "Editor de layout em tela cheia" : "Área de montagem"}
+        </p>
+        <div className="flex shrink-0 gap-2">
+          <Button variant="outline" onClick={() => setPreviewOpen(true)}>
+            <Eye className="h-4 w-4" />
+            Pré-visualizar impressão
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => setFullscreen((current) => !current)}
+            title={fullscreen ? "Sair da tela cheia" : "Abrir em tela cheia"}
+          >
+            {fullscreen ? (
+              <Minimize2 className="h-4 w-4" />
+            ) : (
+              <Maximize2 className="h-4 w-4" />
+            )}
+            {fullscreen ? "Sair da tela cheia" : "Tela cheia"}
+          </Button>
+        </div>
+      </div>
+
+      <div className="flex min-h-0 flex-1 flex-col gap-4 lg:flex-row">
       {/* Barra de blocos + canvas */}
-      <div className="min-w-0 flex-1">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <div className="flex flex-wrap items-center gap-2">
           {BLOCK_ORDER.map((t) => (
             <Button
@@ -235,17 +317,27 @@ export function LayoutEditor({
           </label>
 
           <Select
-            className="w-24"
+            className="w-32"
             value={String(zoom)}
-            onChange={(e) => setZoom(Number(e.target.value))}
+            onChange={(e) =>
+              setZoom(
+                e.target.value === "fit" ? "fit" : Number(e.target.value),
+              )
+            }
           >
+            <option value="fit">Ajustar à tela</option>
             <option value="0.5">50%</option>
             <option value="0.75">75%</option>
             <option value="1">100%</option>
           </Select>
         </div>
 
-        <div className="mt-3 overflow-auto rounded-xl border border-border bg-muted/40 p-4">
+        <div
+          ref={viewportRef}
+          className={`mt-3 flex min-h-[32rem] flex-1 items-start justify-center overflow-auto rounded-xl border border-border bg-muted/40 p-4 ${
+            fullscreen ? "h-full" : "max-h-[calc(100vh-13rem)]"
+          }`}
+        >
           <div
             ref={canvasRef}
             onPointerDown={() => setSelectedId(null)}
@@ -266,7 +358,7 @@ export function LayoutEditor({
                 inset: 0,
                 width: size.w * MM_PX,
                 height: size.h * MM_PX,
-                transform: `scale(${zoom})`,
+                transform: `scale(${activeZoom})`,
                 transformOrigin: "top left",
               }}
             >
@@ -313,7 +405,7 @@ export function LayoutEditor({
 
       {/* Inspetor */}
       <div className="w-full shrink-0 lg:w-80">
-        <div className="rounded-xl border border-border bg-card p-4">
+        <div className="max-h-full overflow-y-auto rounded-xl border border-border bg-card p-4">
           {!selected ? (
             <p className="text-sm text-muted-foreground">
               Clique em um bloco para editar suas propriedades, ou adicione um
@@ -330,6 +422,155 @@ export function LayoutEditor({
             />
           )}
         </div>
+      </div>
+      </div>
+
+      {previewOpen && (
+        <PrintPreviewDialog
+          formId={formId}
+          formTitle={formTitle}
+          fields={fields}
+          layout={layout}
+          onClose={() => setPreviewOpen(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+function PrintPreviewDialog({
+  formId,
+  formTitle,
+  fields,
+  layout,
+  onClose,
+}: {
+  formId: string;
+  formTitle: string;
+  fields: FormField[];
+  layout: PrintLayout;
+  onClose: () => void;
+}) {
+  const [submissionId, setSubmissionId] = useState("");
+  const { data: submissions, isLoading } = useQuery({
+    queryKey: ["print-preview-submissions", formId],
+    queryFn: () => listSubmissions({ data: { form_id: formId } }),
+  });
+  const { data: submissionData, isFetching } = useQuery({
+    queryKey: ["print-preview-submission", submissionId],
+    queryFn: () => getSubmission({ data: { id: submissionId } }),
+    enabled: !!submissionId,
+  });
+  const size = PAGE_MM[layout.pageSize];
+  const submission = submissionData?.submission;
+  const values = submissionData
+    ? Object.fromEntries(
+        submissionData.values.map((value) => [
+          value.field_id,
+          value.value ?? "",
+        ]),
+      )
+    : {};
+  const school = submission?.schools as unknown as { name?: string } | null;
+  const ctx: PrintContext | null = submission
+    ? {
+        fields,
+        values,
+        publicId: submission.public_id,
+        schoolName: school?.name ?? "",
+        formTitle,
+        createdAt: submission.created_at,
+      }
+    : null;
+
+  return (
+    <div className="fixed inset-0 z-[70] flex flex-col bg-background/95 backdrop-blur-sm">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 border-b border-border bg-card px-4 py-3 sm:px-6">
+        <div className="min-w-0">
+          <h2 className="truncate font-display text-lg font-semibold text-foreground">
+            Pré-visualização da impressão
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            Escolha um cadastro para conferir o modelo com os dados reais.
+          </p>
+        </div>
+        <Button variant="ghost" onClick={onClose} title="Fechar pré-visualização">
+          <X className="h-5 w-5" />
+          <span className="sr-only">Fechar</span>
+        </Button>
+      </div>
+
+      <div className="border-b border-border bg-card px-4 py-3 sm:px-6">
+        <div className="mx-auto max-w-xl">
+          <Label htmlFor="preview-submission">Cadastro</Label>
+          <Select
+            id="preview-submission"
+            value={submissionId}
+            onChange={(event) => setSubmissionId(event.target.value)}
+            disabled={isLoading}
+          >
+            <option value="">
+              {isLoading ? "Carregando cadastros..." : "Selecione um cadastro"}
+            </option>
+            {(submissions ?? []).map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.public_id}
+              </option>
+            ))}
+          </Select>
+          {!isLoading && submissions?.length === 0 && (
+            <p className="mt-2 text-sm text-muted-foreground">
+              Este formulário ainda não possui cadastros para visualizar.
+            </p>
+          )}
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-auto bg-muted/50 p-4 sm:p-8">
+        {isFetching ? (
+          <div className="flex justify-center py-16">
+            <span className="text-sm text-muted-foreground">Carregando...</span>
+          </div>
+        ) : ctx ? (
+          <div className="flex flex-col items-center gap-6">
+            {layout.pages.map((page, index) => (
+              <div key={page.id}>
+                <p className="mb-2 text-center text-xs text-muted-foreground">
+                  Página {index + 1}
+                </p>
+                <div
+                  className="relative origin-top bg-white shadow-lg"
+                  style={{
+                    width: `${size.w}mm`,
+                    height: `${size.h}mm`,
+                    color: "#000",
+                    overflow: "hidden",
+                  }}
+                >
+                  {page.blocks.map((block) => (
+                    <div
+                      key={block.id}
+                      style={{
+                        position: "absolute",
+                        left: `${block.x}mm`,
+                        top: `${block.y}mm`,
+                        width: `${block.w}mm`,
+                        height: `${block.h}mm`,
+                        overflow: "hidden",
+                      }}
+                    >
+                      <BlockView block={block} ctx={ctx} preview={false} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+            Selecione um cadastro acima para abrir a pré-visualização.
+          </div>
+        )}
       </div>
     </div>
   );

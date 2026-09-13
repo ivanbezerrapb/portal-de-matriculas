@@ -77,7 +77,7 @@ function FormConfigPage() {
   const school = data.form.schools as unknown as { name: string } | null;
 
   return (
-    <div className="mx-auto max-w-4xl">
+    <div className={tab === "impressao" ? "w-full" : "mx-auto max-w-4xl"}>
       <Link
         to="/formularios"
         className="text-sm text-muted-foreground hover:text-foreground"
@@ -665,7 +665,12 @@ function TemplatesTab({
               onChange={(l) => setEditing({ ...editing, layout: l })}
               fields={fields}
               formTitle={editing.title || "Formulário"}
-              schoolName="Escola"
+              schoolName={
+                (templates[0] as PrintTemplate | undefined)?.form_id
+                  ? "Escola"
+                  : "Escola"
+              }
+              formId={formId}
             />
           </div>
 
