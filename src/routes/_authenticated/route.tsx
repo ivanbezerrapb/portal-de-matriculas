@@ -26,7 +26,7 @@ import {
   PanelLeftOpen,
   X,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { getSupabase } from "@/lib/ext/browser";
 import { getMyPermissions } from "@/lib/ext/cadastros.functions";
 import { Spinner } from "@/components/ui";
