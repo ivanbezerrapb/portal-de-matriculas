@@ -125,7 +125,6 @@ export function PrintSheets({
       onDone?.();
     };
     window.addEventListener("afterprint", after);
-    console.log("[PrintSheets] scheduling print", firedKey, new Error().stack);
     setTimeout(() => window.print(), 100);
     return () => {
       window.removeEventListener("afterprint", after);
