@@ -83,6 +83,23 @@ function FormsPage() {
     onError: (e) => toast.error(e.message),
   });
 
+  const dupMut = useMutation({
+    mutationFn: () =>
+      duplicateForm({
+        data: {
+          id: dup!.id,
+          title: dup!.title,
+          school_id: dup!.schoolId,
+        },
+      }),
+    onSuccess: () => {
+      toast.success("Formulário duplicado como rascunho.");
+      setDup(null);
+      invalidate();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
   return (
     <div className="mx-auto max-w-3xl">
       <h1 className="font-display text-2xl font-bold text-foreground">
