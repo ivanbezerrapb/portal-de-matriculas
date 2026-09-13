@@ -35,6 +35,13 @@ function PrintPage() {
     enabled: submissionIds.length > 0,
   });
 
+  // Abre a janela de impressão automaticamente assim que os dados carregam
+  useEffect(() => {
+    if (!data || data.submissions.length === 0) return;
+    const timer = setTimeout(() => window.print(), 600);
+    return () => clearTimeout(timer);
+  }, [data]);
+
   if (isLoading) {
     return (
       <div className="mt-10 flex justify-center">
