@@ -265,9 +265,10 @@ function FieldsTab({
                     const type = e.target.value as FieldType;
                     updateField(field.id, {
                       type,
-                      options: NEEDS_OPTIONS.includes(type)
-                        ? (field.options ?? [])
-                        : null,
+                      options:
+                        NEEDS_OPTIONS.includes(type) || type === "children"
+                          ? (field.options ?? [])
+                          : null,
                     });
                   }}
                 >
