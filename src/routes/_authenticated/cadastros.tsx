@@ -68,6 +68,37 @@ function SubmissionsPage() {
     enabled: !!singleFormId,
   });
 
+  // Todos os modelos acessíveis, para o botão de impressão de cada linha.
+  const { data: allTemplates } = useQuery({
+    queryKey: ["print-templates-all"],
+    queryFn: () => listPrintTemplates({ data: {} }),
+  });
+
+  function openPrint(templateId: string, submissionId: string) {
+    window.open(
+      `/imprimir/${templateId}?ids=${submissionId}`,
+      "_blank",
+      "noopener",
+    );
+    setPicker(null);
+  }
+
+  function printRow(submissionId: string, rowFormId: string) {
+    const list = (allTemplates ?? []).filter((t) => t.form_id === rowFormId);
+    if (list.length === 0) {
+      toast.error(
+        "Este formulário ainda não tem modelo de impressão. Crie um em Formulários › Modelos de impressão.",
+      );
+      return;
+    }
+    const first = list[0];
+    if (list.length === 1 && first) {
+      openPrint(first.id, submissionId);
+      return;
+    }
+    setPicker({ submissionId, formId: rowFormId });
+  }
+
   const canPrint =
     (perms?.isAdmin ||
       perms?.isEditor ||
