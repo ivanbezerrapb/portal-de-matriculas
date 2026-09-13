@@ -175,5 +175,27 @@ export type Opportunity = {
   notes: string | null;
   details: { label: string; value: string }[];
   position: number;
+  status: "open" | "won" | "lost";
+  close_reason_id: string | null;
+  close_note: string | null;
+  closed_at: string | null;
   created_at: string;
+};
+
+export type CrmTask = {
+  id: string;
+  opportunity_id: string;
+  title: string;
+  due_date: string | null;
+  done: boolean;
+  done_at: string | null;
+  created_at: string;
+};
+
+export type CloseReason = {
+  id: string;
+  kind: "won" | "lost";
+  label: string;
+  position: number;
+  active: boolean;
 };
