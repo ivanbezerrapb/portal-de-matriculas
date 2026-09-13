@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
-import { ArrowRight, LockKeyhole, Mail, UserRound } from "lucide-react";
+import { ArrowRight, LockKeyhole, Mail } from "lucide-react";
 import { getSupabase } from "@/lib/ext/browser";
 import { Button, Card, Input, Label } from "@/components/ui";
 import logoAsset from "@/assets/grupo-inter-logo.png.asset.json";
@@ -9,12 +9,12 @@ import logoAsset from "@/assets/grupo-inter-logo.png.asset.json";
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
-      { title: "Entrar — Formulários Escolares" },
-      { name: "description", content: "Acesse o sistema de formulários escolares." },
+      { title: "Entrar — Portal de Matrículas" },
+      { name: "description", content: "Acesse o portal de matrículas." },
       { property: "og:title", content: "Entrar — Grupo Inter" },
       {
         property: "og:description",
-        content: "Acesse o portal de formulários escolares do Grupo Inter.",
+        content: "Acesse o portal de matrículas do Grupo Inter.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -25,41 +25,21 @@ export const Route = createFileRoute("/auth")({
 
 function AuthPage() {
   const navigate = useNavigate();
-  const [mode, setMode] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
-  const [signupDone, setSignupDone] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     try {
       const supabase = await getSupabase();
-      if (mode === "login") {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-        if (error) throw error;
-        navigate({ to: "/dashboard" });
-      } else {
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: { full_name: fullName },
-            emailRedirectTo: window.location.origin,
-          },
-        });
-        if (error) throw error;
-        if (data.session) {
-          navigate({ to: "/dashboard" });
-        } else {
-          setSignupDone(true);
-        }
-      }
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (error) throw error;
+      navigate({ to: "/dashboard" });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Não foi possível entrar.");
     } finally {
@@ -74,76 +54,42 @@ function AuthPage() {
         <div className="mb-9 text-center">
           <img src={logoAsset.url} alt="Grupo Inter" className="mx-auto h-auto w-56 max-w-full" />
           <h1 className="mt-7 font-display text-xl font-semibold text-foreground">
-            Portal de formulários
+            Portal de Matrículas
           </h1>
         </div>
-        <p className="text-center text-sm text-muted-foreground">
-          {mode === "login" ? "Entre com sua conta" : "Crie sua conta"}
-        </p>
+        <p className="text-center text-sm text-muted-foreground">Entre com sua conta</p>
 
-        {signupDone ? (
-          <div className="mt-6 rounded-md bg-emerald-50 p-4 text-sm text-emerald-800">
-            Conta criada! Se a confirmação por e-mail estiver ativa, verifique sua caixa de entrada
-            antes de entrar.
+        <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
+          <div className="relative">
+            <Label htmlFor="email">E-mail</Label>
+            <Mail className="pointer-events-none absolute bottom-3.5 left-3.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className="pl-10"
+            />
           </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
-            {mode === "signup" && (
-              <div className="relative">
-                <Label htmlFor="name">Nome completo</Label>
-                <UserRound className="pointer-events-none absolute bottom-3.5 left-3.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="name"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  required
-                  className="pl-10"
-                />
-              </div>
-            )}
-            <div className="relative">
-              <Label htmlFor="email">E-mail</Label>
-              <Mail className="pointer-events-none absolute bottom-3.5 left-3.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="pl-10"
-              />
-            </div>
-            <div className="relative">
-              <Label htmlFor="password">Senha</Label>
-              <LockKeyhole className="pointer-events-none absolute bottom-3.5 left-3.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                minLength={6}
-                required
-                className="pl-10"
-              />
-            </div>
-            <Button type="submit" disabled={loading} className="mt-1 w-full">
-              {loading ? "Aguarde..." : mode === "login" ? "Entrar" : "Criar conta"}
-              {!loading && <ArrowRight className="h-4 w-4" />}
-            </Button>
-          </form>
-        )}
-
-        <Button
-          type="button"
-          variant="ghost"
-          className="mt-4 w-full text-primary"
-          onClick={() => {
-            setMode(mode === "login" ? "signup" : "login");
-            setSignupDone(false);
-          }}
-        >
-          {mode === "login" ? "Não tem conta? Cadastre-se" : "Já tem conta? Entrar"}
-        </Button>
+          <div className="relative">
+            <Label htmlFor="password">Senha</Label>
+            <LockKeyhole className="pointer-events-none absolute bottom-3.5 left-3.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              minLength={6}
+              required
+              className="pl-10"
+            />
+          </div>
+          <Button type="submit" disabled={loading} className="mt-1 w-full">
+            {loading ? "Aguarde..." : "Entrar"}
+            {!loading && <ArrowRight className="h-4 w-4" />}
+          </Button>
+        </form>
       </Card>
     </main>
   );
