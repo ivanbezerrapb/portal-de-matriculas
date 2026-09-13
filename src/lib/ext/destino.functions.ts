@@ -65,7 +65,8 @@ export const saveDestination = createServerFn({ method: "POST" })
         email_field_id: uuidOrNull,
         extra_fields: z.array(
           z.object({
-            field_id: z.string().uuid(),
+            // Aceita o uuid de um campo ou a sentinela "submission_id" (ID do cadastro).
+            field_id: z.string().min(1),
             label: z.string().nullable().optional(),
           }),
         ),
