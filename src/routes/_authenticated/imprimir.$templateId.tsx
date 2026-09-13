@@ -1,17 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useCallback, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { z } from "zod";
-import { getPrintData } from "@/lib/ext/impressao.functions";
-import type { FormField } from "@/lib/ext/model";
-import { formatValue } from "@/components/FieldRenderer";
-import { DynamicPrintPage } from "@/components/print/DynamicPrintPage";
 import {
-  PAGE_MM,
-  parseLayout,
-  type PrintContext,
-} from "@/lib/ext/print-layout";
-import { Button, Spinner } from "@/components/ui";
+  PrintSheets,
+  type PrintSheetsState,
+} from "@/components/print/PrintSheets";
+import { Button } from "@/components/ui";
 
 export const Route = createFileRoute("/_authenticated/imprimir/$templateId")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -23,218 +17,48 @@ export const Route = createFileRoute("/_authenticated/imprimir/$templateId")({
 function PrintPage() {
   const { templateId } = Route.useParams();
   const { ids } = Route.useSearch();
+  const [state, setState] = useState<PrintSheetsState>({ status: "loading" });
 
   const submissionIds = ids.split(",").filter(Boolean);
-  const [pageStatus, setPageStatus] = useState<
-    Record<string, { ready: boolean; overflow: boolean }>
-  >({});
 
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["print", templateId, ids],
-    queryFn: () =>
-      getPrintData({
-        data: { template_id: templateId, submission_ids: submissionIds },
-      }),
-    enabled: submissionIds.length > 0,
-  });
-
-  const updatePageStatus = useCallback(
-    (key: string, status: { ready: boolean; overflow: boolean }) => {
-      setPageStatus((current) => {
-        const previous = current[key];
-        if (
-          previous?.ready === status.ready &&
-          previous.overflow === status.overflow
-        )
-          return current;
-        return { ...current, [key]: status };
-      });
-    },
-    [],
-  );
-
-  if (isLoading) {
-    return (
-      <div className="mt-10 flex justify-center">
-        <Spinner />
-      </div>
-    );
-  }
-
-  if (error || !data || data.submissions.length === 0) {
-    return (
-      <div className="mx-auto max-w-xl">
-        <p className="text-sm text-destructive">
-          {error?.message ??
-            "Nenhum cadastro encontrado para impressão. Verifique suas permissões."}
-        </p>
+  return (
+    <div className="mx-auto w-fit">
+      <div className="no-print mb-4 flex items-center justify-between gap-6">
         <Link
           to="/cadastros"
-          className="mt-3 inline-block text-sm text-primary hover:underline"
+          className="text-sm text-muted-foreground hover:text-foreground"
         >
-          ← Voltar para cadastros
+          ← Voltar
         </Link>
+        <Button
+          onClick={() => window.print()}
+          disabled={state.status !== "ready" || !state.canPrint}
+        >
+          Imprimir{" "}
+          {state.status === "ready"
+            ? `${state.count} ficha${state.count > 1 ? "s" : ""}`
+            : ""}
+        </Button>
       </div>
-    );
-  }
 
-  const { template, form, fields, submissions } = data;
-  const school = form.schools as unknown as {
-    name: string;
-    logo_url: string | null;
-  } | null;
-  const typedFields = fields as FormField[];
-  const layoutFields = ((data as unknown as { allFields?: unknown }).allFields ??
-    fields) as FormField[];
-  const layout = parseLayout(template.layout);
-  const hasLayout = !!layout && layout.pages.some((p) => p.blocks.length > 0);
-  const size = PAGE_MM[layout?.pageSize ?? (template.page_size as "A4" | "A5")];
-  const expectedPages = hasLayout && layout
-    ? submissions.length * layout.pages.length
-    : 0;
-  const statuses = Object.values(pageStatus);
-  const dynamicReady =
-    !hasLayout ||
-    (statuses.length === expectedPages && statuses.every((status) => status.ready));
-  const hasOverflow = statuses.some((status) => status.overflow);
-
-
-  const printCss = `
-    @media print {
-      body * { visibility: hidden; }
-      #print-area, #print-area * { visibility: visible; }
-      #print-area { position: absolute; inset: 0; width: 100%; }
-      .print-page { page-break-after: always; box-shadow: none !important; border: none !important; margin: 0 !important; }
-      .no-print { display: none !important; }
-    }
-    @page { size: ${layout?.pageSize ?? template.page_size}; margin: ${hasLayout ? "0" : "12mm"}; }
-  `;
-
-  const toolbar = (
-    <div className="no-print mb-4 flex items-center justify-between">
-      <Link
-        to="/cadastros"
-        className="text-sm text-muted-foreground hover:text-foreground"
-      >
-        ← Voltar
-      </Link>
-      <Button onClick={() => window.print()} disabled={hasOverflow || !dynamicReady}>
-        Imprimir {submissions.length} ficha{submissions.length > 1 ? "s" : ""}
-      </Button>
-    </div>
-  );
-
-  if (hasLayout && layout) {
-    return (
-      <div className="mx-auto w-fit">
-        <style>{printCss}</style>
-        {toolbar}
-        {hasOverflow && (
-          <div className="no-print mb-4 max-w-2xl border border-destructive bg-destructive/10 p-3 text-sm text-destructive">
-            Esta ficha possui conteúdo fora do limite da folha. Ajuste o modelo antes de imprimir para evitar dados cortados.
-          </div>
-        )}
-        <div id="print-area">
-          {submissions.map((sub) => {
-            const ctx: PrintContext = {
-              fields: layoutFields,
-              values: sub.values,
-              publicId: sub.public_id,
-              schoolName: school?.name ?? "",
-              formTitle: form.title,
-              createdAt: sub.created_at,
-            };
-            return layout.pages.map((page) => {
-              const statusKey = `${sub.id}-${page.id}`;
-              return (
-              <DynamicPrintPage
-                key={`${sub.id}-${page.id}`}
-                page={page}
-                ctx={ctx}
-                width={size.w}
-                height={size.h}
-                className="print-page mx-auto mb-6 bg-white shadow-sm"
-                onStatusChange={(status) => updatePageStatus(statusKey, status)}
-              />
-            );});
-          })}
+      {state.status === "ready" && state.overflow && (
+        <div className="no-print mb-4 max-w-2xl border border-destructive bg-destructive/10 p-3 text-sm text-destructive">
+          Esta ficha possui conteúdo fora do limite da folha. Ajuste o modelo
+          antes de imprimir para evitar dados cortados.
         </div>
-      </div>
-    );
-  }
+      )}
 
-  // Formato simples (modelos antigos, sem layout montado)
-  return (
-    <div className="mx-auto max-w-4xl">
-      <style>{printCss}</style>
-      {toolbar}
+      {state.status === "error" && (
+        <p className="no-print mb-4 text-sm text-destructive">
+          {state.message}
+        </p>
+      )}
 
-      <div id="print-area" className="flex flex-col gap-6">
-        {submissions.map((sub) => (
-          <div
-            key={sub.id}
-            className="print-page rounded-xl border border-border bg-card p-8 shadow-sm"
-          >
-            <div className="flex items-start justify-between border-b border-border pb-4">
-              <div>
-                {template.show_logo && school?.logo_url && (
-                  <img
-                    src={school.logo_url}
-                    alt={school.name}
-                    className="mb-2 h-12 object-contain"
-                  />
-                )}
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                  {school?.name ?? ""}
-                </p>
-                <h2 className="font-display text-xl font-bold text-foreground">
-                  {template.title}
-                </h2>
-                {template.header_text && (
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {template.header_text}
-                  </p>
-                )}
-              </div>
-              <p className="font-mono text-lg font-bold text-foreground">
-                {sub.public_id}
-              </p>
-            </div>
-
-            <dl
-              className={`mt-5 grid gap-x-8 gap-y-4 ${
-                template.columns === 2 ? "grid-cols-2" : "grid-cols-1"
-              }`}
-            >
-              {typedFields.map((field) => (
-                <div key={field.id}>
-                  <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    {field.label}
-                  </dt>
-                  <dd className="mt-0.5 whitespace-pre-wrap text-sm text-foreground">
-                    {formatValue(field, sub.values[field.id] ?? "")}
-                  </dd>
-                </div>
-              ))}
-            </dl>
-
-            {template.show_signature && (
-              <div className="mt-14 flex justify-center">
-                <div className="w-72 border-t border-foreground pt-1 text-center text-xs text-muted-foreground">
-                  Assinatura do responsável
-                </div>
-              </div>
-            )}
-
-            <div className="mt-8 flex items-center justify-between border-t border-border pt-3 text-xs text-muted-foreground">
-              <span>{template.footer_text ?? ""}</span>
-              <span>
-                Impresso em {new Date().toLocaleDateString("pt-BR")}
-              </span>
-            </div>
-          </div>
-        ))}
-      </div>
+      <PrintSheets
+        templateId={templateId}
+        submissionIds={submissionIds}
+        onStateChange={setState}
+      />
     </div>
   );
 }
