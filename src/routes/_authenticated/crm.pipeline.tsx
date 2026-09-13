@@ -151,21 +151,37 @@ function PipelinePage() {
             Arraste os cartões entre as etapas para atualizar o atendimento.
           </p>
         </div>
-        <div className="min-w-56">
-          <Label>Funil</Label>
-          <Select
-            value={selected ?? ""}
-            onChange={(e) =>
-              navigate({ to: "/crm/pipeline", search: { funil: e.target.value || undefined } })
-            }
-          >
-            <option value="">Selecione um funil…</option>
-            {funnels.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.name}
-              </option>
-            ))}
-          </Select>
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="min-w-40">
+            <Label>Situação</Label>
+            <Select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
+            >
+              <option value="open">Em aberto</option>
+              <option value="won">Ganhas</option>
+              <option value="lost">Perdidas</option>
+            </Select>
+          </div>
+          <div className="min-w-56">
+            <Label>Funil</Label>
+            <Select
+              value={selected ?? ""}
+              onChange={(e) =>
+                navigate({
+                  to: "/crm/pipeline",
+                  search: { funil: e.target.value || undefined, card: undefined },
+                })
+              }
+            >
+              <option value="">Selecione um funil…</option>
+              {funnels.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.name}
+                </option>
+              ))}
+            </Select>
+          </div>
         </div>
       </div>
 
