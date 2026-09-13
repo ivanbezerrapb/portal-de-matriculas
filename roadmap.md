@@ -7,3 +7,4 @@
 - [ ] Corrigir erros encontrados nos testes
 - [ ] Usuário cria a conta de Administrador (primeiro cadastro vira admin automaticamente)
 - [x] Alterar IDs para o padrão número/prefixo (ex.: 0001/CENTRO)
+- [x] Ajustar o editor de impressão à tela e adicionar pré-visualização com cadastro real
