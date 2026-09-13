@@ -367,11 +367,24 @@ export const deleteSubmission = createServerFn({ method: "POST" })
 
 export const getDashboardStats = createServerFn({ method: "GET" })
   .middleware([requireAuth])
-  .handler(async ({ context }) => {
-    const { data: submissions, error } = await context.supabase
+  .inputValidator((data) =>
+    z.object({ schoolIds: z.array(z.string().uuid()).optional() }).parse(data ?? {}),
+  )
+  .handler(async ({ data, context }) => {
+    const year = new Date().getFullYear();
+    const start = `${year}-01-01T00:00:00`;
+    const end = `${year + 1}-01-01T00:00:00`;
+
+    let query = context.supabase
       .from("submissions")
-      .select("id, school_id, created_at, schools(name)")
+      .select("id, form_id, school_id, created_at, schools(name)")
+      .gte("created_at", start)
+      .lt("created_at", end)
       .order("created_at", { ascending: false });
+    if (data.schoolIds && data.schoolIds.length > 0) {
+      query = query.in("school_id", data.schoolIds);
+    }
+    const { data: submissions, error } = await query;
     if (error) throw new Error(error.message);
 
     const rows = submissions ?? [];
@@ -382,11 +395,38 @@ export const getDashboardStats = createServerFn({ method: "GET" })
       entry.count += 1;
       bySchool.set(row.school_id, entry);
     }
-    const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString();
+
+    // Soma da quantidade de crianças (campo interno dos formulários)
+    let children = 0;
+    if (rows.length > 0) {
+      const { CHILDREN_COUNT_LABEL } = await import("./model");
+      const formIds = [...new Set(rows.map((r) => r.form_id))];
+      const { data: fields } = await context.supabase
+        .from("form_fields")
+        .select("id")
+        .in("form_id", formIds)
+        .eq("internal", true)
+        .eq("label", CHILDREN_COUNT_LABEL);
+      const fieldIds = (fields ?? []).map((f) => f.id as string);
+      if (fieldIds.length > 0) {
+        const submissionIds = rows.map((r) => r.id as string);
+        const { data: values } = await context.supabase
+          .from("submission_values")
+          .select("value_number")
+          .in("submission_id", submissionIds)
+          .in("field_id", fieldIds)
+          .eq("part", "");
+        for (const v of values ?? []) {
+          children += Number((v as { value_number: number | null }).value_number ?? 0);
+        }
+      }
+    }
+
     return {
-      total: rows.length,
-      last7days: rows.filter((r) => r.created_at >= weekAgo).length,
-      bySchool: [...bySchool.values()],
+      year,
+      visits: rows.length,
+      children,
+      bySchool: [...bySchool.values()].sort((a, b) => b.count - a.count),
     };
   });
 
