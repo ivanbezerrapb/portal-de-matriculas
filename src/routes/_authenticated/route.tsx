@@ -152,6 +152,19 @@ function AuthenticatedLayout() {
 
   const isGroup = (entry: NavEntry): entry is NavGroup => "children" in entry;
 
+  // Endereço fora do perfil: leva para a primeira tela permitida.
+  const allowedPaths = navEntries.flatMap((e) =>
+    isGroup(e) ? e.children.map((c) => c.to) : [e.to],
+  );
+  const firstAllowed = allowedPaths[0];
+  useEffect(() => {
+    if (!perms || !firstAllowed) return;
+    if (!allowedPaths.some((p) => pathname.startsWith(p))) {
+      navigate({ to: firstAllowed, replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [perms, pathname, firstAllowed]);
+
   const openGroups = navEntries
     .filter(isGroup)
     .filter((g) => g.children.some((c) => pathname.startsWith(c.to)))
