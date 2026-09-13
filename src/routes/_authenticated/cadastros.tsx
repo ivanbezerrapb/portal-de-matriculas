@@ -274,6 +274,7 @@ function SubmissionsPage() {
                 const school = s.schools as unknown as { name: string } | null;
                 const childrenCount = (s as unknown as { children_count: number | null })
                   .children_count;
+                const enrolled = Boolean((s as unknown as { enrolled?: boolean }).enrolled);
                 return (
                   <tr
                     key={s.id}
@@ -305,6 +306,23 @@ function SubmissionsPage() {
                         dateStyle: "short",
                         timeStyle: "short",
                       })}
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <input
+                          type="checkbox"
+                          className="accent-[var(--color-primary)]"
+                          checked={enrolled}
+                          disabled={!canEnroll || enrollM.isPending}
+                          onChange={(e) =>
+                            enrollM.mutate({ id: s.id, enrolled: e.target.checked })
+                          }
+                          aria-label={`Matrícula de ${s.public_id}`}
+                        />
+                        {enrolled ? (
+                          <span className="font-medium text-emerald-600">Ativo</span>
+                        ) : null}
+                      </label>
                     </td>
                     <td className="px-2 py-2.5 text-right">
                       {canPrint && (
