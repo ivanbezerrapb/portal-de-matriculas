@@ -187,7 +187,7 @@ export const updateSubmission = createServerFn({ method: "POST" })
       const { error: upsertError } = await context.supabase
         .from("submission_values")
         .upsert(
-          { submission_id: data.id, field_id: fieldId, value: after },
+          { submission_id: data.id, field_id: fieldId, part: "", value: after },
           { onConflict: "submission_id,field_id,part" },
         );
       if (upsertError) throw new Error(upsertError.message);

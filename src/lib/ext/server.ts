@@ -109,6 +109,7 @@ export async function writeChildrenCountValue(
     {
       submission_id: submissionId,
       field_id: fieldId,
+      part: "",
       value: count == null ? "" : String(count),
       value_number: count,
     },
