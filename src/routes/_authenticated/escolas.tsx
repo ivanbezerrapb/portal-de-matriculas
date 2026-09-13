@@ -2,21 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
-import {
-  createSchool,
-  deleteSchool,
-  listSchools,
-  updateSchool,
-} from "@/lib/ext/escolas.functions";
+import { createSchool, deleteSchool, listSchools, updateSchool } from "@/lib/ext/escolas.functions";
 import type { School } from "@/lib/ext/model";
-import {
-  Button,
-  Card,
-  EmptyState,
-  Input,
-  Label,
-  Spinner,
-} from "@/components/ui";
+import { Button, Card, EmptyState, Input, Label, Spinner } from "@/components/ui";
 
 export const Route = createFileRoute("/_authenticated/escolas")({
   head: () => ({
@@ -67,9 +55,7 @@ function EditSchoolCard({
           <Label>Prefixo</Label>
           <Input
             value={draft.id_prefix}
-            onChange={(e) =>
-              setDraft({ ...draft, id_prefix: e.target.value.toUpperCase() })
-            }
+            onChange={(e) => setDraft({ ...draft, id_prefix: e.target.value.toUpperCase() })}
             required
           />
         </div>
@@ -80,9 +66,7 @@ function EditSchoolCard({
             min={2}
             max={8}
             value={draft.id_digits}
-            onChange={(e) =>
-              setDraft({ ...draft, id_digits: Number(e.target.value) })
-            }
+            onChange={(e) => setDraft({ ...draft, id_digits: Number(e.target.value) })}
             required
           />
         </div>
@@ -92,9 +76,7 @@ function EditSchoolCard({
             type="number"
             min={1}
             value={draft.id_next_number}
-            onChange={(e) =>
-              setDraft({ ...draft, id_next_number: Number(e.target.value) })
-            }
+            onChange={(e) => setDraft({ ...draft, id_next_number: Number(e.target.value) })}
             required
           />
         </div>
@@ -121,8 +103,7 @@ function SchoolsPage() {
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  const invalidate = () =>
-    queryClient.invalidateQueries({ queryKey: ["schools"] });
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ["schools"] });
 
   const createMut = useMutation({
     mutationFn: () => createSchool({ data: form }),
@@ -165,9 +146,7 @@ function SchoolsPage() {
 
   return (
     <div className="mx-auto max-w-3xl">
-      <h1 className="font-display text-2xl font-bold text-foreground">
-        Escolas
-      </h1>
+      <h1 className="font-display text-2xl font-bold text-foreground">Escolas</h1>
 
       <Card className="mt-6">
         <h2 className="font-semibold text-foreground">Nova escola</h2>
@@ -193,9 +172,7 @@ function SchoolsPage() {
             <Input
               id="school-prefix"
               value={form.id_prefix}
-              onChange={(e) =>
-                setForm({ ...form, id_prefix: e.target.value.toUpperCase() })
-              }
+              onChange={(e) => setForm({ ...form, id_prefix: e.target.value.toUpperCase() })}
               placeholder="ESCA"
               maxLength={10}
               required
@@ -209,9 +186,7 @@ function SchoolsPage() {
               min={2}
               max={8}
               value={form.id_digits}
-              onChange={(e) =>
-                setForm({ ...form, id_digits: Number(e.target.value) })
-              }
+              onChange={(e) => setForm({ ...form, id_digits: Number(e.target.value) })}
               required
             />
           </div>
@@ -222,9 +197,7 @@ function SchoolsPage() {
         <p className="mt-2 text-xs text-muted-foreground">
           Exemplo de ID:{" "}
           <span className="font-mono">
-            {"1".padStart(form.id_digits, "0") +
-              "/" +
-              (form.id_prefix || "ESCA")}
+            {"1".padStart(form.id_digits, "0") + "/" + (form.id_prefix || "ESCA")}
           </span>
         </p>
       </Card>
@@ -234,10 +207,7 @@ function SchoolsPage() {
           <Spinner />
         </div>
       ) : !schools || schools.length === 0 ? (
-        <EmptyState
-          title="Nenhuma escola cadastrada"
-          description="Crie a primeira escola acima."
-        />
+        <EmptyState title="Nenhuma escola cadastrada" description="Crie a primeira escola acima." />
       ) : (
         <div className="mt-6 flex flex-col gap-3">
           {schools.map((s) =>
@@ -254,11 +224,9 @@ function SchoolsPage() {
                 <div className="min-w-0 flex-1">
                   <p className="font-medium text-foreground">{s.name}</p>
                   <p className="text-xs text-muted-foreground">
-                    Prefixo <span className="font-mono">{s.id_prefix}</span> ·
-                    próximo ID:{" "}
+                    Prefixo <span className="font-mono">{s.id_prefix}</span> · próximo ID:{" "}
                     <span className="font-mono">
-                      {String(s.id_next_number).padStart(s.id_digits, "0")}/
-                      {s.id_prefix}
+                      {String(s.id_next_number).padStart(s.id_digits, "0")}/{s.id_prefix}
                     </span>
                   </p>
                 </div>

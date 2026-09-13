@@ -1,10 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { z } from "zod";
-import {
-  PrintSheets,
-  type PrintSheetsState,
-} from "@/components/print/PrintSheets";
+import { PrintSheets, type PrintSheetsState } from "@/components/print/PrintSheets";
 import { Button } from "@/components/ui";
 
 export const Route = createFileRoute("/_authenticated/imprimir/$templateId")({
@@ -34,10 +31,7 @@ function PrintPage() {
   return (
     <div className="mx-auto w-fit">
       <div className="no-print mb-4 flex items-center justify-between gap-6">
-        <Link
-          to="/cadastros"
-          className="text-sm text-muted-foreground hover:text-foreground"
-        >
+        <Link to="/cadastros" className="text-sm text-muted-foreground hover:text-foreground">
           ← Voltar
         </Link>
         <Button
@@ -45,30 +39,22 @@ function PrintPage() {
           disabled={state.status !== "ready" || !state.canPrint}
         >
           Imprimir{" "}
-          {state.status === "ready"
-            ? `${state.count} ficha${state.count > 1 ? "s" : ""}`
-            : ""}
+          {state.status === "ready" ? `${state.count} ficha${state.count > 1 ? "s" : ""}` : ""}
         </Button>
       </div>
 
       {state.status === "ready" && state.overflow && (
         <div className="no-print mb-4 max-w-2xl border border-destructive bg-destructive/10 p-3 text-sm text-destructive">
-          Esta ficha possui conteúdo fora do limite da folha. Ajuste o modelo
-          antes de imprimir para evitar dados cortados.
+          Esta ficha possui conteúdo fora do limite da folha. Ajuste o modelo antes de imprimir para
+          evitar dados cortados.
         </div>
       )}
 
       {state.status === "error" && (
-        <p className="no-print mb-4 text-sm text-destructive">
-          {state.message}
-        </p>
+        <p className="no-print mb-4 text-sm text-destructive">{state.message}</p>
       )}
 
-      <PrintSheets
-        templateId={templateId}
-        submissionIds={submissionIds}
-        onStateChange={setState}
-      />
+      <PrintSheets templateId={templateId} submissionIds={submissionIds} onStateChange={setState} />
     </div>
   );
 }

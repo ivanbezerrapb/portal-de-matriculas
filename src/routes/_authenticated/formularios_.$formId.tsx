@@ -9,10 +9,7 @@ import {
   setFormStatus,
   updateFormInfo,
 } from "@/lib/ext/formularios.functions";
-import {
-  applyTemplateToForm,
-  listTemplates,
-} from "@/lib/ext/templates.functions";
+import { applyTemplateToForm, listTemplates } from "@/lib/ext/templates.functions";
 import {
   FIELD_TYPE_LABELS,
   isChildrenCountField,
@@ -22,16 +19,7 @@ import {
   type FormField,
   type PrintTemplate,
 } from "@/lib/ext/model";
-import {
-  Badge,
-  Button,
-  Card,
-  Input,
-  Label,
-  Select,
-  Spinner,
-  Textarea,
-} from "@/components/ui";
+import { Badge, Button, Card, Input, Label, Select, Spinner, Textarea } from "@/components/ui";
 
 export const Route = createFileRoute("/_authenticated/formularios_/$formId")({
   head: () => ({
@@ -39,7 +27,10 @@ export const Route = createFileRoute("/_authenticated/formularios_/$formId")({
       { title: "Configurar formulário — Grupo Inter" },
       { name: "description", content: "Configure campos, publicação e impressão do formulário." },
       { property: "og:title", content: "Configurar formulário — Grupo Inter" },
-      { property: "og:description", content: "Configure campos, publicação e impressão do formulário." },
+      {
+        property: "og:description",
+        content: "Configure campos, publicação e impressão do formulário.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -70,9 +61,7 @@ function FormConfigPage() {
     queryKey: ["form", formId],
     queryFn: () => getForm({ data: { id: formId } }),
   });
-  const [tab, setTab] = useState<"campos" | "impressao" | "publicar">(
-    "campos",
-  );
+  const [tab, setTab] = useState<"campos" | "impressao" | "publicar">("campos");
 
   if (isLoading || !data) {
     return (
@@ -86,16 +75,11 @@ function FormConfigPage() {
 
   return (
     <div className={tab === "impressao" ? "w-full" : "mx-auto max-w-4xl"}>
-      <Link
-        to="/formularios"
-        className="text-sm text-muted-foreground hover:text-foreground"
-      >
+      <Link to="/formularios" className="text-sm text-muted-foreground hover:text-foreground">
         ← Voltar para formulários
       </Link>
       <div className="mt-2 flex flex-wrap items-center gap-3">
-        <h1 className="font-display text-2xl font-bold text-foreground">
-          {data.form.title}
-        </h1>
+        <h1 className="font-display text-2xl font-bold text-foreground">{data.form.title}</h1>
         <Badge color={STATUS_COLOR[data.form.status] ?? "muted"}>
           {STATUS_LABEL[data.form.status] ?? data.form.status}
         </Badge>
@@ -124,22 +108,15 @@ function FormConfigPage() {
         ))}
       </div>
 
-      {tab === "campos" && (
-        <FieldsTab formId={formId} initialFields={data.fields as FormField[]} />
-      )}
+      {tab === "campos" && <FieldsTab formId={formId} initialFields={data.fields as FormField[]} />}
       {tab === "impressao" && (
-        <TemplatesTab
-          formId={formId}
-          templates={data.templates as PrintTemplate[]}
-        />
+        <TemplatesTab formId={formId} templates={data.templates as PrintTemplate[]} />
       )}
       {tab === "publicar" && (
         <PublishTab
           formId={formId}
           form={data.form}
-          onChanged={() =>
-            queryClient.invalidateQueries({ queryKey: ["form", formId] })
-          }
+          onChanged={() => queryClient.invalidateQueries({ queryKey: ["form", formId] })}
         />
       )}
     </div>
@@ -148,18 +125,10 @@ function FormConfigPage() {
 
 // ---------- Aba Campos ----------
 
-function FieldsTab({
-  formId,
-  initialFields,
-}: {
-  formId: string;
-  initialFields: FormField[];
-}) {
+function FieldsTab({ formId, initialFields }: { formId: string; initialFields: FormField[] }) {
   const queryClient = useQueryClient();
   const [fields, setFields] = useState<EditableField[]>(
-    initialFields
-      .filter((f) => !isChildrenCountField(f))
-      .map(({ ...f }) => f),
+    initialFields.filter((f) => !isChildrenCountField(f)).map(({ ...f }) => f),
   );
   const [deletedIds, setDeletedIds] = useState<string[]>([]);
 
@@ -190,9 +159,7 @@ function FieldsTab({
   });
 
   function updateField(id: string, patch: Partial<EditableField>) {
-    setFields((prev) =>
-      prev.map((f) => (f.id === id ? { ...f, ...patch } : f)),
-    );
+    setFields((prev) => prev.map((f) => (f.id === id ? { ...f, ...patch } : f)));
   }
 
   function move(id: string, dir: -1 | 1) {
@@ -266,9 +233,7 @@ function FieldsTab({
                 <Label>Nome do campo</Label>
                 <Input
                   value={field.label}
-                  onChange={(e) =>
-                    updateField(field.id, { label: e.target.value })
-                  }
+                  onChange={(e) => updateField(field.id, { label: e.target.value })}
                   placeholder="Ex.: Nome do aluno"
                 />
               </div>
@@ -300,9 +265,7 @@ function FieldsTab({
                     type="checkbox"
                     className="accent-[var(--color-primary)]"
                     checked={field.required}
-                    onChange={(e) =>
-                      updateField(field.id, { required: e.target.checked })
-                    }
+                    onChange={(e) => updateField(field.id, { required: e.target.checked })}
                   />
                   Obrigatório
                 </label>
@@ -311,19 +274,13 @@ function FieldsTab({
                     type="checkbox"
                     className="accent-[var(--color-primary)]"
                     checked={field.internal}
-                    onChange={(e) =>
-                      updateField(field.id, { internal: e.target.checked })
-                    }
+                    onChange={(e) => updateField(field.id, { internal: e.target.checked })}
                   />
                   Campo interno
                 </label>
               </div>
               <div className="flex gap-1 pb-1">
-                <Button
-                  variant="ghost"
-                  onClick={() => move(field.id, -1)}
-                  disabled={idx === 0}
-                >
+                <Button variant="ghost" onClick={() => move(field.id, -1)} disabled={idx === 0}>
                   ↑
                 </Button>
                 <Button
@@ -351,9 +308,7 @@ function FieldsTab({
                 <Label>Texto de ajuda (opcional)</Label>
                 <Input
                   value={field.help_text ?? ""}
-                  onChange={(e) =>
-                    updateField(field.id, { help_text: e.target.value || null })
-                  }
+                  onChange={(e) => updateField(field.id, { help_text: e.target.value || null })}
                   placeholder="Ex.: Como está no documento oficial"
                 />
               </div>
@@ -424,13 +379,7 @@ function FieldsTab({
 
 // ---------- Aba Modelos de impressão ----------
 
-function TemplatesTab({
-  formId,
-  templates,
-}: {
-  formId: string;
-  templates: PrintTemplate[];
-}) {
+function TemplatesTab({ formId, templates }: { formId: string; templates: PrintTemplate[] }) {
   const queryClient = useQueryClient();
 
   const deleteMut = useMutation({
@@ -474,10 +423,7 @@ function TemplatesTab({
       <Card className="mt-4 flex flex-wrap items-end gap-3">
         <div className="min-w-[240px] flex-1">
           <Label>Associar um template</Label>
-          <Select
-            value={libraryId}
-            onChange={(e) => setLibraryId(e.target.value)}
-          >
+          <Select value={libraryId} onChange={(e) => setLibraryId(e.target.value)}>
             <option value="">Selecione um template…</option>
             {(library ?? []).map((t) => (
               <option key={t.id} value={t.id}>
@@ -498,9 +444,7 @@ function TemplatesTab({
       <div className="mt-4 flex flex-col gap-3">
         {templates.length === 0 && (
           <Card>
-            <p className="text-sm text-muted-foreground">
-              Nenhum template associado ainda.
-            </p>
+            <p className="text-sm text-muted-foreground">Nenhum template associado ainda.</p>
           </Card>
         )}
         {templates.map((t) => (
@@ -552,8 +496,7 @@ function PublishTab({
   const publicUrl = `${window.location.origin}/f/${form.public_slug}`;
 
   const infoMut = useMutation({
-    mutationFn: () =>
-      updateFormInfo({ data: { id: formId, title, description } }),
+    mutationFn: () => updateFormInfo({ data: { id: formId, title, description } }),
     onSuccess: () => {
       toast.success("Informações salvas.");
       onChanged();
@@ -591,10 +534,7 @@ function PublishTab({
             />
           </div>
           <div>
-            <Button
-              onClick={() => infoMut.mutate()}
-              disabled={infoMut.isPending}
-            >
+            <Button onClick={() => infoMut.mutate()} disabled={infoMut.isPending}>
               Salvar informações
             </Button>
           </div>
@@ -636,17 +576,11 @@ function PublishTab({
             {STATUS_LABEL[form.status] ?? form.status}
           </Badge>
           {form.status !== "published" ? (
-            <Button
-              variant="secondary"
-              onClick={() => statusMut.mutate("published")}
-            >
+            <Button variant="secondary" onClick={() => statusMut.mutate("published")}>
               Publicar
             </Button>
           ) : (
-            <Button
-              variant="secondary"
-              onClick={() => statusMut.mutate("closed")}
-            >
+            <Button variant="secondary" onClick={() => statusMut.mutate("closed")}>
               Encerrar
             </Button>
           )}

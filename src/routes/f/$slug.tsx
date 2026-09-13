@@ -30,9 +30,7 @@ export const Route = createFileRoute("/f/$slug")({
   component: PublicFormPage,
   errorComponent: ({ error }) => (
     <div className="flex min-h-screen items-center justify-center px-4">
-      <p className="text-sm text-destructive">
-        Erro ao carregar: {error.message}
-      </p>
+      <p className="text-sm text-destructive">Erro ao carregar: {error.message}</p>
     </div>
   ),
   notFoundComponent: () => (
@@ -50,14 +48,11 @@ function PublicFormPage() {
   const [submitting, setSubmitting] = useState(false);
   const [confirmedId, setConfirmedId] = useState<string | null>(null);
 
-
   if (!data) {
     return (
       <div className="flex min-h-screen items-center justify-center px-4">
         <Card className="max-w-md text-center">
-          <h1 className="text-lg font-semibold text-foreground">
-            Formulário indisponível
-          </h1>
+          <h1 className="text-lg font-semibold text-foreground">Formulário indisponível</h1>
           <p className="mt-2 text-sm text-muted-foreground">
             Este link não está ativo ou o formulário foi encerrado.
           </p>
@@ -128,8 +123,7 @@ function PublicFormPage() {
           (c) => !c.nome.trim() || !c.nascimento || !c.serie || !c.turno,
         );
         if (field.required && incomplete >= 0) {
-          newErrors[field.id] =
-            `Preencha todos os dados da criança ${incomplete + 1}`;
+          newErrors[field.id] = `Preencha todos os dados da criança ${incomplete + 1}`;
         }
       }
     }
@@ -155,9 +149,7 @@ function PublicFormPage() {
       setConfirmedId(result.publicId);
       window.scrollTo(0, 0);
     } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Não foi possível enviar.",
-      );
+      toast.error(err instanceof Error ? err.message : "Não foi possível enviar.");
     } finally {
       setSubmitting(false);
     }
@@ -168,22 +160,14 @@ function PublicFormPage() {
       <div className="mx-auto max-w-xl px-4">
         <Card>
           {school?.logo_url && (
-            <img
-              src={school.logo_url}
-              alt={school.name}
-              className="mb-4 h-14 object-contain"
-            />
+            <img src={school.logo_url} alt={school.name} className="mb-4 h-14 object-contain" />
           )}
           <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
             {school?.name ?? "Escola"}
           </p>
-          <h1 className="font-display mt-1 text-2xl font-bold text-foreground">
-            {form.title}
-          </h1>
+          <h1 className="font-display mt-1 text-2xl font-bold text-foreground">{form.title}</h1>
           {form.description && (
-            <p className="mt-2 text-sm text-muted-foreground">
-              {form.description}
-            </p>
+            <p className="mt-2 text-sm text-muted-foreground">{form.description}</p>
           )}
 
           <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-5">

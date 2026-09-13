@@ -2,24 +2,13 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
-import {
-  PrintSheets,
-  type PrintSheetsState,
-} from "@/components/print/PrintSheets";
+import { PrintSheets, type PrintSheetsState } from "@/components/print/PrintSheets";
 import { listSubmissions } from "@/lib/ext/cadastros.functions";
 import { listSchools } from "@/lib/ext/escolas.functions";
 import { listForms } from "@/lib/ext/formularios.functions";
 import { listPrintTemplates } from "@/lib/ext/impressao.functions";
 import { getMyPermissions } from "@/lib/ext/cadastros.functions";
-import {
-  Button,
-  Card,
-  EmptyState,
-  Input,
-  Label,
-  Select,
-  Spinner,
-} from "@/components/ui";
+import { Button, Card, EmptyState, Input, Label, Select, Spinner } from "@/components/ui";
 
 export const Route = createFileRoute("/_authenticated/cadastros")({
   head: () => ({
@@ -82,8 +71,7 @@ function SubmissionsPage() {
   // Modelos de impressão do formulário dos itens selecionados (precisam ser do mesmo formulário)
   const selectedRows = (submissions ?? []).filter((s) => selected.has(s.id));
   const selectedFormIds = new Set(selectedRows.map((s) => s.form_id));
-  const singleFormId =
-    selectedFormIds.size === 1 ? [...selectedFormIds][0] : undefined;
+  const singleFormId = selectedFormIds.size === 1 ? [...selectedFormIds][0] : undefined;
 
   const { data: templates } = useQuery({
     queryKey: ["print-templates", singleFormId],
@@ -144,9 +132,7 @@ function SubmissionsPage() {
 
   return (
     <div className="mx-auto max-w-5xl">
-      <h1 className="font-display text-2xl font-bold text-foreground">
-        Cadastros
-      </h1>
+      <h1 className="font-display text-2xl font-bold text-foreground">Cadastros</h1>
 
       <Card className="mt-6">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
@@ -161,11 +147,7 @@ function SubmissionsPage() {
           </div>
           <div>
             <Label htmlFor="f-school">Escola</Label>
-            <Select
-              id="f-school"
-              value={schoolId}
-              onChange={(e) => setSchoolId(e.target.value)}
-            >
+            <Select id="f-school" value={schoolId} onChange={(e) => setSchoolId(e.target.value)}>
               <option value="">Todas</option>
               {(schools ?? []).map((s) => (
                 <option key={s.id} value={s.id}>
@@ -176,11 +158,7 @@ function SubmissionsPage() {
           </div>
           <div>
             <Label htmlFor="f-form">Formulário</Label>
-            <Select
-              id="f-form"
-              value={formId}
-              onChange={(e) => setFormId(e.target.value)}
-            >
+            <Select id="f-form" value={formId} onChange={(e) => setFormId(e.target.value)}>
               <option value="">Todos</option>
               {(forms ?? []).map((f) => (
                 <option key={f.id} value={f.id}>
@@ -201,12 +179,7 @@ function SubmissionsPage() {
             </div>
             <div>
               <Label htmlFor="f-to">Até</Label>
-              <Input
-                id="f-to"
-                type="date"
-                value={to}
-                onChange={(e) => setTo(e.target.value)}
-              />
+              <Input id="f-to" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
             </div>
           </div>
         </div>
@@ -280,13 +253,11 @@ function SubmissionsPage() {
             </thead>
             <tbody>
               {submissions.map((s) => {
-                const responsible = (
-                  s as unknown as { responsible_name: string | null }
-                ).responsible_name;
+                const responsible = (s as unknown as { responsible_name: string | null })
+                  .responsible_name;
                 const school = s.schools as unknown as { name: string } | null;
-                const childrenCount = (
-                  s as unknown as { children_count: number | null }
-                ).children_count;
+                const childrenCount = (s as unknown as { children_count: number | null })
+                  .children_count;
                 return (
                   <tr
                     key={s.id}
@@ -310,15 +281,9 @@ function SubmissionsPage() {
                         {s.public_id}
                       </Link>
                     </td>
-                    <td className="px-4 py-2.5 text-foreground">
-                      {responsible ?? "—"}
-                    </td>
-                    <td className="px-4 py-2.5 text-muted-foreground">
-                      {school?.name ?? "—"}
-                    </td>
-                    <td className="px-4 py-2.5 text-muted-foreground">
-                      {childrenCount ?? "—"}
-                    </td>
+                    <td className="px-4 py-2.5 text-foreground">{responsible ?? "—"}</td>
+                    <td className="px-4 py-2.5 text-muted-foreground">{school?.name ?? "—"}</td>
+                    <td className="px-4 py-2.5 text-muted-foreground">{childrenCount ?? "—"}</td>
                     <td className="px-4 py-2.5 text-muted-foreground">
                       {new Date(s.created_at).toLocaleString("pt-BR", {
                         dateStyle: "short",
@@ -371,11 +336,7 @@ function SubmissionsPage() {
                   </Button>
                 ))}
             </div>
-            <Button
-              variant="ghost"
-              className="mt-4"
-              onClick={() => setPicker(null)}
-            >
+            <Button variant="ghost" className="mt-4" onClick={() => setPicker(null)}>
               Cancelar
             </Button>
           </div>

@@ -9,7 +9,10 @@ export const Route = createFileRoute("/")({
       { title: "Portal de formulários — Grupo Inter" },
       { name: "description", content: "Acesse o portal de formulários escolares do Grupo Inter." },
       { property: "og:title", content: "Portal de formulários — Grupo Inter" },
-      { property: "og:description", content: "Acesse o portal de formulários escolares do Grupo Inter." },
+      {
+        property: "og:description",
+        content: "Acesse o portal de formulários escolares do Grupo Inter.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],

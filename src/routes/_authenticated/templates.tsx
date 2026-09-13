@@ -19,22 +19,21 @@ import {
   type PrintLayout,
 } from "@/lib/ext/print-layout";
 import type { FormField } from "@/lib/ext/model";
-import {
-  Button,
-  Card,
-  Input,
-  Label,
-  Select,
-  Spinner,
-} from "@/components/ui";
+import { Button, Card, Input, Label, Select, Spinner } from "@/components/ui";
 
 export const Route = createFileRoute("/_authenticated/templates")({
   head: () => ({
     meta: [
       { title: "Templates de impressão — Grupo Inter" },
-      { name: "description", content: "Gerencie modelos de impressão compartilhados entre escolas." },
+      {
+        name: "description",
+        content: "Gerencie modelos de impressão compartilhados entre escolas.",
+      },
       { property: "og:title", content: "Templates de impressão — Grupo Inter" },
-      { property: "og:description", content: "Gerencie modelos de impressão compartilhados entre escolas." },
+      {
+        property: "og:description",
+        content: "Gerencie modelos de impressão compartilhados entre escolas.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -95,8 +94,7 @@ function TemplatesLibraryPage() {
     queryFn: () => listForms(),
   });
 
-  const invalidate = () =>
-    queryClient.invalidateQueries({ queryKey: ["template-library"] });
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ["template-library"] });
 
   const { data: refForm } = useQuery({
     queryKey: ["form", editing?.ref_form_id],
@@ -121,9 +119,7 @@ function TemplatesLibraryPage() {
           columns: t.columns,
           page_size: t.page_size,
           show_signature: t.show_signature,
-          layout: t.layout.pages.some((p) => p.blocks.length > 0)
-            ? t.layout
-            : null,
+          layout: t.layout.pages.some((p) => p.blocks.length > 0) ? t.layout : null,
           field_labels: [
             ...refFields.map((f) => ({
               id: f.id,
@@ -131,9 +127,7 @@ function TemplatesLibraryPage() {
               type: f.type,
               internal: f.internal,
             })),
-            ...t.prev_field_labels.filter(
-              (p) => !refFields.some((f) => f.id === p.id),
-            ),
+            ...t.prev_field_labels.filter((p) => !refFields.some((f) => f.id === p.id)),
           ],
           school_ids: t.school_ids,
         },
@@ -151,8 +145,7 @@ function TemplatesLibraryPage() {
   });
 
   const dupMut = useMutation({
-    mutationFn: (v: { id: string; name: string }) =>
-      duplicateTemplate({ data: v }),
+    mutationFn: (v: { id: string; name: string }) => duplicateTemplate({ data: v }),
     onSuccess: () => {
       toast.success("Template duplicado.");
       invalidate();
@@ -169,8 +162,7 @@ function TemplatesLibraryPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const schoolName = (id: string) =>
-    (schools ?? []).find((s) => s.id === id)?.name ?? "";
+  const schoolName = (id: string) => (schools ?? []).find((s) => s.id === id)?.name ?? "";
 
   return (
     <div>
@@ -180,14 +172,11 @@ function TemplatesLibraryPage() {
             Templates de impressão
           </h1>
           <p className="text-sm text-muted-foreground">
-            Modelos reutilizáveis: use em qualquer formulário e marque as
-            escolas que devem recebê-los automaticamente.
+            Modelos reutilizáveis: use em qualquer formulário e marque as escolas que devem
+            recebê-los automaticamente.
           </p>
         </div>
-        <Button
-          variant="secondary"
-          onClick={() => setEditing({ ...emptyEditing })}
-        >
+        <Button variant="secondary" onClick={() => setEditing({ ...emptyEditing })}>
           + Novo template
         </Button>
       </div>
@@ -197,8 +186,8 @@ function TemplatesLibraryPage() {
         {!isLoading && (templates ?? []).length === 0 && !editing && (
           <Card>
             <p className="text-sm text-muted-foreground">
-              Nenhum template ainda. Crie um aqui ou use "Salvar como template"
-              dentro de um formulário.
+              Nenhum template ainda. Crie um aqui ou use "Salvar como template" dentro de um
+              formulário.
             </p>
           </Card>
         )}
@@ -209,8 +198,7 @@ function TemplatesLibraryPage() {
               <p className="text-xs text-muted-foreground">
                 {t.page_size} · {t.columns} coluna{t.columns > 1 ? "s" : ""}
                 {(t.school_ids ?? []).length > 0
-                  ? " · " +
-                    (t.school_ids as string[]).map(schoolName).join(", ")
+                  ? " · " + (t.school_ids as string[]).map(schoolName).join(", ")
                   : " · nenhuma escola marcada"}
               </p>
             </div>
@@ -227,17 +215,17 @@ function TemplatesLibraryPage() {
                   columns: t.columns as 1 | 2,
                   page_size: t.page_size as "A4" | "A5",
                   show_signature: t.show_signature,
-                  layout:
-                    parseLayout(t.layout) ??
-                    emptyLayout(t.page_size as "A4" | "A5"),
+                  layout: parseLayout(t.layout) ?? emptyLayout(t.page_size as "A4" | "A5"),
                   school_ids: (t.school_ids ?? []) as string[],
                   ref_form_id: "",
-                  prev_field_labels: ((t.field_labels ?? []) as {
-                    id: string;
-                    label: string;
-                    type?: string | undefined;
-                    internal?: boolean | undefined;
-                  }[]).map((p) => ({
+                  prev_field_labels: (
+                    (t.field_labels ?? []) as {
+                      id: string;
+                      label: string;
+                      type?: string | undefined;
+                      internal?: boolean | undefined;
+                    }[]
+                  ).map((p) => ({
                     id: p.id,
                     label: p.label,
                     type: p.type,
@@ -251,10 +239,7 @@ function TemplatesLibraryPage() {
             <Button
               variant="secondary"
               onClick={() => {
-                const name = window.prompt(
-                  "Nome do novo template:",
-                  `Cópia de ${t.name}`,
-                );
+                const name = window.prompt("Nome do novo template:", `Cópia de ${t.name}`);
                 if (name?.trim()) dupMut.mutate({ id: t.id, name: name.trim() });
               }}
             >
@@ -285,9 +270,7 @@ function TemplatesLibraryPage() {
               <Label>Nome do template</Label>
               <Input
                 value={editing.name}
-                onChange={(e) =>
-                  setEditing({ ...editing, name: e.target.value })
-                }
+                onChange={(e) => setEditing({ ...editing, name: e.target.value })}
                 placeholder="Ex.: Ficha padrão"
               />
             </div>
@@ -295,27 +278,21 @@ function TemplatesLibraryPage() {
               <Label>Título impresso na ficha</Label>
               <Input
                 value={editing.title}
-                onChange={(e) =>
-                  setEditing({ ...editing, title: e.target.value })
-                }
+                onChange={(e) => setEditing({ ...editing, title: e.target.value })}
               />
             </div>
             <div>
               <Label>Texto do cabeçalho (opcional)</Label>
               <Input
                 value={editing.header_text}
-                onChange={(e) =>
-                  setEditing({ ...editing, header_text: e.target.value })
-                }
+                onChange={(e) => setEditing({ ...editing, header_text: e.target.value })}
               />
             </div>
             <div>
               <Label>Texto do rodapé (opcional)</Label>
               <Input
                 value={editing.footer_text}
-                onChange={(e) =>
-                  setEditing({ ...editing, footer_text: e.target.value })
-                }
+                onChange={(e) => setEditing({ ...editing, footer_text: e.target.value })}
               />
             </div>
             <div>
@@ -368,8 +345,7 @@ function TemplatesLibraryPage() {
                     setEditing({
                       ...editing,
                       ref_form_id: nextFormId,
-                      layout:
-                        remapLayoutFields(editing.layout, map) ?? editing.layout,
+                      layout: remapLayoutFields(editing.layout, map) ?? editing.layout,
                       prev_field_labels: nextFields.map((field) => ({
                         id: field.id,
                         label: field.label,
@@ -394,8 +370,8 @@ function TemplatesLibraryPage() {
                 ))}
               </Select>
               <p className="mt-1 text-xs text-muted-foreground">
-                Os campos deste formulário são usados para montar o layout. Em
-                outras escolas, os campos são ligados pelo nome.
+                Os campos deste formulário são usados para montar o layout. Em outras escolas, os
+                campos são ligados pelo nome.
               </p>
             </div>
           </div>
@@ -406,9 +382,7 @@ function TemplatesLibraryPage() {
                 type="checkbox"
                 className="accent-[var(--color-primary)]"
                 checked={editing.show_logo}
-                onChange={(e) =>
-                  setEditing({ ...editing, show_logo: e.target.checked })
-                }
+                onChange={(e) => setEditing({ ...editing, show_logo: e.target.checked })}
               />
               Mostrar logo da escola
             </label>
@@ -417,9 +391,7 @@ function TemplatesLibraryPage() {
                 type="checkbox"
                 className="accent-[var(--color-primary)]"
                 checked={editing.show_signature}
-                onChange={(e) =>
-                  setEditing({ ...editing, show_signature: e.target.checked })
-                }
+                onChange={(e) => setEditing({ ...editing, show_signature: e.target.checked })}
               />
               Linha de assinatura
             </label>
@@ -428,8 +400,8 @@ function TemplatesLibraryPage() {
           <div className="mt-5">
             <Label>Escolas que usam este template</Label>
             <p className="mb-2 text-xs text-muted-foreground">
-              Ao salvar, uma cópia do template é criada (ou atualizada) nos
-              formulários das escolas marcadas.
+              Ao salvar, uma cópia do template é criada (ou atualizada) nos formulários das escolas
+              marcadas.
             </p>
             <div className="flex flex-wrap gap-4 text-sm">
               {(schools ?? []).map((s) => (
