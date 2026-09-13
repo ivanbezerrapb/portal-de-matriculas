@@ -318,5 +318,12 @@ export const saveFormTemplateAsLibrary = createServerFn({ method: "POST" })
       .select()
       .single();
     if (insErr) throw new Error(insErr.message);
+
+    // Vincula o modelo de origem ao template criado, para receber atualizações.
+    await context.supabase
+      .from("print_templates")
+      .update({ library_id: created.id })
+      .eq("id", data.print_template_id);
+
     return created;
   });
