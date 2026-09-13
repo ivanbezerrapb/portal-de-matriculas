@@ -415,12 +415,19 @@ function PipelinePage() {
                     <dd className="text-foreground">{card.email}</dd>
                   </div>
                 )}
-                {details.map((d, i) => (
-                  <div key={i}>
-                    <dt className="text-xs text-muted-foreground">{d.label}</dt>
-                    <dd className="whitespace-pre-line text-foreground">{d.value}</dd>
-                  </div>
-                ))}
+                {details.map((d, i) => {
+                  const lines = d.value.split(" | ").filter(Boolean);
+                  return (
+                    <div key={i}>
+                      <dt className="text-xs text-muted-foreground">{d.label}</dt>
+                      <dd className="text-foreground">
+                        {lines.map((line, j) => (
+                          <div key={j}>{line}</div>
+                        ))}
+                      </dd>
+                    </div>
+                  );
+                })}
                 {card.notes && (
                   <div>
                     <dt className="text-xs text-muted-foreground">Observação</dt>
