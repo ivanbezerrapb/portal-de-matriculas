@@ -12,6 +12,7 @@ import {
 import { applyTemplateToForm, listTemplates } from "@/lib/ext/templates.functions";
 import {
   FIELD_TYPE_LABELS,
+  fieldOptionsWithAddressParts,
   isChildrenCountField,
   joinChildOptions,
   splitChildOptions,
@@ -808,13 +809,13 @@ function DestinationTab({ formId, schoolId }: { formId: string; schoolId: string
                     !extras.some((x) => x.field_id === SUBMISSION_ID_FIELD)) && (
                     <option value={SUBMISSION_ID_FIELD}>ID do cadastro</option>
                   )}
-                  {fields
+                  {fieldOptionsWithAddressParts(fields)
                     .filter(
-                      (f) => f.id === extra.field_id || !extras.some((x) => x.field_id === f.id),
+                      (o) => o.id === extra.field_id || !extras.some((x) => x.field_id === o.id),
                     )
-                    .map((f) => (
-                      <option key={f.id} value={f.id}>
-                        {f.label}
+                    .map((o) => (
+                      <option key={o.id} value={o.id}>
+                        {o.label}
                       </option>
                     ))}
                 </Select>
@@ -919,9 +920,9 @@ function DestinationTab({ formId, schoolId }: { formId: string; schoolId: string
                         }
                       >
                         <option value="">Campo...</option>
-                        {fields.map((f) => (
-                          <option key={f.id} value={f.id}>
-                            {f.label}
+                        {fieldOptionsWithAddressParts(fields).map((o) => (
+                          <option key={o.id} value={o.id}>
+                            {o.label}
                           </option>
                         ))}
                       </Select>

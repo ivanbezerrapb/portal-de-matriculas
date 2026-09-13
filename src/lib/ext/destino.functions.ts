@@ -106,7 +106,7 @@ const ruleSchema = z.object({
   stage_id: uuidOrNull,
   conditions: z.array(
     z.object({
-      field_id: z.string().uuid(),
+      field_id: z.string().min(1),
       op: z.enum(["eq", "neq", "contains", "empty", "not_empty", "in", "gt", "lt"]),
       value: z.string(),
     }),
