@@ -296,8 +296,9 @@ function PipelinePage() {
                   })}
                 </div>
 
-                {statusFilter === "open" && newIn === stage.id ? (
-                  <form
+                {statusFilter === "open" ? (
+                  newIn === stage.id ? (
+                    <form
                     className="mt-2 space-y-2 rounded-lg border border-border bg-card p-3"
                     onSubmit={(e) => {
                       e.preventDefault();
