@@ -43,6 +43,7 @@ type Editing = {
   layout: PrintLayout;
   school_ids: string[];
   ref_form_id: string;
+  prev_field_labels: { id: string; label: string }[];
 };
 
 const emptyEditing: Editing = {
@@ -57,6 +58,7 @@ const emptyEditing: Editing = {
   layout: emptyLayout("A4"),
   school_ids: [],
   ref_form_id: "",
+  prev_field_labels: [],
 };
 
 function TemplatesLibraryPage() {
@@ -102,7 +104,12 @@ function TemplatesLibraryPage() {
           layout: t.layout.pages.some((p) => p.blocks.length > 0)
             ? t.layout
             : null,
-          field_labels: refFields.map((f) => ({ id: f.id, label: f.label })),
+          field_labels: [
+            ...refFields.map((f) => ({ id: f.id, label: f.label })),
+            ...t.prev_field_labels.filter(
+              (p) => !refFields.some((f) => f.id === p.id),
+            ),
+          ],
           school_ids: t.school_ids,
         },
       }),
@@ -207,6 +214,10 @@ function TemplatesLibraryPage() {
                     emptyLayout(t.page_size as "A4" | "A5"),
                   school_ids: (t.school_ids ?? []) as string[],
                   ref_form_id: "",
+                  prev_field_labels: ((t.field_labels ?? []) as {
+                    id: string;
+                    label: string;
+                  }[]).map((p) => ({ id: p.id, label: p.label })),
                 })
               }
             >
