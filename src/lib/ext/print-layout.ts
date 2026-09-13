@@ -249,9 +249,14 @@ export function childrenOf(
   block: ChildrenBlock,
   ctx: PrintContext,
 ): ChildEntry[] {
-  const fieldId =
-    block.fieldId ||
-    (ctx.fields.find((f) => f.type === "children")?.id ?? "");
+  const fallback = ctx.fields.find((f) => f.type === "children")?.id ?? "";
+  // O template pode vir de outro formulário: se o campo indicado não existir
+  // (ou estiver vazio) neste formulário, usamos o campo de crianças dele.
+  let fieldId = block.fieldId || fallback;
+  const known = ctx.fields.some((f) => f.id === fieldId);
+  if (!known || !(ctx.values[fieldId] ?? "").trim()) {
+    if (fallback && (ctx.values[fallback] ?? "").trim()) fieldId = fallback;
+  }
   if (!fieldId) return [];
   return parseChildren(ctx.values[fieldId] ?? "");
 }
