@@ -59,97 +59,80 @@ function AuthenticatedLayout() {
     navigate({ to: "/auth", replace: true });
   }
 
-  const navItems = [
-    { to: "/dashboard", label: "Início", icon: LayoutDashboard, show: true },
-    {
-      to: "/cadastros",
-      label: "Cadastros",
-      icon: ClipboardList,
-      show: true,
-    },
-    {
-      to: "/formularios",
-      label: "Formulários",
-      icon: FileText,
-      show: perms?.isAdmin ?? false,
-    },
-    {
-      to: "/templates",
-      label: "Templates",
-      icon: LayoutTemplate,
-      show: perms?.isAdmin ?? false,
-    },
-    {
-      to: "/escolas",
-      label: "Escolas",
-      icon: School,
-      show: perms?.isAdmin ?? false,
-    },
-    {
-      to: "/usuarios",
-      label: "Usuários",
-      icon: Users,
-      show: perms?.isAdmin ?? false,
-    },
-  ].filter((i) => i.show);
+  type NavLeaf = { to: string; label: string; icon: typeof LayoutDashboard };
+  type NavGroup = {
+    key: string;
+    label: string;
+    icon: typeof LayoutDashboard;
+    badge?: string;
+    children: NavLeaf[];
+  };
+  type NavEntry = NavLeaf | NavGroup;
 
-  const activeItem = navItems.find(({ to }) => pathname.startsWith(to));
+  const isAdmin = perms?.isAdmin ?? false;
 
-  return (
-    <div className="flex min-h-screen w-full bg-background">
-      {mobileOpen ? (
-        <button
-          type="button"
-          aria-label="Fechar menu"
-          className="fixed inset-0 z-40 bg-foreground/30 lg:hidden"
-          onClick={() => setMobileOpen(false)}
-        />
-      ) : null}
-      <aside
-        className={`fixed inset-y-0 left-0 z-50 flex flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width,transform] duration-200 lg:sticky lg:top-0 lg:h-screen ${collapsed ? "w-[72px]" : "w-64"} ${mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}
-      >
-        <div className="flex h-20 items-center justify-between border-b border-sidebar-border px-4">
-          <div
-            className={`flex min-w-0 items-center overflow-hidden rounded-lg bg-card ${collapsed ? "h-10 w-10 justify-center p-1.5" : "w-44 px-3 py-2"}`}
-          >
-            <img
-              src={logoAsset.url}
-              alt="Grupo Inter"
-              className={
-                collapsed ? "h-auto w-28 max-w-none object-contain object-left" : "h-auto w-full"
-              }
-            />
-          </div>
-          <Button
-            variant="ghost"
-            className="h-9 w-9 shrink-0 p-0 text-sidebar-foreground hover:bg-sidebar-accent lg:hidden"
-            onClick={() => setMobileOpen(false)}
-            aria-label="Fechar menu"
-          >
-            <X className="h-5 w-5" />
-          </Button>
-        </div>
-        <nav className="flex-1 px-3 py-5" aria-label="Navegação principal">
-          {navItems.map(({ to, label, icon: Icon }) => {
-            const active = pathname.startsWith(to);
-            return (
-              <Link
-                key={to}
-                to={to}
-                onClick={() => setMobileOpen(false)}
-                className={`mb-1 flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                  active
-                    ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                    : "text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                }`}
-                title={collapsed ? label : undefined}
-              >
-                <Icon className="h-5 w-5 shrink-0" />
-                {!collapsed && <span>{label}</span>}
-              </Link>
-            );
-          })}
-        </nav>
+  const navEntries: NavEntry[] = [
+    { to: "/dashboard", label: "Início", icon: LayoutDashboard },
+    { to: "/cadastros", label: "Cadastros", icon: ClipboardList },
+    {
+      key: "crm",
+      label: "CRM",
+      icon: Kanban,
+      badge: "Em breve",
+      children: [
+        { to: "/crm/pipeline", label: "Pipeline", icon: Kanban },
+        { to: "/crm/funil", label: "Funil", icon: Filter },
+      ],
+    },
+    ...(isAdmin
+      ? [
+          {
+            key: "config",
+            label: "Configurações",
+            icon: Settings,
+            children: [
+              { to: "/formularios", label: "Formulários", icon: FileText },
+              { to: "/templates", label: "Templates", icon: LayoutTemplate },
+              { to: "/escolas", label: "Escolas", icon: School },
+              { to: "/usuarios", label: "Usuários", icon: Users },
+            ],
+          } as NavGroup,
+        ]
+      : []),
+  ];
+
+  const isGroup = (entry: NavEntry): entry is NavGroup => "children" in entry;
+
+  const openGroups = navEntries
+    .filter(isGroup)
+    .filter((g) => g.children.some((c) => pathname.startsWith(c.to)))
+    .map((g) => g.key);
+
+  const [manualGroups, setManualGroups] = useState<Record<string, boolean>>({});
+  const groupIsOpen = (key: string) => manualGroups[key] ?? openGroups.includes(key);
+
+  function toggleGroup(key: string) {
+    if (collapsed) setCollapsed(false);
+    setManualGroups((prev) => ({ ...prev, [key]: !groupIsOpen(key) }));
+  }
+
+  let breadcrumb = "Grupo Inter";
+  for (const entry of navEntries) {
+    if (isGroup(entry)) {
+      const child = entry.children.find((c) => pathname.startsWith(c.to));
+      if (child) breadcrumb = `${entry.label} › ${child.label}`;
+    } else if (pathname.startsWith(entry.to)) {
+      breadcrumb = entry.label;
+    }
+  }
+
+  const leafClass = (active: boolean) =>
+    `mb-1 flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+      active
+        ? "bg-sidebar-primary text-sidebar-primary-foreground"
+        : "text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+    }`;
+
         <div className="border-t border-sidebar-border px-3 py-4">
           {perms ? (
             <div className={collapsed ? "sr-only" : "px-2"}>
