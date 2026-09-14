@@ -536,6 +536,96 @@ function SubmissionsPage() {
   );
 }
 
+function PersonCell({
+  kind,
+  current,
+  options,
+  disabled,
+  onPick,
+}: {
+  kind: PresenterKind;
+  current: string | null;
+  options: { id: string; name: string }[];
+  disabled: boolean;
+  onPick: (value: { presenter_id?: string | null; new_name?: string }) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState("");
+
+  if (disabled) {
+    return <span className="text-muted-foreground">{current ?? "—"}</span>;
+  }
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => {
+          setText(current ?? "");
+          setOpen(true);
+        }}
+        className="rounded-md px-2 py-1 text-left text-sm text-foreground hover:bg-accent"
+      >
+        {current ?? <span className="text-muted-foreground">—</span>}
+      </button>
+    );
+  }
+
+  const query = text.trim().toLowerCase();
+  const matches = options.filter((o) => o.name.toLowerCase().includes(query));
+  const exact = options.find((o) => o.name.toLowerCase() === query);
+
+  return (
+    <div className="relative w-44">
+      <Input
+        autoFocus
+        value={text}
+        placeholder={kind === "secretaria" ? "Quem atendeu" : "Quem apresentou"}
+        onChange={(e) => setText(e.target.value)}
+        onBlur={() => window.setTimeout(() => setOpen(false), 150)}
+      />
+      <div className="absolute z-20 mt-1 max-h-56 w-full overflow-auto rounded-md border border-border bg-card shadow-lg">
+        {matches.map((o) => (
+          <button
+            key={o.id}
+            className="block w-full px-3 py-1.5 text-left text-sm hover:bg-accent"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              onPick({ presenter_id: o.id });
+              setOpen(false);
+            }}
+          >
+            {o.name}
+          </button>
+        ))}
+        {query.length >= 2 && !exact && (
+          <button
+            className="block w-full px-3 py-1.5 text-left text-sm font-medium text-primary hover:bg-accent"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              onPick({ new_name: text.trim() });
+              setOpen(false);
+            }}
+          >
+            Cadastrar «{text.trim()}»
+          </button>
+        )}
+        {current && (
+          <button
+            className="block w-full px-3 py-1.5 text-left text-sm text-muted-foreground hover:bg-accent"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              onPick({ presenter_id: null });
+              setOpen(false);
+            }}
+          >
+            Limpar
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function PrinterIcon() {
   return (
     <svg
