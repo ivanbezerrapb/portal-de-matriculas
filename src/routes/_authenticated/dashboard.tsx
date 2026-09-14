@@ -339,6 +339,11 @@ function LossReasonsChart({ data }: { data: IndicatorDatum[] }) {
 function DashboardPage() {
   const [selected, setSelected] = useState<string[]>([]);
 
+  const { data: perms } = useQuery({
+    queryKey: ["my-permissions"],
+    queryFn: () => getMyPermissions(),
+  });
+
   const { data: schools } = useQuery({
     queryKey: ["schools"],
     queryFn: () => listSchools(),
@@ -368,8 +373,9 @@ function DashboardPage() {
     <div className="mx-auto max-w-6xl">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="font-display text-lg font-semibold text-primary">VISÃO GERAL</h1>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
+        {perms?.isAdmin && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
             <Button variant="outline" className="w-full justify-between sm:w-64">
               <span className="truncate">{schoolLabel}</span>
               <ChevronDown className="h-4 w-4 shrink-0" />
