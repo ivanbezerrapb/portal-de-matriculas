@@ -148,10 +148,7 @@ function SourcesChart({ data }: { data: IndicatorDatum[] }) {
                 strokeWidth={0}
               >
                 {data.map((item, index) => (
-                  <Cell
-                    key={item.label}
-                    fill={SOURCE_COLORS[index % SOURCE_COLORS.length]}
-                  />
+                  <Cell key={item.label} fill={SOURCE_COLORS[index % SOURCE_COLORS.length]} />
                 ))}
               </Pie>
             </PieChart>
