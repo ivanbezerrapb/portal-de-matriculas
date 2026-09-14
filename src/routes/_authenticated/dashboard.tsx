@@ -364,6 +364,12 @@ function DashboardPage() {
   }
 
   const currentYear = data?.year ?? new Date().getFullYear();
+  const peopleChartHeight = data
+    ? Math.max(
+        208,
+        ...[data.attendants, data.presenters, data.enrollers].map((d) => d.length * 38),
+      )
+    : 208;
   const schoolLabel =
     selected.length === 0
       ? "Todas as escolas"
