@@ -605,6 +605,73 @@ function SubmissionsPage() {
   );
 }
 
+type PersonChoice = { presenter_id?: string; label: string };
+
+function PersonPicker({
+  kind,
+  value,
+  options,
+  onChange,
+}: {
+  kind: PresenterKind;
+  value: PersonChoice | null;
+  options: { id: string; name: string }[];
+  onChange: (value: PersonChoice | null) => void;
+}) {
+  const [text, setText] = useState(value?.label ?? "");
+  const [open, setOpen] = useState(false);
+
+  const query = text.trim().toLowerCase();
+  const matches = options.filter((o) => o.name.toLowerCase().includes(query));
+  const exact = options.find((o) => o.name.toLowerCase() === query);
+
+  return (
+    <div className="relative">
+      <Input
+        value={text}
+        placeholder={kind === "secretaria" ? "Quem atendeu" : "Quem apresentou"}
+        onFocus={() => setOpen(true)}
+        onChange={(e) => {
+          setText(e.target.value);
+          setOpen(true);
+          onChange(null);
+        }}
+        onBlur={() => window.setTimeout(() => setOpen(false), 150)}
+      />
+      {open && (
+        <div className="absolute z-30 mt-1 max-h-48 w-full overflow-auto rounded-md border border-border bg-card shadow-lg">
+          {matches.map((o) => (
+            <button
+              key={o.id}
+              className="block w-full px-3 py-1.5 text-left text-sm hover:bg-accent"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                onChange({ presenter_id: o.id, label: o.name });
+                setText(o.name);
+                setOpen(false);
+              }}
+            >
+              {o.name}
+            </button>
+          ))}
+          {query.length >= 2 && !exact && (
+            <button
+              className="block w-full px-3 py-1.5 text-left text-sm font-medium text-primary hover:bg-accent"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                onChange({ label: text.trim() });
+                setOpen(false);
+              }}
+            >
+              Cadastrar «{text.trim()}»
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function PersonCell({
   kind,
   current,
