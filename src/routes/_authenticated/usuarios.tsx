@@ -97,6 +97,20 @@ function UsersPage() {
 
   const schoolName = (id: string | null) => schools?.find((s) => s.id === id)?.name ?? "";
 
+  const normalize = (v: string) =>
+    v.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "");
+
+  const filteredUsers = useMemo(() => {
+    const q = normalize(filterName.trim());
+    return (users ?? []).filter((u) => {
+      if (q && !normalize(`${u.full_name} ${u.email}`).includes(q)) return false;
+      if (filterRole !== "all" && !u.roles.some((r) => r.role === filterRole)) return false;
+      if (filterSchool !== "all" && !u.roles.some((r) => r.school_id === filterSchool))
+        return false;
+      return true;
+    });
+  }, [users, filterName, filterRole, filterSchool]);
+
   return (
     <div className="mx-auto max-w-3xl">
       <h1 className="font-display text-2xl font-bold text-foreground">Usuários</h1>
