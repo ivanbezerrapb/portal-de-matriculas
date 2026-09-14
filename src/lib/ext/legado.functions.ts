@@ -204,7 +204,13 @@ export const getLegacyYearStats = createServerFn({ method: "GET" })
 
     const byYear = new Map<number, LegacyYearStats>();
     for (const year of data.years) {
-      byYear.set(year, { year, visits: 0, children: 0, bySchool: [] });
+      byYear.set(year, {
+        year,
+        visits: 0,
+        children: 0,
+        bySchool: [],
+        monthly: Array.from({ length: 12 }, (_, month) => ({ month, visits: 0, children: 0 })),
+      });
     }
     const schoolsByYear = new Map<number, Map<string, { visits: number; children: number }>>();
 
