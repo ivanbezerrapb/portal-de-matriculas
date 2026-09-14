@@ -31,7 +31,8 @@ import { getSupabase } from "@/lib/ext/browser";
 import { getMyPermissions } from "@/lib/ext/cadastros.functions";
 import { Spinner } from "@/components/ui";
 import { Button } from "@/components/ui";
-import logoAsset from "@/assets/grupo-inter-logo.png.asset.json";
+import whiteLogoAsset from "@/assets/grupo-inter-logo-branca.png.asset.json";
+import symbolAsset from "@/assets/grupo-inter-simbolo.png.asset.json";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
@@ -210,14 +211,12 @@ function AuthenticatedLayout() {
       >
         <div className="flex h-20 items-center justify-between border-b border-sidebar-border px-4">
           <div
-            className={`flex min-w-0 items-center overflow-hidden rounded-lg bg-card ${collapsed ? "h-10 w-10 justify-center p-1.5" : "w-44 px-3 py-2"}`}
+            className={`flex min-w-0 items-center overflow-hidden ${collapsed ? "h-11 w-11 justify-center rounded-md bg-card p-1" : "w-48"}`}
           >
             <img
-              src={logoAsset.url}
+              src={collapsed ? symbolAsset.url : whiteLogoAsset.url}
               alt="Grupo Inter"
-              className={
-                collapsed ? "h-auto w-28 max-w-none object-contain object-left" : "h-auto w-full"
-              }
+              className={collapsed ? "h-full w-full object-contain" : "h-auto w-full object-contain"}
             />
           </div>
           <Button
