@@ -90,12 +90,25 @@ function IndicatorChart({
           config={{ count: { label: "Quantidade", color: "var(--primary)" } }}
           className="mt-3 h-52 w-full aspect-auto"
         >
-          <BarChart data={data} margin={{ top: 8, right: 8, bottom: 4, left: 0 }}>
-            <CartesianGrid vertical={false} />
-            <XAxis dataKey="label" tickLine={false} axisLine={false} interval={0} />
-            <YAxis allowDecimals={false} tickLine={false} axisLine={false} width={24} />
+          <BarChart
+            data={data.slice(0, 8)}
+            layout="vertical"
+            margin={{ top: 4, right: 12, bottom: 0, left: 0 }}
+          >
+            <CartesianGrid horizontal={false} />
+            <XAxis type="number" allowDecimals={false} tickLine={false} axisLine={false} />
+            <YAxis
+              type="category"
+              dataKey="label"
+              tickLine={false}
+              axisLine={false}
+              width={112}
+              tickFormatter={(label: string) =>
+                label.length > 18 ? `${label.slice(0, 17)}…` : label
+              }
+            />
             <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
-            <Bar dataKey="count" fill="var(--color-count)" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="count" fill="var(--color-count)" radius={[0, 4, 4, 0]} />
           </BarChart>
         </ChartContainer>
       )}
