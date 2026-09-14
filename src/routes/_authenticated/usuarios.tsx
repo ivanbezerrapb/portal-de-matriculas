@@ -98,7 +98,10 @@ function UsersPage() {
   const schoolName = (id: string | null) => schools?.find((s) => s.id === id)?.name ?? "";
 
   const normalize = (v: string) =>
-    v.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "");
+    v
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/\p{Diacritic}/gu, "");
 
   const filteredUsers = useMemo(() => {
     const q = normalize(filterName.trim());
@@ -189,7 +192,10 @@ function UsersPage() {
           </div>
           <div>
             <Label>Perfil</Label>
-            <Select value={filterRole} onChange={(e) => setFilterRole(e.target.value as Role | "all")}>
+            <Select
+              value={filterRole}
+              onChange={(e) => setFilterRole(e.target.value as Role | "all")}
+            >
               <option value="all">Todos os perfis</option>
               {ROLES.map(([value, label]) => (
                 <option key={value} value={value}>
