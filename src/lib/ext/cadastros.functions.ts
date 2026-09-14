@@ -522,7 +522,7 @@ export const getDashboardStats = createServerFn({ method: "GET" })
     );
 
     return {
-      year,
+      year: campaignYear,
       visits: rows.length,
       children,
       series: orderedSeries.map(([label, count]) => ({ label, count })),
