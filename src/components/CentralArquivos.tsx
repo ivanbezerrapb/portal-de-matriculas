@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Download, Trash2, Upload } from "lucide-react";
+import { Copy, Download, ExternalLink, Link2, Trash2, Upload } from "lucide-react";
 import { Button, Card, EmptyState, Input, Label, Select, Spinner } from "@/components/ui";
 import { getSupabase } from "@/lib/ext/browser";
 import {
@@ -8,6 +8,7 @@ import {
   FILE_BUCKET,
   createFileCategory,
   createFileRecord,
+  createLinkRecord,
   deleteFile,
   getDownloadUrl,
   getFileAccess,
