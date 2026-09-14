@@ -52,6 +52,7 @@ function SubmissionsPage() {
   const [enrollmentCount, setEnrollmentCount] = useState("1");
   const [dialogAttendant, setDialogAttendant] = useState<PersonChoice | null>(null);
   const [dialogPresenter, setDialogPresenter] = useState<PersonChoice | null>(null);
+  const [dialogEnroller, setDialogEnroller] = useState<PersonChoice | null>(null);
   const [savingEnrollment, setSavingEnrollment] = useState(false);
 
   const { data: perms } = useQuery({
@@ -304,6 +305,7 @@ function SubmissionsPage() {
                 <th className="px-4 py-3">Data</th>
                 <th className="px-4 py-3">Atendimento</th>
                 <th className="px-4 py-3">Apresentação</th>
+                <th className="px-4 py-3">Efetivação</th>
                 <th className="px-4 py-3">Matrícula</th>
                 <th className="px-4 py-3"></th>
               </tr>
