@@ -21,6 +21,7 @@ import { Route as AuthenticatedTemplatesRouteImport } from './routes/_authentica
 import { Route as AuthenticatedUsuariosRouteImport } from './routes/_authenticated/usuarios'
 import { Route as FSlugRouteImport } from './routes/f/$slug'
 import { Route as AuthenticatedArquivosConectaRouteImport } from './routes/_authenticated/arquivos.conecta'
+import { Route as AuthenticatedArquivosInteractivoRouteImport } from './routes/_authenticated/arquivos.interactivo'
 import { Route as AuthenticatedCadastrosSubmissionIdRouteImport } from './routes/_authenticated/cadastros_.$submissionId'
 import { Route as AuthenticatedCrmFunilRouteImport } from './routes/_authenticated/crm.funil'
 import { Route as AuthenticatedCrmMotivosRouteImport } from './routes/_authenticated/crm.motivos'
@@ -92,6 +93,12 @@ const AuthenticatedArquivosConectaRoute =
     path: '/arquivos/conecta',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedArquivosInteractivoRoute =
+  AuthenticatedArquivosInteractivoRouteImport.update({
+    id: '/arquivos/interactivo',
+    path: '/arquivos/interactivo',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedCadastrosSubmissionIdRoute =
   AuthenticatedCadastrosSubmissionIdRouteImport.update({
     id: '/cadastros_/$submissionId',
@@ -149,6 +156,7 @@ export interface FileRoutesByFullPath {
   '/usuarios': typeof AuthenticatedUsuariosRoute
   '/f/$slug': typeof FSlugRoute
   '/arquivos/conecta': typeof AuthenticatedArquivosConectaRoute
+  '/arquivos/interactivo': typeof AuthenticatedArquivosInteractivoRoute
   '/cadastros/$submissionId': typeof AuthenticatedCadastrosSubmissionIdRoute
   '/crm/funil': typeof AuthenticatedCrmFunilRoute
   '/crm/motivos': typeof AuthenticatedCrmMotivosRoute
@@ -170,6 +178,7 @@ export interface FileRoutesByTo {
   '/usuarios': typeof AuthenticatedUsuariosRoute
   '/f/$slug': typeof FSlugRoute
   '/arquivos/conecta': typeof AuthenticatedArquivosConectaRoute
+  '/arquivos/interactivo': typeof AuthenticatedArquivosInteractivoRoute
   '/cadastros/$submissionId': typeof AuthenticatedCadastrosSubmissionIdRoute
   '/crm/funil': typeof AuthenticatedCrmFunilRoute
   '/crm/motivos': typeof AuthenticatedCrmMotivosRoute
@@ -193,6 +202,7 @@ export interface FileRoutesById {
   '/_authenticated/usuarios': typeof AuthenticatedUsuariosRoute
   '/f/$slug': typeof FSlugRoute
   '/_authenticated/arquivos/conecta': typeof AuthenticatedArquivosConectaRoute
+  '/_authenticated/arquivos/interactivo': typeof AuthenticatedArquivosInteractivoRoute
   '/_authenticated/cadastros_/$submissionId': typeof AuthenticatedCadastrosSubmissionIdRoute
   '/_authenticated/crm/funil': typeof AuthenticatedCrmFunilRoute
   '/_authenticated/crm/motivos': typeof AuthenticatedCrmMotivosRoute
@@ -216,6 +226,7 @@ export interface FileRouteTypes {
     | '/usuarios'
     | '/f/$slug'
     | '/arquivos/conecta'
+    | '/arquivos/interactivo'
     | '/cadastros/$submissionId'
     | '/crm/funil'
     | '/crm/motivos'
@@ -237,6 +248,7 @@ export interface FileRouteTypes {
     | '/usuarios'
     | '/f/$slug'
     | '/arquivos/conecta'
+    | '/arquivos/interactivo'
     | '/cadastros/$submissionId'
     | '/crm/funil'
     | '/crm/motivos'
@@ -259,6 +271,7 @@ export interface FileRouteTypes {
     | '/_authenticated/usuarios'
     | '/f/$slug'
     | '/_authenticated/arquivos/conecta'
+    | '/_authenticated/arquivos/interactivo'
     | '/_authenticated/cadastros_/$submissionId'
     | '/_authenticated/crm/funil'
     | '/_authenticated/crm/motivos'
@@ -363,6 +376,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedArquivosConectaRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/arquivos/interactivo': {
+      id: '/_authenticated/arquivos/interactivo'
+      path: '/arquivos/interactivo'
+      fullPath: '/arquivos/interactivo'
+      preLoaderRoute: typeof AuthenticatedArquivosInteractivoRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/cadastros_/$submissionId': {
       id: '/_authenticated/cadastros_/$submissionId'
       path: '/cadastros/$submissionId'
@@ -431,6 +451,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedTemplatesRoute: typeof AuthenticatedTemplatesRoute
   AuthenticatedUsuariosRoute: typeof AuthenticatedUsuariosRoute
   AuthenticatedArquivosConectaRoute: typeof AuthenticatedArquivosConectaRoute
+  AuthenticatedArquivosInteractivoRoute: typeof AuthenticatedArquivosInteractivoRoute
   AuthenticatedCadastrosSubmissionIdRoute: typeof AuthenticatedCadastrosSubmissionIdRoute
   AuthenticatedCrmFunilRoute: typeof AuthenticatedCrmFunilRoute
   AuthenticatedCrmMotivosRoute: typeof AuthenticatedCrmMotivosRoute
@@ -449,6 +470,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedTemplatesRoute: AuthenticatedTemplatesRoute,
   AuthenticatedUsuariosRoute: AuthenticatedUsuariosRoute,
   AuthenticatedArquivosConectaRoute: AuthenticatedArquivosConectaRoute,
+  AuthenticatedArquivosInteractivoRoute: AuthenticatedArquivosInteractivoRoute,
   AuthenticatedCadastrosSubmissionIdRoute:
     AuthenticatedCadastrosSubmissionIdRoute,
   AuthenticatedCrmFunilRoute: AuthenticatedCrmFunilRoute,
