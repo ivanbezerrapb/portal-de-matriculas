@@ -411,6 +411,18 @@ export const getDashboardStats = createServerFn({ method: "GET" })
     const { data: submissions, error } = await query;
     if (error) throw new Error(error.message);
 
+    let lossesQuery = context.supabase
+      .from("opportunities")
+      .select("close_reason_id, crm_close_reasons(label)")
+      .eq("status", "lost")
+      .gte("closed_at", start)
+      .lt("closed_at", end);
+    if (data.schoolIds && data.schoolIds.length > 0) {
+      lossesQuery = lossesQuery.in("school_id", data.schoolIds);
+    }
+    const { data: losses, error: lossesError } = await lossesQuery;
+    if (lossesError) throw new Error(lossesError.message);
+
     const rows = submissions ?? [];
     const bySchool = new Map<string, { name: string; count: number }>();
     for (const row of rows) {
@@ -422,6 +434,12 @@ export const getDashboardStats = createServerFn({ method: "GET" })
 
     const seriesCounts = new Map<string, number>();
     const sourceCounts = new Map<string, number>();
+    const lossReasonCounts = new Map<string, number>();
+    for (const loss of losses ?? []) {
+      const reason = loss.crm_close_reasons as { label?: string } | null;
+      const label = reason?.label?.trim() || "Sem motivo informado";
+      lossReasonCounts.set(label, (lossReasonCounts.get(label) ?? 0) + 1);
+    }
 
     // Soma das crianças e distribuição das respostas dos formulários.
     let children = 0;
@@ -510,6 +528,9 @@ export const getDashboardStats = createServerFn({ method: "GET" })
         percentage: children > 0 ? Math.round((enrolled / children) * 1000) / 10 : 0,
       },
       sources: [...sourceCounts.entries()]
+        .map(([label, count]) => ({ label, count }))
+        .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, "pt-BR")),
+      lossReasons: [...lossReasonCounts.entries()]
         .map(([label, count]) => ({ label, count }))
         .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, "pt-BR")),
       bySchool: [...bySchool.values()].sort((a, b) => b.count - a.count),
