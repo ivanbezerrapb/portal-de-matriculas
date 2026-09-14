@@ -74,7 +74,10 @@ function PipelinePage() {
     queryKey: ["my-permissions"],
     queryFn: () => getMyPermissions(),
   });
-  const canClose = perms?.isAdmin ?? false;
+  const isDirecao = perms?.isDirecao ?? false;
+  // Direção acompanha o CRM apenas em leitura.
+  const canWrite = !isDirecao;
+  const canClose = (perms?.isAdmin ?? false) && canWrite;
 
   const funnelsQuery = useQuery({ queryKey: ["funnels"], queryFn: () => listFunnels() });
   const funnels = funnelsQuery.data?.funnels ?? [];
@@ -236,7 +239,7 @@ function PipelinePage() {
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={(e) => {
                   e.preventDefault();
-                  if (!dragging || statusFilter !== "open") return;
+                  if (!dragging || statusFilter !== "open" || !canWrite) return;
                   moveM.mutate({ id: dragging, stage_id: stage.id, position: cards.length });
                   setDragging(null);
                 }}
@@ -299,7 +302,7 @@ function PipelinePage() {
                     return (
                       <div
                         key={card.id}
-                        draggable={statusFilter === "open"}
+                        draggable={statusFilter === "open" && canWrite}
                         onDragStart={() => setDragging(card.id)}
                         onDragEnd={() => setDragging(null)}
                         className="group rounded-lg border border-border bg-card p-3 shadow-sm"
@@ -311,7 +314,7 @@ function PipelinePage() {
                         >
                           {body}
                         </button>
-                        {statusFilter === "open" && (
+                        {statusFilter === "open" && canWrite && (
                           <button
                             type="button"
                             aria-label="Remover oportunidade"
@@ -326,7 +329,7 @@ function PipelinePage() {
                   })}
                 </div>
 
-                {statusFilter === "open" ? (
+                {statusFilter === "open" && canWrite ? (
                   newIn === stage.id ? (
                     <form
                       className="mt-2 space-y-2 rounded-lg border border-border bg-card p-3"
