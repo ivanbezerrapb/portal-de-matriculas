@@ -620,6 +620,10 @@ export const getDashboardStats = createServerFn({ method: "GET" })
             const schoolId = submissionSchools.get(v.submission_id as string);
             const schoolEntry = schoolId ? bySchool.get(schoolId) : undefined;
             if (schoolEntry) schoolEntry.children += childCount;
+            const month = submissionMonth.get(v.submission_id as string);
+            if (month !== undefined) {
+              monthlyChildren[month] = (monthlyChildren[month] ?? 0) + childCount;
+            }
           }
           if (childrenIds.has(v.field_id as string)) {
             for (const child of parseChildren(v.value)) {
