@@ -119,13 +119,54 @@ export function DynamicPrintPage({
   onStatusChange?: (status: { ready: boolean; overflow: boolean }) => void;
 }) {
   const layout = useDynamicPrintLayout(page, ctx, height);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const [imagesReady, setImagesReady] = useState(false);
+
+  // Só consideramos a página pronta quando as imagens terminam de baixar —
+  // sem isso, a primeira impressão sai sem a logo.
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    const images = Array.from(root.querySelectorAll("img"));
+    const pending = images.filter((img) => !img.complete);
+    if (pending.length === 0) {
+      setImagesReady(true);
+      return;
+    }
+    setImagesReady(false);
+    let left = pending.length;
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      setImagesReady(true);
+    };
+    const settle = () => {
+      left -= 1;
+      if (left <= 0) finish();
+    };
+    pending.forEach((img) => {
+      img.addEventListener("load", settle);
+      img.addEventListener("error", settle);
+    });
+    // Rede lenta ou imagem quebrada não pode travar a impressão.
+    const timer = window.setTimeout(finish, 5000);
+    return () => {
+      window.clearTimeout(timer);
+      pending.forEach((img) => {
+        img.removeEventListener("load", settle);
+        img.removeEventListener("error", settle);
+      });
+    };
+  }, [layout.blocks]);
 
   useLayoutEffect(() => {
-    onStatusChange?.({ ready: layout.measured, overflow: layout.overflow });
-  }, [layout.measured, layout.overflow, onStatusChange]);
+    onStatusChange?.({ ready: layout.measured && imagesReady, overflow: layout.overflow });
+  }, [layout.measured, layout.overflow, imagesReady, onStatusChange]);
 
   return (
     <div
+      ref={rootRef}
       className={className}
       style={{
         position: "relative",
@@ -136,6 +177,7 @@ export function DynamicPrintPage({
         ...style,
       }}
     >
+
       {layout.blocks.map(({ block, y, dynamic }) => (
         <div
           key={block.id}
