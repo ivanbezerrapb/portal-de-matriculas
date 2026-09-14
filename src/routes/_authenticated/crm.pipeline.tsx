@@ -144,6 +144,7 @@ function PipelinePage() {
       toast.success("Oportunidade fechada.");
       setClosing(null);
       setOpenCard(null);
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       refresh();
     },
     onError: (e: Error) => toast.error(e.message),
@@ -154,6 +155,7 @@ function PipelinePage() {
     onSuccess: () => {
       toast.success("Oportunidade reaberta.");
       setOpenCard(null);
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       refresh();
     },
     onError: (e: Error) => toast.error(e.message),
