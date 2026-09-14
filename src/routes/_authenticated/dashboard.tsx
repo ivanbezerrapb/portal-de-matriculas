@@ -131,7 +131,7 @@ function SeriesChart({
 
   return (
     <Card className="min-w-0 p-4">
-      <h2 className="font-display text-sm font-semibold text-foreground">Série de interesse</h2>
+      <h2 className="font-display text-sm font-semibold text-foreground">{title}</h2>
       {data.length === 0 ? (
         <div className="flex h-52 items-center justify-center text-sm text-muted-foreground">
           Nenhuma resposta no período.
