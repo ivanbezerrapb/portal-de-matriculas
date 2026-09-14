@@ -431,11 +431,11 @@ function DashboardPage() {
             <SchoolComparisonChart data={data.bySchool} />
           </div>
 
-          <div className="mt-3 grid items-start gap-3 lg:grid-cols-3">
+          <div className="mt-3 grid gap-3 lg:grid-cols-3">
             <SourcesChart data={data.sources} />
             <SeriesChart data={data.series} />
-            <div className="grid content-start gap-3">
-              <Card className="p-4">
+            <div className="flex flex-col gap-3">
+              <Card className="flex flex-1 flex-col p-4">
                 <div className="flex items-center gap-3">
                   <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent text-primary">
                     <ClipboardCheck className="h-4 w-4" />
@@ -444,7 +444,7 @@ function DashboardPage() {
                     Matrículas efetivadas
                   </h2>
                 </div>
-                <div className="mt-4 flex items-end justify-between gap-3">
+                <div className="mt-4 flex flex-1 items-center justify-between gap-3">
                   <div>
                     <p className="font-display text-3xl font-semibold text-foreground">
                       {data.enrollments.total}
@@ -453,7 +453,7 @@ function DashboardPage() {
                       {data.enrollments.percentage.toLocaleString("pt-BR")}% do total de crianças
                     </p>
                   </div>
-                  <div className="mb-1 h-2 w-24 overflow-hidden rounded-full bg-muted">
+                  <div className="h-2 w-24 overflow-hidden rounded-full bg-muted">
                     <div
                       className="h-full rounded-full bg-primary transition-[width]"
                       style={{ width: `${Math.min(data.enrollments.percentage, 100)}%` }}
@@ -466,9 +466,21 @@ function DashboardPage() {
           </div>
 
           <div className="mt-3 grid items-start gap-3 lg:grid-cols-3">
-            <SeriesChart data={data.attendants} title="Quem mais atendeu (Secretaria)" />
-            <SeriesChart data={data.presenters} title="Quem mais apresentou (Coordenação)" />
-            <SeriesChart data={data.enrollers} title="Quem mais efetivou (Efetivação)" />
+            <SeriesChart
+              data={data.attendants}
+              title="Quem mais atendeu (Secretaria)"
+              chartHeight={peopleChartHeight}
+            />
+            <SeriesChart
+              data={data.presenters}
+              title="Quem mais apresentou (Coordenação)"
+              chartHeight={peopleChartHeight}
+            />
+            <SeriesChart
+              data={data.enrollers}
+              title="Quem mais efetivou (Efetivação)"
+              chartHeight={peopleChartHeight}
+            />
           </div>
         </>
       )}
