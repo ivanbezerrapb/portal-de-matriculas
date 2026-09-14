@@ -184,7 +184,9 @@ function SubmissionsPage() {
       <h1 className="font-display text-2xl font-bold text-foreground">Cadastros</h1>
 
       <Card className="mt-6">
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <div
+          className={`grid gap-3 sm:grid-cols-2 ${perms?.isAdmin ? "lg:grid-cols-5" : "lg:grid-cols-4"}`}
+        >
           <div className="lg:col-span-2">
             <Label htmlFor="q">Buscar por ID</Label>
             <Input
@@ -194,17 +196,20 @@ function SubmissionsPage() {
               placeholder="Ex.: 0001/ESCA"
             />
           </div>
-          <div>
-            <Label htmlFor="f-school">Escola</Label>
-            <Select id="f-school" value={schoolId} onChange={(e) => setSchoolId(e.target.value)}>
-              <option value="">Todas</option>
-              {(schools ?? []).map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </Select>
-          </div>
+          {perms?.isAdmin && (
+            <div>
+              <Label htmlFor="f-school">Escola</Label>
+              <Select id="f-school" value={schoolId} onChange={(e) => setSchoolId(e.target.value)}>
+                <option value="">Todas</option>
+                {(schools ?? []).map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          )}
+
           <div>
             <Label htmlFor="f-form">Formulário</Label>
             <Select id="f-form" value={formId} onChange={(e) => setFormId(e.target.value)}>
