@@ -52,6 +52,7 @@ function SubmissionsPage() {
   const [enrollmentCount, setEnrollmentCount] = useState("1");
   const [dialogAttendant, setDialogAttendant] = useState<PersonChoice | null>(null);
   const [dialogPresenter, setDialogPresenter] = useState<PersonChoice | null>(null);
+  const [dialogEnroller, setDialogEnroller] = useState<PersonChoice | null>(null);
   const [savingEnrollment, setSavingEnrollment] = useState(false);
 
   const { data: perms } = useQuery({
@@ -304,6 +305,7 @@ function SubmissionsPage() {
                 <th className="px-4 py-3">Data</th>
                 <th className="px-4 py-3">Atendimento</th>
                 <th className="px-4 py-3">Apresentação</th>
+                <th className="px-4 py-3">Efetivação</th>
                 <th className="px-4 py-3">Matrícula</th>
                 <th className="px-4 py-3"></th>
               </tr>
@@ -384,6 +386,22 @@ function SubmissionsPage() {
                       />
                     </td>
                     <td className="px-4 py-2.5">
+                      <PersonCell
+                        kind="efetivacao"
+                        current={
+                          (s as unknown as { enroller: { name?: string } | null }).enroller?.name ??
+                          null
+                        }
+                        options={(presenters ?? []).filter(
+                          (p) => p.school_id === s.school_id && p.kind === "efetivacao",
+                        )}
+                        disabled={!canEnroll || peopleM.isPending}
+                        onPick={(value) =>
+                          peopleM.mutate({ submission_id: s.id, kind: "efetivacao", ...value })
+                        }
+                      />
+                    </td>
+                    <td className="px-4 py-2.5">
                       <label className="flex items-center gap-2 text-xs text-muted-foreground">
                         <input
                           type="checkbox"
@@ -399,6 +417,9 @@ function SubmissionsPage() {
                               const pre = (
                                 s as unknown as { presenter: { id?: string; name?: string } | null }
                               ).presenter;
+                              const enr = (
+                                s as unknown as { enroller: { id?: string; name?: string } | null }
+                              ).enroller;
                               setDialogAttendant(
                                 att?.id && att.name
                                   ? { presenter_id: att.id, label: att.name }
@@ -407,6 +428,11 @@ function SubmissionsPage() {
                               setDialogPresenter(
                                 pre?.id && pre.name
                                   ? { presenter_id: pre.id, label: pre.name }
+                                  : null,
+                              );
+                              setDialogEnroller(
+                                enr?.id && enr.name
+                                  ? { presenter_id: enr.id, label: enr.name }
                                   : null,
                               );
                               setEnrollmentDialog({
@@ -533,6 +559,17 @@ function SubmissionsPage() {
                 onChange={setDialogPresenter}
               />
             </div>
+            <div className="mt-4">
+              <Label>Quem efetivou (Efetivação)</Label>
+              <PersonPicker
+                kind="efetivacao"
+                value={dialogEnroller}
+                options={(presenters ?? []).filter(
+                  (p) => p.school_id === enrollmentDialog.schoolId && p.kind === "efetivacao",
+                )}
+                onChange={setDialogEnroller}
+              />
+            </div>
             <div className="mt-5 flex justify-end gap-2">
               <Button variant="ghost" onClick={() => setEnrollmentDialog(null)}>
                 Cancelar
@@ -543,11 +580,12 @@ function SubmissionsPage() {
                   savingEnrollment ||
                   !dialogAttendant ||
                   !dialogPresenter ||
+                  !dialogEnroller ||
                   !Number.isInteger(Number(enrollmentCount)) ||
                   Number(enrollmentCount) < 1
                 }
                 onClick={async () => {
-                  if (!dialogAttendant || !dialogPresenter) return;
+                  if (!dialogAttendant || !dialogPresenter || !dialogEnroller) return;
                   setSavingEnrollment(true);
                   try {
                     await setSubmissionPeople({
@@ -566,6 +604,15 @@ function SubmissionsPage() {
                         ...(dialogPresenter.presenter_id
                           ? { presenter_id: dialogPresenter.presenter_id }
                           : { new_name: dialogPresenter.label }),
+                      },
+                    });
+                    await setSubmissionPeople({
+                      data: {
+                        submission_id: enrollmentDialog.id,
+                        kind: "efetivacao",
+                        ...(dialogEnroller.presenter_id
+                          ? { presenter_id: dialogEnroller.presenter_id }
+                          : { new_name: dialogEnroller.label }),
                       },
                     });
                     queryClient.invalidateQueries({ queryKey: ["presenters"] });
@@ -612,6 +659,12 @@ function SubmissionsPage() {
 
 type PersonChoice = { presenter_id?: string; label: string };
 
+const PLACEHOLDERS: Record<PresenterKind, string> = {
+  secretaria: "Quem atendeu",
+  coordenacao: "Quem apresentou",
+  efetivacao: "Quem efetivou",
+};
+
 function PersonPicker({
   kind,
   value,
@@ -634,7 +687,7 @@ function PersonPicker({
     <div className="relative">
       <Input
         value={text}
-        placeholder={kind === "secretaria" ? "Quem atendeu" : "Quem apresentou"}
+        placeholder={PLACEHOLDERS[kind]}
         onFocus={() => setOpen(true)}
         onChange={(e) => {
           setText(e.target.value);
@@ -720,7 +773,7 @@ function PersonCell({
       <Input
         autoFocus
         value={text}
-        placeholder={kind === "secretaria" ? "Quem atendeu" : "Quem apresentou"}
+        placeholder={PLACEHOLDERS[kind]}
         onChange={(e) => setText(e.target.value)}
         onBlur={() => window.setTimeout(() => setOpen(false), 150)}
       />

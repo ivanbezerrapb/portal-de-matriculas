@@ -21,7 +21,7 @@ export const listSubmissions = createServerFn({ method: "GET" })
     let query = context.supabase
       .from("submissions")
       .select(
-        "*, forms(title), schools(name), attendant:presenters!submissions_attendant_id_fkey(id, name), presenter:presenters!submissions_presenter_id_fkey(id, name)",
+        "*, forms(title), schools(name), attendant:presenters!submissions_attendant_id_fkey(id, name), presenter:presenters!submissions_presenter_id_fkey(id, name), enroller:presenters!submissions_enroller_id_fkey(id, name)",
       )
       .order("created_at", { ascending: false })
       .limit(500);
@@ -388,7 +388,7 @@ export const setSubmissionPeople = createServerFn({ method: "POST" })
     z
       .object({
         submission_id: z.string().uuid(),
-        kind: z.enum(["secretaria", "coordenacao"]),
+        kind: z.enum(["secretaria", "coordenacao", "efetivacao"]),
         presenter_id: z.string().uuid().nullable().optional(),
         new_name: z.string().trim().min(2).max(120).optional(),
       })
@@ -400,7 +400,7 @@ export const setSubmissionPeople = createServerFn({ method: "POST" })
 
     const { data: submission, error } = await context.supabase
       .from("submissions")
-      .select("id, school_id, attendant_id, presenter_id")
+      .select("id, school_id, attendant_id, presenter_id, enroller_id")
       .eq("id", data.submission_id)
       .single();
     if (error) throw new Error(error.message);
@@ -435,7 +435,18 @@ export const setSubmissionPeople = createServerFn({ method: "POST" })
       }
     }
 
-    const column = data.kind === "secretaria" ? "attendant_id" : "presenter_id";
+    const column =
+      data.kind === "secretaria"
+        ? "attendant_id"
+        : data.kind === "coordenacao"
+          ? "presenter_id"
+          : "enroller_id";
+    const kindLabel =
+      data.kind === "secretaria"
+        ? "Atendimento"
+        : data.kind === "coordenacao"
+          ? "Apresentação"
+          : "Efetivação";
     const { error: updError } = await context.supabase
       .from("submissions")
       .update({
@@ -454,7 +465,7 @@ export const setSubmissionPeople = createServerFn({ method: "POST" })
       changes: [
         {
           field_id: column,
-          label: data.kind === "secretaria" ? "Atendimento" : "Apresentação",
+          label: kindLabel,
           before: String((submission as unknown as Record<string, string | null>)[column] ?? ""),
           after: String(presenterId ?? ""),
         },
@@ -491,7 +502,7 @@ export const getDashboardStats = createServerFn({ method: "GET" })
     let query = context.supabase
       .from("submissions")
       .select(
-        "id, form_id, school_id, created_at, enrolled, enrollment_count, schools(name), attendant:presenters!submissions_attendant_id_fkey(name), presenter:presenters!submissions_presenter_id_fkey(name)",
+        "id, form_id, school_id, created_at, enrolled, enrollment_count, schools(name), attendant:presenters!submissions_attendant_id_fkey(name), presenter:presenters!submissions_presenter_id_fkey(name), enroller:presenters!submissions_enroller_id_fkey(name)",
       )
       .gte("created_at", start)
       .lt("created_at", end)
@@ -525,13 +536,17 @@ export const getDashboardStats = createServerFn({ method: "GET" })
 
     const attendantCounts = new Map<string, number>();
     const presenterCounts = new Map<string, number>();
+    const enrollerCounts = new Map<string, number>();
     for (const row of rows) {
       const attendant = (row as unknown as { attendant: { name?: string } | null }).attendant;
       const presenter = (row as unknown as { presenter: { name?: string } | null }).presenter;
+      const enroller = (row as unknown as { enroller: { name?: string } | null }).enroller;
       const a = attendant?.name?.trim();
       const p = presenter?.name?.trim();
+      const e = enroller?.name?.trim();
       if (a) attendantCounts.set(a, (attendantCounts.get(a) ?? 0) + 1);
       if (p) presenterCounts.set(p, (presenterCounts.get(p) ?? 0) + 1);
+      if (e) enrollerCounts.set(e, (enrollerCounts.get(e) ?? 0) + 1);
     }
 
     const seriesCounts = new Map<string, number>();
@@ -646,6 +661,9 @@ export const getDashboardStats = createServerFn({ method: "GET" })
         .map(([label, count]) => ({ label, count }))
         .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, "pt-BR")),
       presenters: [...presenterCounts.entries()]
+        .map(([label, count]) => ({ label, count }))
+        .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, "pt-BR")),
+      enrollers: [...enrollerCounts.entries()]
         .map(([label, count]) => ({ label, count }))
         .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, "pt-BR")),
       bySchool: [...bySchool.values()].sort(

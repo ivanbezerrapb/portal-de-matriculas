@@ -2,12 +2,13 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAuth } from "./auth";
 
-export const PRESENTER_KINDS = ["secretaria", "coordenacao"] as const;
+export const PRESENTER_KINDS = ["secretaria", "coordenacao", "efetivacao"] as const;
 export type PresenterKind = (typeof PRESENTER_KINDS)[number];
 
 export const PRESENTER_KIND_LABELS: Record<PresenterKind, string> = {
   secretaria: "Secretaria (quem atendeu)",
   coordenacao: "Coordenação (quem apresentou)",
+  efetivacao: "Efetivação (quem efetivou)",
 };
 
 export type Presenter = {
