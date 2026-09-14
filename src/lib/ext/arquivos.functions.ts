@@ -27,8 +27,10 @@ export type SharedFile = {
   brand: Brand;
   school_id: string | null;
   category_id: string | null;
+  kind: "file" | "link";
+  url: string | null;
   name: string;
-  path: string;
+  path: string | null;
   mime_type: string | null;
   size_bytes: number | null;
   uploaded_by_name: string | null;
