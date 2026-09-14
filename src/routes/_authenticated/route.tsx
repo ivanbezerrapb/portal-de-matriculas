@@ -11,6 +11,7 @@ import {
   ChevronDown,
   ClipboardList,
   Filter,
+  FolderOpen,
   Kanban,
   ListTodo,
   Settings,
@@ -29,6 +30,7 @@ import {
 import { useEffect, useState } from "react";
 import { getSupabase } from "@/lib/ext/browser";
 import { getMyPermissions } from "@/lib/ext/cadastros.functions";
+import { getFileAccess } from "@/lib/ext/arquivos.functions";
 import { Spinner } from "@/components/ui";
 import { Button } from "@/components/ui";
 import whiteLogoAsset from "@/assets/grupo-inter-logo-branca.png.asset.json";
@@ -70,6 +72,14 @@ function AuthenticatedLayout() {
     queryFn: () => getMyPermissions(),
     staleTime: 60_000,
     retry: false,
+  });
+
+  const { data: fileAccess } = useQuery({
+    queryKey: ["file-access"],
+    queryFn: () => getFileAccess(),
+    staleTime: 60_000,
+    retry: false,
+    enabled: !!perms,
   });
 
   useEffect(() => {
@@ -141,6 +151,23 @@ function AuthenticatedLayout() {
           } as NavGroup,
         ]
       : []),
+    ...((fileAccess?.viewBrands.length ?? 0) > 0
+      ? [
+          {
+            key: "arquivos",
+            label: "Central de Arquivos",
+            icon: FolderOpen,
+            children: [
+              ...(fileAccess?.viewBrands.includes("conecta")
+                ? [{ to: "/arquivos/conecta", label: "Conecta", icon: FolderOpen }]
+                : []),
+              ...(fileAccess?.viewBrands.includes("interactivo")
+                ? [{ to: "/arquivos/interactivo", label: "Interactivo", icon: FolderOpen }]
+                : []),
+            ],
+          } as NavGroup,
+        ]
+      : []),
     ...(isAdmin
       ? [
           {
@@ -166,12 +193,13 @@ function AuthenticatedLayout() {
   );
   const firstAllowed = allowedPaths[0];
   useEffect(() => {
-    if (!perms || !firstAllowed) return;
+    // Espera também as marcas da Central de Arquivos antes de redirecionar.
+    if (!perms || !fileAccess || !firstAllowed) return;
     if (!allowedPaths.some((p) => pathname.startsWith(p))) {
       navigate({ to: firstAllowed, replace: true });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [perms, pathname, firstAllowed]);
+  }, [perms, fileAccess, pathname, firstAllowed]);
 
   const openGroups = navEntries
     .filter(isGroup)
