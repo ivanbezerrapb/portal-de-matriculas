@@ -193,12 +193,13 @@ function AuthenticatedLayout() {
   );
   const firstAllowed = allowedPaths[0];
   useEffect(() => {
-    if (!perms || !firstAllowed) return;
+    // Espera também as marcas da Central de Arquivos antes de redirecionar.
+    if (!perms || !fileAccess || !firstAllowed) return;
     if (!allowedPaths.some((p) => pathname.startsWith(p))) {
       navigate({ to: firstAllowed, replace: true });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [perms, pathname, firstAllowed]);
+  }, [perms, fileAccess, pathname, firstAllowed]);
 
   const openGroups = navEntries
     .filter(isGroup)
