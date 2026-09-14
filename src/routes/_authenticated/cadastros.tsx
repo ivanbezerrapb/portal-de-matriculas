@@ -344,7 +344,9 @@ function SubmissionsPage() {
                         {s.public_id}
                       </Link>
                     </td>
-                    <td className="px-4 py-2.5 text-foreground">{responsible ?? "—"}</td>
+                    <td className="px-4 py-2.5 break-words text-foreground">
+                      {responsible ?? "—"}
+                    </td>
                     <td className="px-4 py-2.5 text-muted-foreground">{school?.name ?? "—"}</td>
                     <td className="px-4 py-2.5 text-muted-foreground">{childrenCount ?? "—"}</td>
                     <td className="px-4 py-2.5 text-muted-foreground">
@@ -747,7 +749,7 @@ function PersonCell({
   const [text, setText] = useState("");
 
   if (disabled) {
-    return <span className="text-muted-foreground">{current ?? "—"}</span>;
+    return <span className="break-words text-muted-foreground">{current ?? "—"}</span>;
   }
 
   if (!open) {
@@ -757,7 +759,7 @@ function PersonCell({
           setText(current ?? "");
           setOpen(true);
         }}
-        className="rounded-md px-2 py-1 text-left text-sm text-foreground hover:bg-accent"
+        className="w-full break-words rounded-md px-2 py-1 text-left text-sm text-foreground hover:bg-accent"
       >
         {current ?? <span className="text-muted-foreground">—</span>}
       </button>
