@@ -51,6 +51,10 @@ export function CentralArquivos({ brand }: { brand: Brand }) {
   const [newCategory, setNewCategory] = useState("");
   const [filterCategory, setFilterCategory] = useState<string>("");
   const [uploading, setUploading] = useState(false);
+  const [linkName, setLinkName] = useState("");
+  const [linkUrl, setLinkUrl] = useState("");
+  const [savingLink, setSavingLink] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const { data: access } = useQuery({
