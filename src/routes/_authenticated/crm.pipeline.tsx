@@ -133,8 +133,13 @@ function PipelinePage() {
   });
 
   const closeM = useMutation({
-    mutationFn: (d: { id: string; result: "won" | "lost"; reason_id: string; note?: string }) =>
-      closeOpportunity({ data: d }),
+    mutationFn: (d: {
+      id: string;
+      result: "won" | "lost";
+      reason_id: string;
+      note?: string;
+      enrollment_count?: number;
+    }) => closeOpportunity({ data: d }),
     onSuccess: () => {
       toast.success("Oportunidade fechada.");
       setClosing(null);
@@ -521,10 +526,23 @@ function PipelinePage() {
       {closing && (
         <CloseDialog
           result={closing.result}
+          linkedSubmission={Boolean(
+            opportunities.find((opportunity) => opportunity.id === closing.id)?.submission_id,
+          )}
+          childrenCount={
+            opportunities.find((opportunity) => opportunity.id === closing.id)?.submissions
+              ?.children_count ?? null
+          }
           saving={closeM.isPending}
           onCancel={() => setClosing(null)}
-          onConfirm={(reasonId, note) =>
-            closeM.mutate({ id: closing.id, result: closing.result, reason_id: reasonId, note })
+          onConfirm={(reasonId, note, enrollmentCount) =>
+            closeM.mutate({
+              id: closing.id,
+              result: closing.result,
+              reason_id: reasonId,
+              note,
+              ...(enrollmentCount == null ? {} : { enrollment_count: enrollmentCount }),
+            })
           }
         />
       )}
@@ -634,12 +652,17 @@ function OpportunityTasks({ opportunityId }: { opportunityId: string }) {
 
 function CloseDialog(props: {
   result: "won" | "lost";
+  linkedSubmission: boolean;
+  childrenCount: number | null;
   saving: boolean;
   onCancel: () => void;
-  onConfirm: (reasonId: string, note: string) => void;
+  onConfirm: (reasonId: string, note: string, enrollmentCount?: number) => void;
 }) {
   const [reasonId, setReasonId] = useState("");
   const [note, setNote] = useState("");
+  const [enrollmentCount, setEnrollmentCount] = useState(
+    String(Math.max(props.childrenCount ?? 1, 1)),
+  );
   const { data: reasons, isLoading } = useQuery({
     queryKey: ["close-reasons", "active"],
     queryFn: () => listCloseReasons({ data: { activeOnly: true } }),
@@ -680,6 +703,25 @@ function CloseDialog(props: {
                 </option>
               ))}
             </Select>
+            {isWon && props.linkedSubmission && (
+              <div>
+                <Label htmlFor="crm-enrollment-count">Matrículas efetivadas</Label>
+                <Input
+                  id="crm-enrollment-count"
+                  type="number"
+                  min={1}
+                  step={1}
+                  value={enrollmentCount}
+                  onChange={(event) => setEnrollmentCount(event.target.value)}
+                />
+                {props.childrenCount != null && (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {props.childrenCount} criança{props.childrenCount === 1 ? "" : "s"} informada
+                    {props.childrenCount === 1 ? "" : "s"} no cadastro.
+                  </p>
+                )}
+              </div>
+            )}
             <Textarea
               rows={2}
               placeholder="Observação (opcional)"
@@ -693,8 +735,20 @@ function CloseDialog(props: {
             Cancelar
           </Button>
           <Button
-            disabled={!reasonId || props.saving}
-            onClick={() => props.onConfirm(reasonId, note)}
+            disabled={
+              !reasonId ||
+              props.saving ||
+              (isWon &&
+                props.linkedSubmission &&
+                (!Number.isInteger(Number(enrollmentCount)) || Number(enrollmentCount) < 1))
+            }
+            onClick={() =>
+              props.onConfirm(
+                reasonId,
+                note,
+                isWon && props.linkedSubmission ? Number(enrollmentCount) : undefined,
+              )
+            }
           >
             Confirmar
           </Button>

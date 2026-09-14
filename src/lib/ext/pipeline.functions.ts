@@ -5,7 +5,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { FunnelStage, Opportunity } from "./model";
 
 type OpportunityRow = Opportunity & {
-  submissions: { public_id: string } | null;
+  submissions: { public_id: string; children_count: number | null } | null;
   crm_close_reasons: { label: string; kind: "won" | "lost" } | null;
 };
 
@@ -41,7 +41,7 @@ export const listPipeline = createServerFn({ method: "GET" })
     const status = data.status ?? "open";
     const { data: opportunities, error: oppError } = await context.supabase
       .from("opportunities")
-      .select("*, submissions(public_id), crm_close_reasons(label, kind)")
+      .select("*, submissions(public_id, children_count), crm_close_reasons(label, kind)")
       .eq("funnel_id", data.funnel_id)
       .eq("status", status)
       .order(status === "open" ? "position" : "closed_at");
@@ -191,6 +191,7 @@ export const closeOpportunity = createServerFn({ method: "POST" })
         result: z.enum(["won", "lost"]),
         reason_id: z.string().uuid(),
         note: z.string().optional().nullable(),
+        enrollment_count: z.number().int().positive().optional(),
       })
       .parse(data),
   )
@@ -203,6 +204,16 @@ export const closeOpportunity = createServerFn({ method: "POST" })
       .single();
     if (reasonError || !reason) throw new Error("Motivo não encontrado.");
     if (reason.kind !== data.result) throw new Error("Motivo não corresponde ao resultado.");
+
+    const { data: current, error: currentError } = await context.supabase
+      .from("opportunities")
+      .select("submission_id")
+      .eq("id", data.id)
+      .single();
+    if (currentError) throw new Error(currentError.message);
+    if (data.result === "won" && current.submission_id && data.enrollment_count == null) {
+      throw new Error("Informe a quantidade de matrículas efetivadas.");
+    }
 
     const now = new Date().toISOString();
     const { data: updated, error } = await context.supabase
@@ -222,14 +233,40 @@ export const closeOpportunity = createServerFn({ method: "POST" })
     // Ganho no CRM = matrícula realizada no cadastro.
     if (updated?.submission_id) {
       const won = data.result === "won";
+      const { data: previousSubmission } = await context.supabase
+        .from("submissions")
+        .select("enrolled, enrollment_count")
+        .eq("id", updated.submission_id)
+        .single();
       await context.supabase
         .from("submissions")
         .update({
           enrolled: won,
+          enrollment_count: won ? data.enrollment_count : 0,
           enrolled_at: won ? now : null,
           enrolled_by: won ? context.userId : null,
         })
         .eq("id", updated.submission_id);
+      await context.supabase.from("audit_log").insert({
+        submission_id: updated.submission_id,
+        actor_id: context.userId,
+        actor_email: context.userEmail,
+        action: "update",
+        changes: [
+          {
+            field_id: "enrolled",
+            label: "Matrícula",
+            before: previousSubmission?.enrolled ? "Sim" : "Não",
+            after: won ? "Sim" : "Não",
+          },
+          {
+            field_id: "enrollment_count",
+            label: "Quantidade de matrículas",
+            before: String(previousSubmission?.enrollment_count ?? 0),
+            after: String(won ? data.enrollment_count : 0),
+          },
+        ],
+      });
     }
     return { ok: true };
   });
@@ -256,7 +293,7 @@ export const reopenOpportunity = createServerFn({ method: "POST" })
     if (updated?.submission_id) {
       await context.supabase
         .from("submissions")
-        .update({ enrolled: false, enrolled_at: null, enrolled_by: null })
+        .update({ enrolled: false, enrollment_count: 0, enrolled_at: null, enrolled_by: null })
         .eq("id", updated.submission_id);
     }
     return { ok: true };

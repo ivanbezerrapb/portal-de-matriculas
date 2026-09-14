@@ -42,6 +42,12 @@ function SubmissionsPage() {
     templateId: string;
     submissionId: string;
   } | null>(null);
+  const [enrollmentDialog, setEnrollmentDialog] = useState<{
+    id: string;
+    publicId: string;
+    childrenCount: number | null;
+  } | null>(null);
+  const [enrollmentCount, setEnrollmentCount] = useState("1");
 
   const { data: perms } = useQuery({
     queryKey: ["my-permissions"],
@@ -126,12 +132,15 @@ function SubmissionsPage() {
   const canEnroll = (perms?.isAdmin || (perms?.managerSchools.length ?? 0) > 0) ?? false;
 
   const enrollM = useMutation({
-    mutationFn: (d: { id: string; enrolled: boolean }) => setEnrollment({ data: d }),
+    mutationFn: (d: { id: string; enrolled: boolean; enrollment_count?: number }) =>
+      setEnrollment({ data: d }),
     onSuccess: (_r, d) => {
       toast.success(d.enrolled ? "Matrícula registrada." : "Matrícula desfeita.");
       queryClient.invalidateQueries({ queryKey: ["submissions"] });
       queryClient.invalidateQueries({ queryKey: ["pipeline"] });
       queryClient.invalidateQueries({ queryKey: ["crm-tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+      setEnrollmentDialog(null);
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -275,6 +284,9 @@ function SubmissionsPage() {
                 const childrenCount = (s as unknown as { children_count: number | null })
                   .children_count;
                 const enrolled = Boolean((s as unknown as { enrolled?: boolean }).enrolled);
+                const enrolledCount = Number(
+                  (s as unknown as { enrollment_count?: number }).enrollment_count ?? 0,
+                );
                 return (
                   <tr
                     key={s.id}
@@ -314,11 +326,24 @@ function SubmissionsPage() {
                           className="accent-[var(--color-primary)]"
                           checked={enrolled}
                           disabled={!canEnroll || enrollM.isPending}
-                          onChange={(e) => enrollM.mutate({ id: s.id, enrolled: e.target.checked })}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setEnrollmentCount(String(Math.max(childrenCount ?? 1, 1)));
+                              setEnrollmentDialog({
+                                id: s.id,
+                                publicId: s.public_id,
+                                childrenCount,
+                              });
+                            } else {
+                              enrollM.mutate({ id: s.id, enrolled: false });
+                            }
+                          }}
                           aria-label={`Matrícula de ${s.public_id}`}
                         />
                         {enrolled ? (
-                          <span className="font-medium text-emerald-600">Ativo</span>
+                          <span className="font-medium text-emerald-600">
+                            Ativo · {enrolledCount}
+                          </span>
                         ) : null}
                       </label>
                     </td>
@@ -371,6 +396,61 @@ function SubmissionsPage() {
             <Button variant="ghost" className="mt-4" onClick={() => setPicker(null)}>
               Cancelar
             </Button>
+          </div>
+        </div>
+      )}
+
+      {enrollmentDialog && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 p-4"
+          onClick={() => setEnrollmentDialog(null)}
+        >
+          <div
+            className="w-full max-w-sm rounded-lg border border-border bg-card p-5 shadow-lg"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h2 className="font-display text-lg font-semibold text-foreground">
+              Quantas matrículas foram efetivadas?
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Cadastro {enrollmentDialog.publicId}
+              {enrollmentDialog.childrenCount
+                ? ` · ${enrollmentDialog.childrenCount} criança${enrollmentDialog.childrenCount > 1 ? "s" : ""} informada${enrollmentDialog.childrenCount > 1 ? "s" : ""}`
+                : ""}
+            </p>
+            <div className="mt-4">
+              <Label htmlFor="enrollment-count">Quantidade</Label>
+              <Input
+                id="enrollment-count"
+                type="number"
+                min={1}
+                step={1}
+                value={enrollmentCount}
+                onChange={(event) => setEnrollmentCount(event.target.value)}
+                autoFocus
+              />
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => setEnrollmentDialog(null)}>
+                Cancelar
+              </Button>
+              <Button
+                disabled={
+                  enrollM.isPending ||
+                  !Number.isInteger(Number(enrollmentCount)) ||
+                  Number(enrollmentCount) < 1
+                }
+                onClick={() =>
+                  enrollM.mutate({
+                    id: enrollmentDialog.id,
+                    enrolled: true,
+                    enrollment_count: Number(enrollmentCount),
+                  })
+                }
+              >
+                Confirmar
+              </Button>
+            </div>
           </div>
         </div>
       )}
