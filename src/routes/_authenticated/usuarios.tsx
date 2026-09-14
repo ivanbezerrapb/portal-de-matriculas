@@ -1,11 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { createUser, deleteUser, listUsers, setUserRole } from "@/lib/ext/usuarios.functions";
 import { listSchools } from "@/lib/ext/escolas.functions";
 import { ROLE_LABELS } from "@/lib/ext/model";
-import { Badge, Button, Card, Input, Label, Select, Spinner } from "@/components/ui";
+import { Badge, Button, Card, EmptyState, Input, Label, Select, Spinner } from "@/components/ui";
 
 export const Route = createFileRoute("/_authenticated/usuarios")({
   head: () => ({
@@ -44,6 +44,9 @@ function UsersPage() {
   const [addRoleFor, setAddRoleFor] = useState<string | null>(null);
   const [newRole, setNewRole] = useState<Role>("print_operator");
   const [newRoleSchool, setNewRoleSchool] = useState("");
+  const [filterName, setFilterName] = useState("");
+  const [filterRole, setFilterRole] = useState<Role | "all">("all");
+  const [filterSchool, setFilterSchool] = useState("all");
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["users"] });
 
@@ -93,6 +96,23 @@ function UsersPage() {
   });
 
   const schoolName = (id: string | null) => schools?.find((s) => s.id === id)?.name ?? "";
+
+  const normalize = (v: string) =>
+    v
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/\p{Diacritic}/gu, "");
+
+  const filteredUsers = useMemo(() => {
+    const q = normalize(filterName.trim());
+    return (users ?? []).filter((u) => {
+      if (q && !normalize(`${u.full_name} ${u.email}`).includes(q)) return false;
+      if (filterRole !== "all" && !u.roles.some((r) => r.role === filterRole)) return false;
+      if (filterSchool !== "all" && !u.roles.some((r) => r.school_id === filterSchool))
+        return false;
+      return true;
+    });
+  }, [users, filterName, filterRole, filterSchool]);
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -160,13 +180,58 @@ function UsersPage() {
         </form>
       </Card>
 
+      <Card className="mt-6">
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div>
+            <Label>Nome</Label>
+            <Input
+              value={filterName}
+              onChange={(e) => setFilterName(e.target.value)}
+              placeholder="Buscar por nome ou e-mail..."
+            />
+          </div>
+          <div>
+            <Label>Perfil</Label>
+            <Select
+              value={filterRole}
+              onChange={(e) => setFilterRole(e.target.value as Role | "all")}
+            >
+              <option value="all">Todos os perfis</option>
+              {ROLES.map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div>
+            <Label>Escola</Label>
+            <Select value={filterSchool} onChange={(e) => setFilterSchool(e.target.value)}>
+              <option value="all">Todas as escolas</option>
+              {(schools ?? []).map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </Select>
+          </div>
+        </div>
+      </Card>
+
       {isLoading ? (
         <div className="mt-10 flex justify-center">
           <Spinner />
         </div>
+      ) : filteredUsers.length === 0 ? (
+        <div className="mt-6">
+          <EmptyState
+            title="Nenhum usuário encontrado"
+            description="Ajuste os filtros para ver outros usuários."
+          />
+        </div>
       ) : (
         <div className="mt-6 flex flex-col gap-3">
-          {(users ?? []).map((u) => (
+          {filteredUsers.map((u) => (
             <Card key={u.id}>
               <div className="flex flex-wrap items-center gap-3">
                 <div className="min-w-0 flex-1">
