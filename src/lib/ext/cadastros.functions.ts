@@ -427,11 +427,11 @@ export const getDashboardStats = createServerFn({ method: "GET" })
     if (lossesError) throw new Error(lossesError.message);
 
     const rows = submissions ?? [];
-    const bySchool = new Map<string, { name: string; count: number }>();
+    const bySchool = new Map<string, { name: string; visits: number; children: number }>();
     for (const row of rows) {
       const name = (row.schools as { name?: string } | null)?.name ?? "—";
-      const entry = bySchool.get(row.school_id) ?? { name, count: 0 };
-      entry.count += 1;
+      const entry = bySchool.get(row.school_id) ?? { name, visits: 0, children: 0 };
+      entry.visits += 1;
       bySchool.set(row.school_id, entry);
     }
 
@@ -478,7 +478,7 @@ export const getDashboardStats = createServerFn({ method: "GET" })
         const submissionIds = rows.map((r) => r.id as string);
         const { data: values } = await context.supabase
           .from("submission_values")
-          .select("field_id, value, value_number")
+          .select("submission_id, field_id, value, value_number")
           .in("submission_id", submissionIds)
           .in("field_id", responseFieldIds)
           .eq("part", "");
@@ -486,9 +486,16 @@ export const getDashboardStats = createServerFn({ method: "GET" })
         const countIds = new Set(countFieldIds);
         const childrenIds = new Set(childrenFields.map((f) => f.id as string));
         const sourceIds = new Set(sourceFields.map((f) => f.id as string));
+        const submissionSchools = new Map(
+          rows.map((row) => [row.id as string, row.school_id as string]),
+        );
         for (const v of values ?? []) {
           if (countIds.has(v.field_id as string)) {
-            children += Number(v.value_number ?? 0);
+            const childCount = Number(v.value_number ?? 0);
+            children += childCount;
+            const schoolId = submissionSchools.get(v.submission_id as string);
+            const schoolEntry = schoolId ? bySchool.get(schoolId) : undefined;
+            if (schoolEntry) schoolEntry.children += childCount;
           }
           if (childrenIds.has(v.field_id as string)) {
             for (const child of parseChildren(v.value)) {
@@ -536,7 +543,9 @@ export const getDashboardStats = createServerFn({ method: "GET" })
       lossReasons: [...lossReasonCounts.entries()]
         .map(([label, count]) => ({ label, count }))
         .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, "pt-BR")),
-      bySchool: [...bySchool.values()].sort((a, b) => b.count - a.count),
+      bySchool: [...bySchool.values()].sort(
+        (a, b) => b.visits - a.visits || a.name.localeCompare(b.name, "pt-BR"),
+      ),
     };
   });
 
