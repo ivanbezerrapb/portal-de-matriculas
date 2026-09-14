@@ -238,7 +238,9 @@ export function CentralArquivos({ brand }: { brand: Brand }) {
 
       {canManage && (
         <Card>
-          <h2 className="font-display text-base font-semibold text-foreground">Enviar arquivos</h2>
+          <h2 className="font-display text-base font-semibold text-foreground">
+            Enviar arquivos ou links
+          </h2>
           <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <div>
               <Label htmlFor="destino">Destino</Label>
