@@ -119,18 +119,20 @@ function SeriesTick({
 function SeriesChart({
   data,
   title = "Série de interesse",
+  chartHeight: chartHeightProp,
 }: {
   data: IndicatorDatum[];
   title?: string;
+  chartHeight?: number;
 }) {
   const labelWidth = Math.min(
     170,
     Math.max(92, Math.max(...data.map((item) => Math.min(item.label.length, 24)), 0) * 6.5),
   );
-  const chartHeight = Math.max(208, data.length * 38);
+  const chartHeight = chartHeightProp ?? Math.max(208, data.length * 38);
 
   return (
-    <Card className="min-w-0 p-4">
+    <Card className="flex h-full min-w-0 flex-col p-4">
       <h2 className="font-display text-sm font-semibold text-foreground">{title}</h2>
       {data.length === 0 ? (
         <div className="flex h-52 items-center justify-center text-sm text-muted-foreground">
@@ -177,14 +179,14 @@ const SOURCE_COLORS = [
 
 function SourcesChart({ data }: { data: IndicatorDatum[] }) {
   return (
-    <Card className="min-w-0 p-4">
+    <Card className="flex h-full min-w-0 flex-col p-4">
       <h2 className="font-display text-sm font-semibold text-foreground">Como conheceu a escola</h2>
       {data.length === 0 ? (
         <div className="flex h-52 items-center justify-center text-sm text-muted-foreground">
           Nenhuma resposta no período.
         </div>
       ) : (
-        <div className="mt-3 grid items-center gap-3">
+        <div className="mt-3 grid flex-1 content-center items-center gap-3">
           <ChartContainer
             config={{ count: { label: "Quantidade" } }}
             className="mx-auto h-40 w-full aspect-auto"
@@ -289,14 +291,14 @@ function SchoolComparisonChart({ data }: { data: SchoolDatum[] }) {
 
 function LossReasonsChart({ data }: { data: IndicatorDatum[] }) {
   return (
-    <Card className="min-w-0 p-4">
+    <Card className="flex min-w-0 flex-1 flex-col p-4">
       <h2 className="font-display text-sm font-semibold text-foreground">Motivos de perda</h2>
       {data.length === 0 ? (
-        <div className="flex h-36 items-center justify-center text-sm text-muted-foreground">
+        <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
           Nenhuma perda no período.
         </div>
       ) : (
-        <div className="mt-2 grid items-center gap-3 sm:grid-cols-[minmax(0,0.8fr)_minmax(120px,1fr)] lg:grid-cols-1 xl:grid-cols-[minmax(0,0.8fr)_minmax(120px,1fr)]">
+        <div className="mt-2 grid flex-1 content-center items-center gap-3 sm:grid-cols-[minmax(0,0.8fr)_minmax(120px,1fr)] lg:grid-cols-1 xl:grid-cols-[minmax(0,0.8fr)_minmax(120px,1fr)]">
           <ChartContainer
             config={{ count: { label: "Quantidade" } }}
             className="mx-auto h-36 w-full aspect-auto"
@@ -362,6 +364,9 @@ function DashboardPage() {
   }
 
   const currentYear = data?.year ?? new Date().getFullYear();
+  const peopleChartHeight = data
+    ? Math.max(208, ...[data.attendants, data.presenters, data.enrollers].map((d) => d.length * 38))
+    : 208;
   const schoolLabel =
     selected.length === 0
       ? "Todas as escolas"
@@ -429,11 +434,11 @@ function DashboardPage() {
             <SchoolComparisonChart data={data.bySchool} />
           </div>
 
-          <div className="mt-3 grid items-start gap-3 lg:grid-cols-3">
+          <div className="mt-3 grid gap-3 lg:grid-cols-3">
             <SourcesChart data={data.sources} />
             <SeriesChart data={data.series} />
-            <div className="grid content-start gap-3">
-              <Card className="p-4">
+            <div className="flex flex-col gap-3">
+              <Card className="flex flex-1 flex-col p-4">
                 <div className="flex items-center gap-3">
                   <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent text-primary">
                     <ClipboardCheck className="h-4 w-4" />
@@ -442,7 +447,7 @@ function DashboardPage() {
                     Matrículas efetivadas
                   </h2>
                 </div>
-                <div className="mt-4 flex items-end justify-between gap-3">
+                <div className="mt-4 flex flex-1 items-center justify-between gap-3">
                   <div>
                     <p className="font-display text-3xl font-semibold text-foreground">
                       {data.enrollments.total}
@@ -451,7 +456,7 @@ function DashboardPage() {
                       {data.enrollments.percentage.toLocaleString("pt-BR")}% do total de crianças
                     </p>
                   </div>
-                  <div className="mb-1 h-2 w-24 overflow-hidden rounded-full bg-muted">
+                  <div className="h-2 w-24 overflow-hidden rounded-full bg-muted">
                     <div
                       className="h-full rounded-full bg-primary transition-[width]"
                       style={{ width: `${Math.min(data.enrollments.percentage, 100)}%` }}
@@ -464,9 +469,21 @@ function DashboardPage() {
           </div>
 
           <div className="mt-3 grid items-start gap-3 lg:grid-cols-3">
-            <SeriesChart data={data.attendants} title="Quem mais atendeu (Secretaria)" />
-            <SeriesChart data={data.presenters} title="Quem mais apresentou (Coordenação)" />
-            <SeriesChart data={data.enrollers} title="Quem mais efetivou (Efetivação)" />
+            <SeriesChart
+              data={data.attendants}
+              title="Quem mais atendeu (Secretaria)"
+              chartHeight={peopleChartHeight}
+            />
+            <SeriesChart
+              data={data.presenters}
+              title="Quem mais apresentou (Coordenação)"
+              chartHeight={peopleChartHeight}
+            />
+            <SeriesChart
+              data={data.enrollers}
+              title="Quem mais efetivou (Efetivação)"
+              chartHeight={peopleChartHeight}
+            />
           </div>
         </>
       )}
