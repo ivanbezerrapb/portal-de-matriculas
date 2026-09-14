@@ -525,6 +525,17 @@ export const getDashboardStats = createServerFn({ method: "GET" })
       bySchool.set(row.school_id, entry);
     }
 
+    const attendantCounts = new Map<string, number>();
+    const presenterCounts = new Map<string, number>();
+    for (const row of rows) {
+      const attendant = (row as unknown as { attendant: { name?: string } | null }).attendant;
+      const presenter = (row as unknown as { presenter: { name?: string } | null }).presenter;
+      const a = attendant?.name?.trim();
+      const p = presenter?.name?.trim();
+      if (a) attendantCounts.set(a, (attendantCounts.get(a) ?? 0) + 1);
+      if (p) presenterCounts.set(p, (presenterCounts.get(p) ?? 0) + 1);
+    }
+
     const seriesCounts = new Map<string, number>();
     const sourceCounts = new Map<string, number>();
     const lossReasonCounts = new Map<string, number>();
