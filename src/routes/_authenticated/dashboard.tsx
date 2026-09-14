@@ -394,13 +394,17 @@ function DashboardPage() {
         <>
           <div className="mt-4 grid gap-3 lg:grid-cols-3">
             <YearCard
-              label={`${currentYear + 1} (${currentYear})`}
+              label={`${currentYear} (${currentYear - 1})`}
               visits={data.visits}
               children={data.children}
             />
-            <YearCard label={`${currentYear} (${currentYear - 1})`} visits={null} children={null} />
             <YearCard
               label={`${currentYear - 1} (${currentYear - 2})`}
+              visits={null}
+              children={null}
+            />
+            <YearCard
+              label={`${currentYear - 2} (${currentYear - 3})`}
               visits={null}
               children={null}
             />
