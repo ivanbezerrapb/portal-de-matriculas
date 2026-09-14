@@ -438,13 +438,13 @@ function DashboardPage() {
             />
             <YearCard
               label={`${currentYear - 1} (${currentYear - 2})`}
-              visits={null}
-              children={null}
+              visits={legacyFor(currentYear - 1)?.visits ?? null}
+              children={legacyFor(currentYear - 1)?.children ?? null}
             />
             <YearCard
               label={`${currentYear - 2} (${currentYear - 3})`}
-              visits={null}
-              children={null}
+              visits={legacyFor(currentYear - 2)?.visits ?? null}
+              children={legacyFor(currentYear - 2)?.children ?? null}
             />
           </div>
 
