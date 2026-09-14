@@ -417,6 +417,9 @@ function SubmissionsPage() {
                               const pre = (
                                 s as unknown as { presenter: { id?: string; name?: string } | null }
                               ).presenter;
+                              const enr = (
+                                s as unknown as { enroller: { id?: string; name?: string } | null }
+                              ).enroller;
                               setDialogAttendant(
                                 att?.id && att.name
                                   ? { presenter_id: att.id, label: att.name }
@@ -425,6 +428,11 @@ function SubmissionsPage() {
                               setDialogPresenter(
                                 pre?.id && pre.name
                                   ? { presenter_id: pre.id, label: pre.name }
+                                  : null,
+                              );
+                              setDialogEnroller(
+                                enr?.id && enr.name
+                                  ? { presenter_id: enr.id, label: enr.name }
                                   : null,
                               );
                               setEnrollmentDialog({
