@@ -376,27 +376,27 @@ function DashboardPage() {
         {perms?.isAdmin && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="w-full justify-between sm:w-64">
-              <span className="truncate">{schoolLabel}</span>
-              <ChevronDown className="h-4 w-4 shrink-0" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-64">
-            <DropdownMenuLabel>Filtrar escolas</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onSelect={() => setSelected([])}>Todas as escolas</DropdownMenuItem>
-            <DropdownMenuSeparator />
-            {(schools ?? []).map((school) => (
-              <DropdownMenuCheckboxItem
-                key={school.id as string}
-                checked={selected.includes(school.id as string)}
-                onCheckedChange={() => toggleSchool(school.id as string)}
-                onSelect={(event) => event.preventDefault()}
-              >
-                {school.name as string}
-              </DropdownMenuCheckboxItem>
-            ))}
-          </DropdownMenuContent>
+              <Button variant="outline" className="w-full justify-between sm:w-64">
+                <span className="truncate">{schoolLabel}</span>
+                <ChevronDown className="h-4 w-4 shrink-0" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-64">
+              <DropdownMenuLabel>Filtrar escolas</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={() => setSelected([])}>Todas as escolas</DropdownMenuItem>
+              <DropdownMenuSeparator />
+              {(schools ?? []).map((school) => (
+                <DropdownMenuCheckboxItem
+                  key={school.id as string}
+                  checked={selected.includes(school.id as string)}
+                  onCheckedChange={() => toggleSchool(school.id as string)}
+                  onSelect={(event) => event.preventDefault()}
+                >
+                  {school.name as string}
+                </DropdownMenuCheckboxItem>
+              ))}
+            </DropdownMenuContent>
           </DropdownMenu>
         )}
       </div>
