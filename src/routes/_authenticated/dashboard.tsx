@@ -586,7 +586,15 @@ function DashboardPage() {
             />
           </div>
 
-          <div className="mt-3">
+          <div className="mt-3 grid gap-3 lg:grid-cols-3">
+            <div className="lg:col-span-2">
+              <CumulativeChart
+                currentYear={currentYear}
+                current={data.monthly}
+                previous={legacyFor(currentYear - 1)?.monthly ?? null}
+                previous2={legacyFor(currentYear - 2)?.monthly ?? null}
+              />
+            </div>
             <SchoolComparisonChart data={data.bySchool} />
           </div>
 
