@@ -21,7 +21,7 @@ export const listSubmissions = createServerFn({ method: "GET" })
     let query = context.supabase
       .from("submissions")
       .select(
-        "*, forms(title), schools(name), attendant:presenters!submissions_attendant_id_fkey(id, name), presenter:presenters!submissions_presenter_id_fkey(id, name)",
+        "*, forms(title), schools(name), attendant:presenters!submissions_attendant_id_fkey(id, name), presenter:presenters!submissions_presenter_id_fkey(id, name), enroller:presenters!submissions_enroller_id_fkey(id, name)",
       )
       .order("created_at", { ascending: false })
       .limit(500);
@@ -388,7 +388,7 @@ export const setSubmissionPeople = createServerFn({ method: "POST" })
     z
       .object({
         submission_id: z.string().uuid(),
-        kind: z.enum(["secretaria", "coordenacao"]),
+        kind: z.enum(["secretaria", "coordenacao", "efetivacao"]),
         presenter_id: z.string().uuid().nullable().optional(),
         new_name: z.string().trim().min(2).max(120).optional(),
       })
@@ -400,7 +400,7 @@ export const setSubmissionPeople = createServerFn({ method: "POST" })
 
     const { data: submission, error } = await context.supabase
       .from("submissions")
-      .select("id, school_id, attendant_id, presenter_id")
+      .select("id, school_id, attendant_id, presenter_id, enroller_id")
       .eq("id", data.submission_id)
       .single();
     if (error) throw new Error(error.message);
@@ -435,7 +435,18 @@ export const setSubmissionPeople = createServerFn({ method: "POST" })
       }
     }
 
-    const column = data.kind === "secretaria" ? "attendant_id" : "presenter_id";
+    const column =
+      data.kind === "secretaria"
+        ? "attendant_id"
+        : data.kind === "coordenacao"
+          ? "presenter_id"
+          : "enroller_id";
+    const kindLabel =
+      data.kind === "secretaria"
+        ? "Atendimento"
+        : data.kind === "coordenacao"
+          ? "Apresentação"
+          : "Efetivação";
     const { error: updError } = await context.supabase
       .from("submissions")
       .update({
