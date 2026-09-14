@@ -67,9 +67,7 @@ async function getAccess(
 
   const mySchoolIds = new Set(perms.roles.map((r) => r.school_id).filter(Boolean) as string[]);
   const managerIds = new Set(perms.managerSchools);
-  const viewBrands = [
-    ...new Set(schools.filter((s) => mySchoolIds.has(s.id)).map((s) => s.brand)),
-  ];
+  const viewBrands = [...new Set(schools.filter((s) => mySchoolIds.has(s.id)).map((s) => s.brand))];
   const manageBrands = [
     ...new Set(schools.filter((s) => managerIds.has(s.id)).map((s) => s.brand)),
   ];
