@@ -119,18 +119,20 @@ function SeriesTick({
 function SeriesChart({
   data,
   title = "Série de interesse",
+  chartHeight: chartHeightProp,
 }: {
   data: IndicatorDatum[];
   title?: string;
+  chartHeight?: number;
 }) {
   const labelWidth = Math.min(
     170,
     Math.max(92, Math.max(...data.map((item) => Math.min(item.label.length, 24)), 0) * 6.5),
   );
-  const chartHeight = Math.max(208, data.length * 38);
+  const chartHeight = chartHeightProp ?? Math.max(208, data.length * 38);
 
   return (
-    <Card className="min-w-0 p-4">
+    <Card className="flex h-full min-w-0 flex-col p-4">
       <h2 className="font-display text-sm font-semibold text-foreground">{title}</h2>
       {data.length === 0 ? (
         <div className="flex h-52 items-center justify-center text-sm text-muted-foreground">
@@ -177,14 +179,14 @@ const SOURCE_COLORS = [
 
 function SourcesChart({ data }: { data: IndicatorDatum[] }) {
   return (
-    <Card className="min-w-0 p-4">
+    <Card className="flex h-full min-w-0 flex-col p-4">
       <h2 className="font-display text-sm font-semibold text-foreground">Como conheceu a escola</h2>
       {data.length === 0 ? (
         <div className="flex h-52 items-center justify-center text-sm text-muted-foreground">
           Nenhuma resposta no período.
         </div>
       ) : (
-        <div className="mt-3 grid items-center gap-3">
+        <div className="mt-3 grid flex-1 content-center items-center gap-3">
           <ChartContainer
             config={{ count: { label: "Quantidade" } }}
             className="mx-auto h-40 w-full aspect-auto"
@@ -289,14 +291,14 @@ function SchoolComparisonChart({ data }: { data: SchoolDatum[] }) {
 
 function LossReasonsChart({ data }: { data: IndicatorDatum[] }) {
   return (
-    <Card className="min-w-0 p-4">
+    <Card className="flex min-w-0 flex-1 flex-col p-4">
       <h2 className="font-display text-sm font-semibold text-foreground">Motivos de perda</h2>
       {data.length === 0 ? (
-        <div className="flex h-36 items-center justify-center text-sm text-muted-foreground">
+        <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
           Nenhuma perda no período.
         </div>
       ) : (
-        <div className="mt-2 grid items-center gap-3 sm:grid-cols-[minmax(0,0.8fr)_minmax(120px,1fr)] lg:grid-cols-1 xl:grid-cols-[minmax(0,0.8fr)_minmax(120px,1fr)]">
+        <div className="mt-2 grid flex-1 content-center items-center gap-3 sm:grid-cols-[minmax(0,0.8fr)_minmax(120px,1fr)] lg:grid-cols-1 xl:grid-cols-[minmax(0,0.8fr)_minmax(120px,1fr)]">
           <ChartContainer
             config={{ count: { label: "Quantidade" } }}
             className="mx-auto h-36 w-full aspect-auto"
