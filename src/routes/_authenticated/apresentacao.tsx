@@ -1,18 +1,19 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
-  createPresenter,
-  deletePresenter,
   listPresenters,
-  updatePresenter,
   type Presenter,
   type PresenterKind,
 } from "@/lib/ext/apresentacao.functions";
-import { getMyPermissions } from "@/lib/ext/cadastros.functions";
+import {
+  getMyPermissions,
+  listSubmissions,
+  setSubmissionPeople,
+} from "@/lib/ext/cadastros.functions";
 import { listSchools } from "@/lib/ext/escolas.functions";
-import { Button, Card, EmptyState, Input, Label, Select, Spinner } from "@/components/ui";
+import { EmptyState, Input, Label, Select, Spinner } from "@/components/ui";
 
 export const Route = createFileRoute("/_authenticated/apresentacao")({
   head: () => ({
@@ -20,21 +21,22 @@ export const Route = createFileRoute("/_authenticated/apresentacao")({
       { title: "Apresentação — Grupo Inter" },
       {
         name: "description",
-        content: "Cadastre quem atendeu na secretaria e quem apresentou a escola.",
+        content: "Informe quem atendeu na secretaria e quem apresentou a escola.",
       },
       { property: "og:title", content: "Apresentação — Grupo Inter" },
       {
         property: "og:description",
-        content: "Cadastre quem atendeu na secretaria e quem apresentou a escola.",
+        content: "Informe quem atendeu na secretaria e quem apresentou a escola.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
   }),
-  component: PresentersPage,
+  component: ApresentacaoPage,
 });
 
-function PresentersPage() {
+function ApresentacaoPage() {
+  const queryClient = useQueryClient();
   const [schoolId, setSchoolId] = useState("");
 
   const { data: perms } = useQuery({
@@ -57,11 +59,38 @@ function PresentersPage() {
     }
   }, [allowedSchools, schoolId]);
 
-  const { data: presenters, isLoading } = useQuery({
+  const { data: submissions, isLoading } = useQuery({
+    queryKey: ["submissions", { school_id: schoolId }],
+    queryFn: () => listSubmissions({ data: { school_id: schoolId } }),
+    enabled: !!schoolId,
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
+  });
+
+  const { data: presenters } = useQuery({
     queryKey: ["presenters", schoolId],
-    queryFn: () => listPresenters({ data: { school_id: schoolId } }),
+    queryFn: () => listPresenters({ data: { school_id: schoolId, only_active: true } }),
     enabled: !!schoolId,
   });
+
+  const peopleM = useMutation({
+    mutationFn: (d: {
+      submission_id: string;
+      kind: PresenterKind;
+      presenter_id?: string | null;
+      new_name?: string;
+    }) => setSubmissionPeople({ data: d }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["submissions"] });
+      queryClient.invalidateQueries({ queryKey: ["presenters"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  function canEdit(rowSchoolId: string) {
+    return Boolean(perms?.isAdmin || perms?.managerSchools.includes(rowSchoolId));
+  }
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -69,7 +98,7 @@ function PresentersPage() {
         <div>
           <h1 className="font-display text-2xl font-bold text-foreground">Apresentação</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Nomes usados nos cadastros: quem atendeu na secretaria e quem apresentou a escola.
+            Informe quem atendeu na secretaria e quem apresentou a escola em cada cadastro.
           </p>
         </div>
         <div className="w-56">
@@ -93,154 +122,183 @@ function PresentersPage() {
         <div className="mt-10 flex justify-center">
           <Spinner />
         </div>
+      ) : !submissions || submissions.length === 0 ? (
+        <div className="mt-6">
+          <EmptyState
+            title="Nenhum cadastro encontrado"
+            description="Ainda não há cadastros nesta unidade."
+          />
+        </div>
       ) : (
-        <div className="mt-6 grid gap-4 lg:grid-cols-2">
-          <KindCard
-            title="Secretaria (quem atendeu)"
-            kind="secretaria"
-            schoolId={schoolId}
-            rows={(presenters ?? []).filter((p) => p.kind === "secretaria")}
-          />
-          <KindCard
-            title="Coordenação (quem apresentou)"
-            kind="coordenacao"
-            schoolId={schoolId}
-            rows={(presenters ?? []).filter((p) => p.kind === "coordenacao")}
-          />
+        <div className="mt-6 overflow-x-auto rounded-lg border border-border bg-card">
+          <table className="w-full min-w-[720px] text-sm">
+            <thead>
+              <tr className="border-b border-border bg-muted/60 text-left text-xs uppercase tracking-wide text-muted-foreground">
+                <th className="px-4 py-3">ID</th>
+                <th className="px-4 py-3">Responsável</th>
+                <th className="px-4 py-3">Quem atendeu</th>
+                <th className="px-4 py-3">Quem apresentou</th>
+                <th className="px-4 py-3">Status matrícula</th>
+              </tr>
+            </thead>
+            <tbody>
+              {submissions.map((s) => {
+                const responsible = (s as unknown as { responsible_name: string | null })
+                  .responsible_name;
+                const enrolled = Boolean((s as unknown as { enrolled?: boolean }).enrolled);
+                const enrolledCount = Number(
+                  (s as unknown as { enrollment_count?: number }).enrollment_count ?? 0,
+                );
+                const editable = canEdit(s.school_id) && !peopleM.isPending;
+                return (
+                  <tr
+                    key={s.id}
+                    className="border-b border-border last:border-0 hover:bg-accent/40"
+                  >
+                    <td className="px-4 py-2.5">
+                      <Link
+                        to="/cadastros/$submissionId"
+                        params={{ submissionId: s.id }}
+                        className="font-mono font-medium text-primary hover:underline"
+                      >
+                        {s.public_id}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-2.5 text-foreground">{responsible ?? "—"}</td>
+                    <td className="px-4 py-2.5">
+                      <PersonCell
+                        kind="secretaria"
+                        current={
+                          (s as unknown as { attendant: { name?: string } | null }).attendant
+                            ?.name ?? null
+                        }
+                        options={(presenters ?? []).filter((p) => p.kind === "secretaria")}
+                        disabled={!editable}
+                        onPick={(value) =>
+                          peopleM.mutate({ submission_id: s.id, kind: "secretaria", ...value })
+                        }
+                      />
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <PersonCell
+                        kind="coordenacao"
+                        current={
+                          (s as unknown as { presenter: { name?: string } | null }).presenter
+                            ?.name ?? null
+                        }
+                        options={(presenters ?? []).filter((p) => p.kind === "coordenacao")}
+                        disabled={!editable}
+                        onPick={(value) =>
+                          peopleM.mutate({ submission_id: s.id, kind: "coordenacao", ...value })
+                        }
+                      />
+                    </td>
+                    <td className="px-4 py-2.5">
+                      {enrolled ? (
+                        <span className="font-medium text-emerald-600">
+                          Ativo · {enrolledCount}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
     </div>
   );
 }
 
-function KindCard({
-  title,
+function PersonCell({
   kind,
-  schoolId,
-  rows,
+  current,
+  options,
+  disabled,
+  onPick,
 }: {
-  title: string;
   kind: PresenterKind;
-  schoolId: string;
-  rows: Presenter[];
+  current: string | null;
+  options: Presenter[];
+  disabled: boolean;
+  onPick: (value: { presenter_id?: string | null; new_name?: string }) => void;
 }) {
-  const queryClient = useQueryClient();
-  const [name, setName] = useState("");
-  const [editing, setEditing] = useState<{ id: string; name: string } | null>(null);
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState("");
 
-  function refresh() {
-    queryClient.invalidateQueries({ queryKey: ["presenters"] });
-    queryClient.invalidateQueries({ queryKey: ["submissions"] });
-    queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+  if (disabled) {
+    return <span className="text-muted-foreground">{current ?? "—"}</span>;
   }
 
-  const createM = useMutation({
-    mutationFn: () => createPresenter({ data: { school_id: schoolId, kind, name } }),
-    onSuccess: () => {
-      setName("");
-      toast.success("Nome cadastrado.");
-      refresh();
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
+  if (!open) {
+    return (
+      <button
+        onClick={() => {
+          setText(current ?? "");
+          setOpen(true);
+        }}
+        className="rounded-md px-2 py-1 text-left text-sm text-foreground hover:bg-accent"
+      >
+        {current ?? <span className="text-muted-foreground">—</span>}
+      </button>
+    );
+  }
 
-  const updateM = useMutation({
-    mutationFn: (d: { id: string; name?: string; active?: boolean }) =>
-      updatePresenter({ data: d }),
-    onSuccess: () => {
-      setEditing(null);
-      refresh();
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const deleteM = useMutation({
-    mutationFn: (id: string) => deletePresenter({ data: { id } }),
-    onSuccess: () => {
-      toast.success("Nome removido.");
-      refresh();
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
+  const query = text.trim().toLowerCase();
+  const matches = options.filter((o) => o.name.toLowerCase().includes(query));
+  const exact = options.find((o) => o.name.toLowerCase() === query);
 
   return (
-    <Card>
-      <h2 className="font-display text-lg font-semibold text-foreground">{title}</h2>
-
-      <form
-        className="mt-3 flex items-end gap-2"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (name.trim().length < 2 || !schoolId) return;
-          createM.mutate();
-        }}
-      >
-        <div className="flex-1">
-          <Label htmlFor={`new-${kind}`}>Novo nome</Label>
-          <Input
-            id={`new-${kind}`}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Ex.: Maria Silva"
-          />
-        </div>
-        <Button type="submit" disabled={createM.isPending || name.trim().length < 2}>
-          Adicionar
-        </Button>
-      </form>
-
-      {rows.length === 0 ? (
-        <EmptyState title="Nenhum nome cadastrado" description="Adicione o primeiro nome acima." />
-      ) : (
-        <ul className="mt-4 divide-y divide-border">
-          {rows.map((p) => (
-            <li key={p.id} className="flex items-center gap-2 py-2">
-              {editing?.id === p.id ? (
-                <>
-                  <Input
-                    value={editing.name}
-                    onChange={(e) => setEditing({ id: p.id, name: e.target.value })}
-                  />
-                  <Button
-                    disabled={updateM.isPending || editing.name.trim().length < 2}
-                    onClick={() => updateM.mutate({ id: p.id, name: editing.name })}
-                  >
-                    Salvar
-                  </Button>
-                  <Button variant="ghost" onClick={() => setEditing(null)}>
-                    Cancelar
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <span
-                    className={`flex-1 text-sm ${p.active ? "text-foreground" : "text-muted-foreground line-through"}`}
-                  >
-                    {p.name}
-                  </span>
-                  <Button variant="ghost" onClick={() => setEditing({ id: p.id, name: p.name })}>
-                    Renomear
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    onClick={() => updateM.mutate({ id: p.id, active: !p.active })}
-                  >
-                    {p.active ? "Desativar" : "Ativar"}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    onClick={() => {
-                      if (confirm(`Remover "${p.name}"?`)) deleteM.mutate(p.id);
-                    }}
-                  >
-                    Excluir
-                  </Button>
-                </>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
-    </Card>
+    <div className="relative w-44">
+      <Input
+        autoFocus
+        value={text}
+        placeholder={kind === "secretaria" ? "Quem atendeu" : "Quem apresentou"}
+        onChange={(e) => setText(e.target.value)}
+        onBlur={() => window.setTimeout(() => setOpen(false), 150)}
+      />
+      <div className="absolute z-20 mt-1 max-h-56 w-full overflow-auto rounded-md border border-border bg-card shadow-lg">
+        {matches.map((o) => (
+          <button
+            key={o.id}
+            className="block w-full px-3 py-1.5 text-left text-sm hover:bg-accent"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              onPick({ presenter_id: o.id });
+              setOpen(false);
+            }}
+          >
+            {o.name}
+          </button>
+        ))}
+        {query.length >= 2 && !exact && (
+          <button
+            className="block w-full px-3 py-1.5 text-left text-sm font-medium text-primary hover:bg-accent"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              onPick({ new_name: text.trim() });
+              setOpen(false);
+            }}
+          >
+            Cadastrar «{text.trim()}»
+          </button>
+        )}
+        {current && (
+          <button
+            className="block w-full px-3 py-1.5 text-left text-sm text-muted-foreground hover:bg-accent"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              onPick({ presenter_id: null });
+              setOpen(false);
+            }}
+          >
+            Limpar
+          </button>
+        )}
+      </div>
+    </div>
   );
 }
