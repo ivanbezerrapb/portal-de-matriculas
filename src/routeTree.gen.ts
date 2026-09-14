@@ -20,6 +20,7 @@ import { Route as AuthenticatedFormulariosRouteImport } from './routes/_authenti
 import { Route as AuthenticatedTemplatesRouteImport } from './routes/_authenticated/templates'
 import { Route as AuthenticatedUsuariosRouteImport } from './routes/_authenticated/usuarios'
 import { Route as FSlugRouteImport } from './routes/f/$slug'
+import { Route as AuthenticatedArquivosConectaRouteImport } from './routes/_authenticated/arquivos.conecta'
 import { Route as AuthenticatedCadastrosSubmissionIdRouteImport } from './routes/_authenticated/cadastros_.$submissionId'
 import { Route as AuthenticatedCrmFunilRouteImport } from './routes/_authenticated/crm.funil'
 import { Route as AuthenticatedCrmMotivosRouteImport } from './routes/_authenticated/crm.motivos'
@@ -85,6 +86,12 @@ const FSlugRoute = FSlugRouteImport.update({
   path: '/f/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedArquivosConectaRoute =
+  AuthenticatedArquivosConectaRouteImport.update({
+    id: '/arquivos/conecta',
+    path: '/arquivos/conecta',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedCadastrosSubmissionIdRoute =
   AuthenticatedCadastrosSubmissionIdRouteImport.update({
     id: '/cadastros_/$submissionId',
@@ -141,6 +148,7 @@ export interface FileRoutesByFullPath {
   '/templates': typeof AuthenticatedTemplatesRoute
   '/usuarios': typeof AuthenticatedUsuariosRoute
   '/f/$slug': typeof FSlugRoute
+  '/arquivos/conecta': typeof AuthenticatedArquivosConectaRoute
   '/cadastros/$submissionId': typeof AuthenticatedCadastrosSubmissionIdRoute
   '/crm/funil': typeof AuthenticatedCrmFunilRoute
   '/crm/motivos': typeof AuthenticatedCrmMotivosRoute
@@ -161,6 +169,7 @@ export interface FileRoutesByTo {
   '/templates': typeof AuthenticatedTemplatesRoute
   '/usuarios': typeof AuthenticatedUsuariosRoute
   '/f/$slug': typeof FSlugRoute
+  '/arquivos/conecta': typeof AuthenticatedArquivosConectaRoute
   '/cadastros/$submissionId': typeof AuthenticatedCadastrosSubmissionIdRoute
   '/crm/funil': typeof AuthenticatedCrmFunilRoute
   '/crm/motivos': typeof AuthenticatedCrmMotivosRoute
@@ -183,6 +192,7 @@ export interface FileRoutesById {
   '/_authenticated/templates': typeof AuthenticatedTemplatesRoute
   '/_authenticated/usuarios': typeof AuthenticatedUsuariosRoute
   '/f/$slug': typeof FSlugRoute
+  '/_authenticated/arquivos/conecta': typeof AuthenticatedArquivosConectaRoute
   '/_authenticated/cadastros_/$submissionId': typeof AuthenticatedCadastrosSubmissionIdRoute
   '/_authenticated/crm/funil': typeof AuthenticatedCrmFunilRoute
   '/_authenticated/crm/motivos': typeof AuthenticatedCrmMotivosRoute
@@ -205,6 +215,7 @@ export interface FileRouteTypes {
     | '/templates'
     | '/usuarios'
     | '/f/$slug'
+    | '/arquivos/conecta'
     | '/cadastros/$submissionId'
     | '/crm/funil'
     | '/crm/motivos'
@@ -225,6 +236,7 @@ export interface FileRouteTypes {
     | '/templates'
     | '/usuarios'
     | '/f/$slug'
+    | '/arquivos/conecta'
     | '/cadastros/$submissionId'
     | '/crm/funil'
     | '/crm/motivos'
@@ -246,6 +258,7 @@ export interface FileRouteTypes {
     | '/_authenticated/templates'
     | '/_authenticated/usuarios'
     | '/f/$slug'
+    | '/_authenticated/arquivos/conecta'
     | '/_authenticated/cadastros_/$submissionId'
     | '/_authenticated/crm/funil'
     | '/_authenticated/crm/motivos'
@@ -343,6 +356,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/arquivos/conecta': {
+      id: '/_authenticated/arquivos/conecta'
+      path: '/arquivos/conecta'
+      fullPath: '/arquivos/conecta'
+      preLoaderRoute: typeof AuthenticatedArquivosConectaRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/cadastros_/$submissionId': {
       id: '/_authenticated/cadastros_/$submissionId'
       path: '/cadastros/$submissionId'
@@ -410,6 +430,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedFormulariosRoute: typeof AuthenticatedFormulariosRoute
   AuthenticatedTemplatesRoute: typeof AuthenticatedTemplatesRoute
   AuthenticatedUsuariosRoute: typeof AuthenticatedUsuariosRoute
+  AuthenticatedArquivosConectaRoute: typeof AuthenticatedArquivosConectaRoute
   AuthenticatedCadastrosSubmissionIdRoute: typeof AuthenticatedCadastrosSubmissionIdRoute
   AuthenticatedCrmFunilRoute: typeof AuthenticatedCrmFunilRoute
   AuthenticatedCrmMotivosRoute: typeof AuthenticatedCrmMotivosRoute
@@ -427,6 +448,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedFormulariosRoute: AuthenticatedFormulariosRoute,
   AuthenticatedTemplatesRoute: AuthenticatedTemplatesRoute,
   AuthenticatedUsuariosRoute: AuthenticatedUsuariosRoute,
+  AuthenticatedArquivosConectaRoute: AuthenticatedArquivosConectaRoute,
   AuthenticatedCadastrosSubmissionIdRoute:
     AuthenticatedCadastrosSubmissionIdRoute,
   AuthenticatedCrmFunilRoute: AuthenticatedCrmFunilRoute,
