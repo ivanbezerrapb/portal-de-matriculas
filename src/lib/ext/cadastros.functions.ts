@@ -395,9 +395,12 @@ export const getDashboardStats = createServerFn({ method: "GET" })
     z.object({ schoolIds: z.array(z.string().uuid()).optional() }).parse(data ?? {}),
   )
   .handler(async ({ data, context }) => {
-    const year = new Date().getFullYear();
-    const start = `${year}-01-01T00:00:00`;
-    const end = `${year + 1}-01-01T00:00:00`;
+    // Ano de campanha: 01/08 do ano corrente até 31/07 do ano seguinte.
+    // Ex.: campanha 2027 = 01/08/2026 a 31/07/2027.
+    const now = new Date();
+    const campaignYear = now.getMonth() >= 7 ? now.getFullYear() + 1 : now.getFullYear();
+    const start = `${campaignYear - 1}-08-01T00:00:00`;
+    const end = `${campaignYear}-08-01T00:00:00`;
 
     let query = context.supabase
       .from("submissions")
