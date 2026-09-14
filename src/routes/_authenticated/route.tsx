@@ -82,8 +82,19 @@ function AuthenticatedLayout() {
     enabled: !!perms,
   });
 
+  // Falha ao carregar permissões só derruba o usuário se a sessão sumiu de
+  // verdade — logins simultâneos em outras máquinas não encerram esta sessão.
   useEffect(() => {
-    if (permsError) navigate({ to: "/auth", replace: true });
+    if (!permsError) return;
+    let cancelled = false;
+    (async () => {
+      const supabase = await getSupabase();
+      const { data } = await supabase.auth.getUser();
+      if (!cancelled && !data.user) navigate({ to: "/auth", replace: true });
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [permsError, navigate]);
 
   async function handleSignOut() {
