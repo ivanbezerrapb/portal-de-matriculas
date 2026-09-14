@@ -19,7 +19,6 @@ import {
   LogOut,
   School,
   Users,
-  UserCheck,
   FileText,
   LayoutTemplate,
   Menu,
@@ -119,12 +118,7 @@ function AuthenticatedLayout() {
             key: "cadastros",
             label: "Cadastros",
             icon: ClipboardList,
-            children: [
-              { to: "/cadastros", label: "Lista de cadastros", icon: ClipboardList },
-              ...(isAdmin || isManager
-                ? [{ to: "/apresentacao", label: "Apresentação", icon: UserCheck }]
-                : []),
-            ],
+            children: [{ to: "/cadastros", label: "Lista de cadastros", icon: ClipboardList }],
           } as NavGroup,
         ]
       : []),
