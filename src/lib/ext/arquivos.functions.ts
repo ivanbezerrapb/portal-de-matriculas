@@ -301,9 +301,11 @@ export const deleteFile = createServerFn({ method: "POST" })
     const { error } = await context.supabase.from("shared_files").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
 
-    const { extAdmin } = await import("./server");
-    await extAdmin()
-      .storage.from(FILE_BUCKET)
-      .remove([row.path as string]);
+    if (row.kind !== "link" && row.path) {
+      const { extAdmin } = await import("./server");
+      await extAdmin()
+        .storage.from(FILE_BUCKET)
+        .remove([row.path as string]);
+    }
     return { ok: true };
   });
