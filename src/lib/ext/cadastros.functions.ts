@@ -680,6 +680,11 @@ export const getDashboardStats = createServerFn({ method: "GET" })
       enrollers: [...enrollerCounts.entries()]
         .map(([label, count]) => ({ label, count }))
         .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, "pt-BR")),
+      monthly: monthlyVisits.map((visits, month) => ({
+        month,
+        visits,
+        children: monthlyChildren[month] ?? 0,
+      })),
       bySchool: [...bySchool.values()].sort(
         (a, b) => b.visits - a.visits || a.name.localeCompare(b.name, "pt-BR"),
       ),
