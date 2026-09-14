@@ -559,6 +559,17 @@ function SubmissionsPage() {
                 onChange={setDialogPresenter}
               />
             </div>
+            <div className="mt-4">
+              <Label>Quem efetivou (Efetivação)</Label>
+              <PersonPicker
+                kind="efetivacao"
+                value={dialogEnroller}
+                options={(presenters ?? []).filter(
+                  (p) => p.school_id === enrollmentDialog.schoolId && p.kind === "efetivacao",
+                )}
+                onChange={setDialogEnroller}
+              />
+            </div>
             <div className="mt-5 flex justify-end gap-2">
               <Button variant="ghost" onClick={() => setEnrollmentDialog(null)}>
                 Cancelar
@@ -569,11 +580,12 @@ function SubmissionsPage() {
                   savingEnrollment ||
                   !dialogAttendant ||
                   !dialogPresenter ||
+                  !dialogEnroller ||
                   !Number.isInteger(Number(enrollmentCount)) ||
                   Number(enrollmentCount) < 1
                 }
                 onClick={async () => {
-                  if (!dialogAttendant || !dialogPresenter) return;
+                  if (!dialogAttendant || !dialogPresenter || !dialogEnroller) return;
                   setSavingEnrollment(true);
                   try {
                     await setSubmissionPeople({
@@ -592,6 +604,15 @@ function SubmissionsPage() {
                         ...(dialogPresenter.presenter_id
                           ? { presenter_id: dialogPresenter.presenter_id }
                           : { new_name: dialogPresenter.label }),
+                      },
+                    });
+                    await setSubmissionPeople({
+                      data: {
+                        submission_id: enrollmentDialog.id,
+                        kind: "efetivacao",
+                        ...(dialogEnroller.presenter_id
+                          ? { presenter_id: dialogEnroller.presenter_id }
+                          : { new_name: dialogEnroller.label }),
                       },
                     });
                     queryClient.invalidateQueries({ queryKey: ["presenters"] });
