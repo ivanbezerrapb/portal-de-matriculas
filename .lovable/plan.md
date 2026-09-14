@@ -2,7 +2,7 @@
 
 ## O que muda
 
-1. **Novo submenu Cadastros › Apresentação** — o item "Cadastros" do menu vira um grupo com dois itens: "Cadastros" (a lista atual) e "Apresentação". Na tela Apresentação ficam os nomes das pessoas, separados por unidade e por tipo:
+1. **Cadastros vira um grupo com dois itens** — "Lista de cadastros" (a tela atual, sem mudança de endereço) e "Apresentação". Na tela Apresentação ficam os nomes das pessoas, separados por unidade e por tipo:
    - **Secretaria** — quem atendeu o responsável primeiro.
    - **Coordenação** — quem apresentou a escola.
    Uma unidade nunca vê os nomes de outra. O Gerente cadastra na sua unidade; o Administrador escolhe a unidade.
@@ -32,6 +32,6 @@ Servidor:
 
 Front:
 - Nova rota `src/routes/_authenticated/apresentacao.tsx` com `head()` próprio; seletor de unidade (fixo para o Gerente), duas listas lado a lado (Secretaria e Coordenação) com adicionar/renomear/ativar/desativar.
-- `route.tsx`: "Cadastros" vira `NavGroup` com os filhos "Cadastros" (`/cadastros`) e "Apresentação" (`/apresentacao`); `allowedPaths` libera `/apresentacao` para admin e gerente.
+- `route.tsx`: "Cadastros" vira `NavGroup` com os filhos "Lista de cadastros" (`/cadastros`) e "Apresentação" (`/apresentacao`); `allowedPaths` libera `/apresentacao` para admin e gerente.
 - `cadastros.tsx`: colunas "Atendimento" e "Apresentação", cada uma com um combobox por linha (input + lista filtrada dos nomes ativos daquela escola e tipo), opção "Cadastrar «nome»", `useMutation` chamando `setSubmissionPeople` e invalidando `submissions` e `dashboard-stats`; somente leitura sem permissão.
 - `dashboard.tsx`: dois cards de barras reutilizando o componente existente, dentro da grade de indicadores.
