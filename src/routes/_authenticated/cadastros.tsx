@@ -659,6 +659,12 @@ function SubmissionsPage() {
 
 type PersonChoice = { presenter_id?: string; label: string };
 
+const PLACEHOLDERS: Record<PresenterKind, string> = {
+  secretaria: "Quem atendeu",
+  coordenacao: "Quem apresentou",
+  efetivacao: "Quem efetivou",
+};
+
 function PersonPicker({
   kind,
   value,
@@ -681,7 +687,7 @@ function PersonPicker({
     <div className="relative">
       <Input
         value={text}
-        placeholder={kind === "secretaria" ? "Quem atendeu" : "Quem apresentou"}
+        placeholder={PLACEHOLDERS[kind]}
         onFocus={() => setOpen(true)}
         onChange={(e) => {
           setText(e.target.value);
@@ -767,7 +773,7 @@ function PersonCell({
       <Input
         autoFocus
         value={text}
-        placeholder={kind === "secretaria" ? "Quem atendeu" : "Quem apresentou"}
+        placeholder={PLACEHOLDERS[kind]}
         onChange={(e) => setText(e.target.value)}
         onBlur={() => window.setTimeout(() => setOpen(false), 150)}
       />
