@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, XAxis, YAxis } from "recharts";
 import { ChevronDown, ClipboardCheck, ClipboardList, School, Users } from "lucide-react";
 import { useState } from "react";
 import { getDashboardStats } from "@/lib/ext/cadastros.functions";
@@ -71,16 +71,17 @@ function YearCard({
   );
 }
 
-function IndicatorChart({
-  title,
-  data,
-}: {
-  title: string;
-  data: { label: string; count: number }[];
-}) {
+type IndicatorDatum = { label: string; count: number };
+
+function SeriesChart({ data }: { data: IndicatorDatum[] }) {
+  const labelWidth = Math.min(
+    220,
+    Math.max(112, Math.max(...data.map((item) => item.label.length), 0) * 7),
+  );
+
   return (
     <Card className="min-w-0 p-4">
-      <h2 className="font-display text-sm font-semibold text-foreground">{title}</h2>
+      <h2 className="font-display text-sm font-semibold text-foreground">Série de interesse</h2>
       {data.length === 0 ? (
         <div className="flex h-52 items-center justify-center text-sm text-muted-foreground">
           Nenhuma resposta no período.
@@ -91,7 +92,7 @@ function IndicatorChart({
           className="mt-3 h-52 w-full aspect-auto"
         >
           <BarChart
-            data={data.slice(0, 8)}
+            data={data}
             layout="vertical"
             margin={{ top: 4, right: 12, bottom: 0, left: 0 }}
           >
@@ -102,15 +103,69 @@ function IndicatorChart({
               dataKey="label"
               tickLine={false}
               axisLine={false}
-              width={112}
-              tickFormatter={(label: string) =>
-                label.length > 18 ? `${label.slice(0, 17)}…` : label
-              }
+              width={labelWidth}
             />
             <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
             <Bar dataKey="count" fill="var(--color-count)" radius={[0, 4, 4, 0]} />
           </BarChart>
         </ChartContainer>
+      )}
+    </Card>
+  );
+}
+
+const SOURCE_COLORS = [
+  "var(--chart-1)",
+  "var(--chart-2)",
+  "var(--chart-3)",
+  "var(--chart-4)",
+  "var(--chart-5)",
+];
+
+function SourcesChart({ data }: { data: IndicatorDatum[] }) {
+  return (
+    <Card className="min-w-0 p-4">
+      <h2 className="font-display text-sm font-semibold text-foreground">Como conheceu a escola</h2>
+      {data.length === 0 ? (
+        <div className="flex h-52 items-center justify-center text-sm text-muted-foreground">
+          Nenhuma resposta no período.
+        </div>
+      ) : (
+        <div className="mt-3 grid items-center gap-4 md:grid-cols-[minmax(0,1fr)_minmax(220px,0.8fr)]">
+          <ChartContainer
+            config={{ count: { label: "Quantidade" } }}
+            className="mx-auto h-56 w-full max-w-md aspect-auto"
+          >
+            <PieChart>
+              <ChartTooltip content={<ChartTooltipContent nameKey="label" />} />
+              <Pie
+                data={data}
+                dataKey="count"
+                nameKey="label"
+                innerRadius={48}
+                outerRadius={88}
+                paddingAngle={2}
+                strokeWidth={0}
+              >
+                {data.map((item, index) => (
+                  <Cell key={item.label} fill={SOURCE_COLORS[index % SOURCE_COLORS.length]} />
+                ))}
+              </Pie>
+            </PieChart>
+          </ChartContainer>
+          <ul className="grid gap-2 sm:grid-cols-2 md:grid-cols-1">
+            {data.map((item, index) => (
+              <li key={item.label} className="flex min-w-0 items-center gap-2 text-sm">
+                <span
+                  className="h-3 w-3 shrink-0 rounded-sm"
+                  style={{ backgroundColor: SOURCE_COLORS[index % SOURCE_COLORS.length] }}
+                />
+                <span className="min-w-0 flex-1 text-foreground">{item.label}</span>
+                <span className="font-semibold text-foreground">{item.count}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
     </Card>
   );
@@ -194,7 +249,7 @@ function DashboardPage() {
 
           <div className="mt-3 grid gap-3 lg:grid-cols-3">
             <div className="lg:col-span-2">
-              <IndicatorChart title="Série de interesse" data={data.series} />
+              <SeriesChart data={data.series} />
             </div>
             <Card className="flex min-h-64 flex-col justify-between p-4">
               <div className="flex items-center gap-3">
@@ -223,7 +278,7 @@ function DashboardPage() {
           </div>
 
           <div className="mt-3">
-            <IndicatorChart title="Como conheceu a escola" data={data.sources} />
+            <SourcesChart data={data.sources} />
           </div>
 
           <Card className="mt-3 p-4">
