@@ -42,7 +42,10 @@ async function parseSpreadsheet(file: File): Promise<ParsedSheet> {
   const first = wb.SheetNames[0];
   if (!first) throw new Error("A planilha não tem nenhuma aba.");
   const sheet = wb.Sheets[first]!;
-  const raw = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: null, raw: false });
+  const raw = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, {
+    defval: null,
+    raw: false,
+  });
   const columns: string[] = [];
   const rows = raw.map((row) => {
     const clean: Record<string, Cell> = {};
@@ -279,9 +282,7 @@ function LegacyPage() {
         Planilhas de anos letivos anteriores, guardadas em separado dos cadastros atuais.
       </p>
 
-      <ImportCard
-        onDone={() => queryClient.invalidateQueries({ queryKey: ["legacy-datasets"] })}
-      />
+      <ImportCard onDone={() => queryClient.invalidateQueries({ queryKey: ["legacy-datasets"] })} />
 
       {isLoading ? (
         <div className="mt-10 flex justify-center">
@@ -300,8 +301,8 @@ function LegacyPage() {
                 <div className="min-w-0 flex-1">
                   <p className="font-medium text-foreground">{d.name}</p>
                   <p className="text-xs text-muted-foreground">
-                    Ano letivo {d.school_year} · {d.row_count} registros ·{" "}
-                    {d.columns.length} colunas
+                    Ano letivo {d.school_year} · {d.row_count} registros · {d.columns.length}{" "}
+                    colunas
                     {d.source_filename ? ` · ${d.source_filename}` : ""}
                   </p>
                 </div>
