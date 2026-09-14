@@ -153,3 +153,91 @@ export const listLegacyRows = createServerFn({ method: "GET" })
       pageSize,
     };
   });
+
+// ---------- Indicadores de anos anteriores (tela Início) ----------
+
+const SCHOOL_COLUMN = "ESCOLA";
+const CHILDREN_COLUMN = "Quantos alunos pretende trazer para estudar conosco?";
+
+export type LegacyYearStats = {
+  year: number;
+  visits: number;
+  children: number;
+  bySchool: { name: string; visits: number; children: number }[];
+};
+
+export const getLegacyYearStats = createServerFn({ method: "GET" })
+  .middleware([requireAuth])
+  .inputValidator((data) =>
+    z
+      .object({
+        years: z.array(z.number().int().min(1990).max(2100)).max(10),
+        schoolNames: z.array(z.string()).optional(),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    if (data.years.length === 0) return [] as LegacyYearStats[];
+
+    const { data: datasets, error } = await context.supabase
+      .from("legacy_datasets")
+      .select("id, school_year")
+      .in("school_year", data.years);
+    if (error) throw new Error(error.message);
+    if (!datasets || datasets.length === 0) return [] as LegacyYearStats[];
+
+    const filter = (data.schoolNames ?? [])
+      .map((n) => n.trim().toLowerCase())
+      .filter((n) => n.length > 0);
+
+    const byYear = new Map<number, LegacyYearStats>();
+    for (const year of data.years) {
+      byYear.set(year, { year, visits: 0, children: 0, bySchool: [] });
+    }
+    const schoolsByYear = new Map<number, Map<string, { visits: number; children: number }>>();
+
+    const pageSize = 1000;
+    for (const dataset of datasets) {
+      const year = dataset.school_year as number;
+      const stats = byYear.get(year);
+      if (!stats) continue;
+      const schoolMap = schoolsByYear.get(year) ?? new Map();
+      schoolsByYear.set(year, schoolMap);
+
+      for (let page = 0; ; page++) {
+        const { data: rows, error: rowsError } = await context.supabase
+          .from("legacy_rows")
+          .select("data")
+          .eq("dataset_id", dataset.id as string)
+          .order("row_index")
+          .range(page * pageSize, page * pageSize + pageSize - 1);
+        if (rowsError) throw new Error(rowsError.message);
+        const list = (rows ?? []) as { data: Record<string, unknown> }[];
+        for (const row of list) {
+          const raw = row.data ?? {};
+          const schoolName = String(raw[SCHOOL_COLUMN] ?? "").trim() || "—";
+          if (filter.length > 0 && !filter.includes(schoolName.toLowerCase())) continue;
+          const parsed = Number(String(raw[CHILDREN_COLUMN] ?? "").replace(/[^0-9]/g, ""));
+          const childCount = Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+          stats.visits += 1;
+          stats.children += childCount;
+          const entry = schoolMap.get(schoolName) ?? { visits: 0, children: 0 };
+          entry.visits += 1;
+          entry.children += childCount;
+          schoolMap.set(schoolName, entry);
+        }
+        if (list.length < pageSize) break;
+      }
+    }
+
+    const result: LegacyYearStats[] = [];
+    for (const stats of byYear.values()) {
+      const schoolMap = schoolsByYear.get(stats.year);
+      if (!schoolMap) continue;
+      stats.bySchool = [...schoolMap.entries()]
+        .map(([name, v]) => ({ name, ...v }))
+        .sort((a, b) => b.visits - a.visits || a.name.localeCompare(b.name, "pt-BR"));
+      result.push(stats);
+    }
+    return result;
+  });
