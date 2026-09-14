@@ -18,6 +18,7 @@ import {
   Trophy,
   LogOut,
   School,
+  Users,
   FileText,
   LayoutTemplate,
   Menu,
