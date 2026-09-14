@@ -386,6 +386,22 @@ function SubmissionsPage() {
                       />
                     </td>
                     <td className="px-4 py-2.5">
+                      <PersonCell
+                        kind="efetivacao"
+                        current={
+                          (s as unknown as { enroller: { name?: string } | null }).enroller?.name ??
+                          null
+                        }
+                        options={(presenters ?? []).filter(
+                          (p) => p.school_id === s.school_id && p.kind === "efetivacao",
+                        )}
+                        disabled={!canEnroll || peopleM.isPending}
+                        onPick={(value) =>
+                          peopleM.mutate({ submission_id: s.id, kind: "efetivacao", ...value })
+                        }
+                      />
+                    </td>
+                    <td className="px-4 py-2.5">
                       <label className="flex items-center gap-2 text-xs text-muted-foreground">
                         <input
                           type="checkbox"
