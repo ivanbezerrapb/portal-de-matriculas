@@ -118,9 +118,7 @@ function AuthenticatedLayout() {
             key: "cadastros",
             label: "Cadastros",
             icon: ClipboardList,
-            children: [
-              { to: "/cadastros", label: "Lista de cadastros", icon: ClipboardList },
-            ],
+            children: [{ to: "/cadastros", label: "Lista de cadastros", icon: ClipboardList }],
           } as NavGroup,
         ]
       : []),
