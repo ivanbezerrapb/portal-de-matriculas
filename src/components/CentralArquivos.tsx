@@ -148,6 +148,60 @@ export function CentralArquivos({ brand }: { brand: Brand }) {
     }
   }
 
+  async function handleAddLink() {
+    setError(null);
+    const name = linkName.trim();
+    let url = linkUrl.trim();
+    if (name.length < 1) {
+      setError("Informe um título para o link.");
+      return;
+    }
+    if (url && !/^https?:\/\//i.test(url)) url = `https://${url}`;
+    if (!/^https?:\/\/.+\..+/i.test(url)) {
+      setError("Informe um endereço válido, por exemplo https://exemplo.com/pasta");
+      return;
+    }
+    setSavingLink(true);
+    try {
+      let finalCategory = categoryId || null;
+      if (newCategory.trim().length >= 2) {
+        const created = await createFileCategory({
+          data: { brand, name: newCategory.trim() },
+        });
+        finalCategory = created.id;
+        await queryClient.invalidateQueries({ queryKey: ["file-categories", brand] });
+      }
+      await createLinkRecord({
+        data: {
+          brand,
+          school_id: target === "brand" ? null : target,
+          category_id: finalCategory,
+          name,
+          url,
+        },
+      });
+      setLinkName("");
+      setLinkUrl("");
+      setNewCategory("");
+      await queryClient.invalidateQueries({ queryKey: ["shared-files"] });
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setSavingLink(false);
+    }
+  }
+
+  async function handleCopy(id: string, url: string) {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiedId(id);
+      setTimeout(() => setCopiedId((c) => (c === id ? null : c)), 2000);
+    } catch {
+      setError("Não foi possível copiar o endereço.");
+    }
+  }
+
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
