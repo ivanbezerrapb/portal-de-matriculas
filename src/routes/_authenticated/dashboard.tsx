@@ -305,15 +305,15 @@ function CumulativeChart({
         </h2>
         <div className="flex items-center gap-1">
           <Button
-            variant={metric === "visits" ? "default" : "outline"}
-            size="sm"
+            variant={metric === "visits" ? "primary" : "outline"}
+            className="h-7 px-2 text-xs"
             onClick={() => setMetric("visits")}
           >
             Visitas
           </Button>
           <Button
-            variant={metric === "children" ? "default" : "outline"}
-            size="sm"
+            variant={metric === "children" ? "primary" : "outline"}
+            className="h-7 px-2 text-xs"
             onClick={() => setMetric("children")}
           >
             Crianças
