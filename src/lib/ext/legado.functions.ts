@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { requireAuth } from "./auth";
 
 export type LegacyDataset = {
@@ -13,7 +14,7 @@ export type LegacyDataset = {
 };
 
 // Toda a área "Bancos anteriores" é exclusiva do Administrador.
-async function ensureAdmin(context: { supabase: any; userId: string }) {
+async function ensureAdmin(context: { supabase: SupabaseClient; userId: string }) {
   const { getPerms } = await import("./server");
   const perms = await getPerms(context.supabase, context.userId);
   if (!perms.isAdmin) throw new Error("Sem permissão.");
