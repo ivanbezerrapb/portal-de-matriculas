@@ -364,7 +364,24 @@ function DashboardPage() {
     setSelected((prev) => (prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]));
   }
 
-  const currentYear = data?.year ?? new Date().getFullYear();
+  const now = new Date();
+  const currentYear =
+    data?.year ?? (now.getMonth() >= 7 ? now.getFullYear() + 1 : now.getFullYear());
+  const legacyYears = [currentYear - 1, currentYear - 2];
+  const selectedNames = selected
+    .map((id) => (schools ?? []).find((s) => (s.id as string) === id)?.name as string | undefined)
+    .filter((n): n is string => Boolean(n));
+
+  const { data: legacy } = useQuery({
+    queryKey: ["legacy-year-stats", legacyYears, selectedNames],
+    queryFn: () => getLegacyYearStats({ data: { years: legacyYears, schoolNames: selectedNames } }),
+    staleTime: 300_000,
+  });
+
+  function legacyFor(year: number) {
+    return (legacy ?? []).find((item) => item.year === year) ?? null;
+  }
+
   const peopleChartHeight = data
     ? Math.max(208, ...[data.attendants, data.presenters, data.enrollers].map((d) => d.length * 38))
     : 208;
