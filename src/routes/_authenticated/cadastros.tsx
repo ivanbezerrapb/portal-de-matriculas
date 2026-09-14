@@ -67,6 +67,11 @@ function SubmissionsPage() {
     queryFn: () => listForms(),
   });
 
+  const { data: presenters } = useQuery({
+    queryKey: ["presenters"],
+    queryFn: () => listPresenters({ data: { only_active: true } }),
+  });
+
   const filters = {
     ...(search.trim() ? { search: search.trim() } : {}),
     ...(schoolId ? { school_id: schoolId } : {}),
