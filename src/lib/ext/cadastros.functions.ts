@@ -397,13 +397,12 @@ export const getDashboardStats = createServerFn({ method: "GET" })
     }
 
     const seriesCounts = new Map<string, number>();
-    const seriesOrder: string[] = [];
     const sourceCounts = new Map<string, number>();
 
     // Soma das crianças e distribuição das respostas dos formulários.
     let children = 0;
     if (rows.length > 0) {
-      const { CHILDREN_COUNT_LABEL, parseChildren, splitChildOptions } = await import("./model");
+      const { CHILDREN_COUNT_LABEL, parseChildren } = await import("./model");
       const formIds = [...new Set(rows.map((r) => r.form_id))];
       const { data: fields } = await context.supabase
         .from("form_fields")
@@ -424,13 +423,6 @@ export const getDashboardStats = createServerFn({ method: "GET" })
       const sourceFields = (fields ?? []).filter((f) =>
         normalize(f.label as string).includes("como conheceu"),
       );
-
-      for (const field of childrenFields) {
-        const { series } = splitChildOptions(field.options as string[] | null);
-        for (const label of series) {
-          if (!seriesOrder.includes(label)) seriesOrder.push(label);
-        }
-      }
 
       const responseFieldIds = [
         ...countFieldIds,
@@ -477,14 +469,9 @@ export const getDashboardStats = createServerFn({ method: "GET" })
     }
 
     const enrolled = rows.filter((row) => Boolean(row.enrolled)).length;
-    const orderedSeries = [...seriesCounts.entries()].sort(([a], [b]) => {
-      const ai = seriesOrder.indexOf(a);
-      const bi = seriesOrder.indexOf(b);
-      if (ai === -1 && bi === -1) return a.localeCompare(b, "pt-BR");
-      if (ai === -1) return 1;
-      if (bi === -1) return -1;
-      return ai - bi;
-    });
+    const orderedSeries = [...seriesCounts.entries()].sort(
+      ([a, countA], [b, countB]) => countB - countA || a.localeCompare(b, "pt-BR"),
+    );
 
     return {
       year,
