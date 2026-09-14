@@ -227,7 +227,9 @@ function SchoolComparisonChart({ data }: { data: SchoolDatum[] }) {
         <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent text-primary">
           <School className="h-4 w-4" />
         </div>
-        <h2 className="font-display font-semibold text-foreground">Total de cadastros por escola</h2>
+        <h2 className="font-display font-semibold text-foreground">
+          Total de cadastros por escola
+        </h2>
       </div>
       {data.length === 0 ? (
         <div className="flex h-52 items-center justify-center text-sm text-muted-foreground">
@@ -256,7 +258,12 @@ function SchoolComparisonChart({ data }: { data: SchoolDatum[] }) {
               <YAxis allowDecimals={false} tickLine={false} axisLine={false} width={32} />
               <ChartTooltip content={<ChartTooltipContent />} />
               <Bar dataKey="visits" fill="var(--color-visits)" radius={[4, 4, 0, 0]}>
-                <LabelList dataKey="visits" position="top" className="fill-foreground" fontSize={11} />
+                <LabelList
+                  dataKey="visits"
+                  position="top"
+                  className="fill-foreground"
+                  fontSize={11}
+                />
               </Bar>
               <Bar dataKey="children" fill="var(--color-children)" radius={[4, 4, 0, 0]}>
                 <LabelList
@@ -436,7 +443,6 @@ function DashboardPage() {
               <LossReasonsChart data={data.lossReasons} />
             </div>
           </div>
-
         </>
       )}
     </div>
