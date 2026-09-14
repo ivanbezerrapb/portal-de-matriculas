@@ -380,6 +380,92 @@ export const setEnrollment = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+// ---------- Quem atendeu / quem apresentou ----------
+
+export const setSubmissionPeople = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((data) =>
+    z
+      .object({
+        submission_id: z.string().uuid(),
+        kind: z.enum(["secretaria", "coordenacao"]),
+        presenter_id: z.string().uuid().nullable().optional(),
+        new_name: z.string().trim().min(2).max(120).optional(),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    const { getPerms } = await import("./server");
+    const perms = await getPerms(context.supabase, context.userId);
+
+    const { data: submission, error } = await context.supabase
+      .from("submissions")
+      .select("id, school_id, attendant_id, presenter_id")
+      .eq("id", data.submission_id)
+      .single();
+    if (error) throw new Error(error.message);
+
+    if (!perms.isAdmin && !perms.managerSchools.includes(submission.school_id)) {
+      throw new Error("Você não tem permissão para alterar este cadastro.");
+    }
+
+    let presenterId: string | null = data.presenter_id ?? null;
+    if (data.new_name) {
+      const { data: created, error: createError } = await context.supabase
+        .from("presenters")
+        .insert({ school_id: submission.school_id, kind: data.kind, name: data.new_name.trim() })
+        .select("id")
+        .single();
+      if (createError) {
+        if (createError.code === "23505") {
+          const { data: existing } = await context.supabase
+            .from("presenters")
+            .select("id")
+            .eq("school_id", submission.school_id)
+            .eq("kind", data.kind)
+            .ilike("name", data.new_name.trim())
+            .maybeSingle();
+          if (!existing) throw new Error(createError.message);
+          presenterId = existing.id;
+        } else {
+          throw new Error(createError.message);
+        }
+      } else {
+        presenterId = created.id;
+      }
+    }
+
+    const column = data.kind === "secretaria" ? "attendant_id" : "presenter_id";
+    const { error: updError } = await context.supabase
+      .from("submissions")
+      .update({
+        [column]: presenterId,
+        updated_at: new Date().toISOString(),
+        updated_by: context.userId,
+      })
+      .eq("id", data.submission_id);
+    if (updError) throw new Error(updError.message);
+
+    await context.supabase.from("audit_log").insert({
+      submission_id: data.submission_id,
+      actor_id: context.userId,
+      actor_email: context.userEmail,
+      action: "update",
+      changes: [
+        {
+          field_id: column,
+          label: data.kind === "secretaria" ? "Atendimento" : "Apresentação",
+          before: String(
+            (submission as unknown as Record<string, string | null>)[column] ?? "",
+          ),
+          after: String(presenterId ?? ""),
+        },
+      ],
+    });
+
+    return { ok: true, presenter_id: presenterId };
+  });
+
 export const deleteSubmission = createServerFn({ method: "POST" })
   .middleware([requireAuth])
   .inputValidator((data) => z.object({ id: z.string().uuid() }).parse(data))
