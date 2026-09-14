@@ -73,12 +73,45 @@ function YearCard({
 
 type IndicatorDatum = { label: string; count: number };
 
+function SeriesTick({
+  x = 0,
+  y = 0,
+  payload,
+}: {
+  x?: number;
+  y?: number;
+  payload?: { value?: string };
+}) {
+  const label = payload?.value ?? "";
+  const words = label.split(/\s+/);
+  const lines = words.reduce<string[]>((result, word) => {
+    const last = result[result.length - 1];
+    if (!last || `${last} ${word}`.length > 28) result.push(word);
+    else result[result.length - 1] = `${last} ${word}`;
+    return result;
+  }, []);
+
+  return (
+    <text x={x - 8} y={y} textAnchor="end" fill="var(--muted-foreground)" fontSize={12}>
+      {lines.map((line, index) => (
+        <tspan
+          key={`${line}-${index}`}
+          x={x - 8}
+          dy={index === 0 ? `${-(lines.length - 1) * 0.55}em` : "1.1em"}
+        >
+          {line}
+        </tspan>
+      ))}
+    </text>
+  );
+}
+
 function SeriesChart({ data }: { data: IndicatorDatum[] }) {
   const labelWidth = Math.min(
-    220,
-    Math.max(112, Math.max(...data.map((item) => item.label.length), 0) * 7),
+    260,
+    Math.max(112, Math.max(...data.map((item) => Math.min(item.label.length, 36)), 0) * 7),
   );
-  const chartHeight = Math.max(208, data.length * 34);
+  const chartHeight = Math.max(208, data.length * 42);
 
   return (
     <Card className="min-w-0 p-4">
@@ -107,6 +140,7 @@ function SeriesChart({ data }: { data: IndicatorDatum[] }) {
               axisLine={false}
               width={labelWidth}
               interval={0}
+              tick={<SeriesTick />}
             />
             <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
             <Bar dataKey="count" fill="var(--color-count)" radius={[0, 4, 4, 0]} />

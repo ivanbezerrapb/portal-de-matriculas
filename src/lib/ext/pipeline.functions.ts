@@ -233,6 +233,11 @@ export const closeOpportunity = createServerFn({ method: "POST" })
     // Ganho no CRM = matrícula realizada no cadastro.
     if (updated?.submission_id) {
       const won = data.result === "won";
+      const { data: previousSubmission } = await context.supabase
+        .from("submissions")
+        .select("enrolled, enrollment_count")
+        .eq("id", updated.submission_id)
+        .single();
       await context.supabase
         .from("submissions")
         .update({
@@ -242,6 +247,26 @@ export const closeOpportunity = createServerFn({ method: "POST" })
           enrolled_by: won ? context.userId : null,
         })
         .eq("id", updated.submission_id);
+      await context.supabase.from("audit_log").insert({
+        submission_id: updated.submission_id,
+        actor_id: context.userId,
+        actor_email: context.userEmail,
+        action: "update",
+        changes: [
+          {
+            field_id: "enrolled",
+            label: "Matrícula",
+            before: previousSubmission?.enrolled ? "Sim" : "Não",
+            after: won ? "Sim" : "Não",
+          },
+          {
+            field_id: "enrollment_count",
+            label: "Quantidade de matrículas",
+            before: String(previousSubmission?.enrollment_count ?? 0),
+            after: String(won ? data.enrollment_count : 0),
+          },
+        ],
+      });
     }
     return { ok: true };
   });
