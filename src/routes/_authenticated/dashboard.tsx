@@ -455,6 +455,11 @@ function DashboardPage() {
               <LossReasonsChart data={data.lossReasons} />
             </div>
           </div>
+
+          <div className="mt-3 grid items-start gap-3 lg:grid-cols-2">
+            <SeriesChart data={data.attendants} title="Quem mais atendeu (Secretaria)" />
+            <SeriesChart data={data.presenters} title="Quem mais apresentou (Coordenação)" />
+          </div>
         </>
       )}
     </div>
