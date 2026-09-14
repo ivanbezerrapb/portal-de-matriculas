@@ -539,7 +539,7 @@ export const getDashboardStats = createServerFn({ method: "GET" })
       const created = new Date(row.created_at as string);
       if (!Number.isNaN(created.getTime())) {
         const index = (created.getMonth() - 7 + 12) % 12;
-        monthlyVisits[index] += 1;
+        monthlyVisits[index] = (monthlyVisits[index] ?? 0) + 1;
         submissionMonth.set(row.id as string, index);
       }
     }
