@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Download, Trash2, Upload } from "lucide-react";
+import { Copy, Download, ExternalLink, Link2, Trash2, Upload } from "lucide-react";
 import { Button, Card, EmptyState, Input, Label, Select, Spinner } from "@/components/ui";
 import { getSupabase } from "@/lib/ext/browser";
 import {
@@ -8,6 +8,7 @@ import {
   FILE_BUCKET,
   createFileCategory,
   createFileRecord,
+  createLinkRecord,
   deleteFile,
   getDownloadUrl,
   getFileAccess,
@@ -50,6 +51,10 @@ export function CentralArquivos({ brand }: { brand: Brand }) {
   const [newCategory, setNewCategory] = useState("");
   const [filterCategory, setFilterCategory] = useState<string>("");
   const [uploading, setUploading] = useState(false);
+  const [linkName, setLinkName] = useState("");
+  const [linkUrl, setLinkUrl] = useState("");
+  const [savingLink, setSavingLink] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const { data: access } = useQuery({
@@ -143,6 +148,59 @@ export function CentralArquivos({ brand }: { brand: Brand }) {
     }
   }
 
+  async function handleAddLink() {
+    setError(null);
+    const name = linkName.trim();
+    let url = linkUrl.trim();
+    if (name.length < 1) {
+      setError("Informe um título para o link.");
+      return;
+    }
+    if (url && !/^https?:\/\//i.test(url)) url = `https://${url}`;
+    if (!/^https?:\/\/.+\..+/i.test(url)) {
+      setError("Informe um endereço válido, por exemplo https://exemplo.com/pasta");
+      return;
+    }
+    setSavingLink(true);
+    try {
+      let finalCategory = categoryId || null;
+      if (newCategory.trim().length >= 2) {
+        const created = await createFileCategory({
+          data: { brand, name: newCategory.trim() },
+        });
+        finalCategory = created.id;
+        await queryClient.invalidateQueries({ queryKey: ["file-categories", brand] });
+      }
+      await createLinkRecord({
+        data: {
+          brand,
+          school_id: target === "brand" ? null : target,
+          category_id: finalCategory,
+          name,
+          url,
+        },
+      });
+      setLinkName("");
+      setLinkUrl("");
+      setNewCategory("");
+      await queryClient.invalidateQueries({ queryKey: ["shared-files"] });
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setSavingLink(false);
+    }
+  }
+
+  async function handleCopy(id: string, url: string) {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiedId(id);
+      setTimeout(() => setCopiedId((c) => (c === id ? null : c)), 2000);
+    } catch {
+      setError("Não foi possível copiar o endereço.");
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -179,7 +237,9 @@ export function CentralArquivos({ brand }: { brand: Brand }) {
 
       {canManage && (
         <Card>
-          <h2 className="font-display text-base font-semibold text-foreground">Enviar arquivos</h2>
+          <h2 className="font-display text-base font-semibold text-foreground">
+            Enviar arquivos ou links
+          </h2>
           <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <div>
               <Label htmlFor="destino">Destino</Label>
@@ -234,6 +294,44 @@ export function CentralArquivos({ brand }: { brand: Brand }) {
               </Button>
             </div>
           </div>
+
+          <div className="mt-4 border-t border-border pt-4">
+            <p className="text-sm font-medium text-foreground">Adicionar link de acesso</p>
+            <p className="text-xs text-muted-foreground">
+              Usa o mesmo destino e categoria escolhidos acima.
+            </p>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div>
+                <Label htmlFor="link-titulo">Título</Label>
+                <Input
+                  id="link-titulo"
+                  placeholder="Ex.: Pasta de materiais"
+                  value={linkName}
+                  onChange={(e) => setLinkName(e.target.value)}
+                />
+              </div>
+              <div className="lg:col-span-2">
+                <Label htmlFor="link-url">Endereço (URL)</Label>
+                <Input
+                  id="link-url"
+                  placeholder="https://..."
+                  value={linkUrl}
+                  onChange={(e) => setLinkUrl(e.target.value)}
+                />
+              </div>
+              <div className="flex items-end">
+                <Button
+                  className="w-full"
+                  variant="secondary"
+                  disabled={savingLink}
+                  onClick={() => void handleAddLink()}
+                >
+                  {savingLink ? <Spinner className="h-4 w-4" /> : <Link2 className="h-4 w-4" />}
+                  {savingLink ? "Salvando..." : "Adicionar link"}
+                </Button>
+              </div>
+            </div>
+          </div>
         </Card>
       )}
 
@@ -243,19 +341,20 @@ export function CentralArquivos({ brand }: { brand: Brand }) {
         </div>
       ) : (files ?? []).length === 0 ? (
         <EmptyState
-          title="Nenhum arquivo por aqui"
+          title="Nada por aqui ainda"
           description={
             canManage
-              ? "Envie o primeiro arquivo para a equipe."
-              : "Assim que a gestão enviar arquivos, eles aparecem aqui."
+              ? "Envie o primeiro arquivo ou link para a equipe."
+              : "Assim que a gestão enviar arquivos ou links, eles aparecem aqui."
           }
         />
       ) : (
         <Card className="overflow-x-auto p-0">
-          <table className="w-full min-w-[720px] text-sm">
+          <table className="w-full min-w-[860px] text-sm">
             <thead className="border-b border-border bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
-                <th className="px-4 py-3">Arquivo</th>
+                <th className="px-4 py-3">Tipo</th>
+                <th className="px-4 py-3">Nome</th>
                 <th className="px-4 py-3">Categoria</th>
                 <th className="px-4 py-3">Destino</th>
                 <th className="px-4 py-3">Tamanho</th>
@@ -267,27 +366,71 @@ export function CentralArquivos({ brand }: { brand: Brand }) {
             <tbody>
               {(files ?? []).map((f) => (
                 <tr key={f.id} className="border-b border-border/60 last:border-0">
-                  <td className="px-4 py-3 font-medium text-foreground">{f.name}</td>
+                  <td className="px-4 py-3 text-muted-foreground">
+                    {f.kind === "link" ? "Link" : "Arquivo"}
+                  </td>
+                  <td className="px-4 py-3 font-medium text-foreground">
+                    {f.name}
+                    {f.kind === "link" && f.url && (
+                      <a
+                        href={f.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-0.5 block max-w-[320px] truncate text-xs font-normal text-primary underline underline-offset-2"
+                        title={f.url}
+                      >
+                        {f.url}
+                      </a>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-muted-foreground">
                     {f.file_categories?.name ?? "—"}
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">
                     {f.schools?.name ?? BRAND_LABELS[brand]}
                   </td>
-                  <td className="px-4 py-3 text-muted-foreground">{formatSize(f.size_bytes)}</td>
+                  <td className="px-4 py-3 text-muted-foreground">
+                    {f.kind === "link" ? "—" : formatSize(f.size_bytes)}
+                  </td>
                   <td className="px-4 py-3 text-muted-foreground">{f.uploaded_by_name ?? "—"}</td>
                   <td className="px-4 py-3 text-muted-foreground">{formatDate(f.created_at)}</td>
                   <td className="px-4 py-3">
                     <div className="flex justify-end gap-1">
-                      <Button
-                        variant="ghost"
-                        className="h-9 w-9 p-0"
-                        title="Baixar"
-                        aria-label={`Baixar ${f.name}`}
-                        onClick={() => void handleDownload(f.id)}
-                      >
-                        <Download className="h-4 w-4" />
-                      </Button>
+                      {f.kind === "link" && f.url ? (
+                        <>
+                          <Button
+                            variant="ghost"
+                            className="h-9 w-9 p-0"
+                            title={copiedId === f.id ? "Copiado!" : "Copiar endereço"}
+                            aria-label={`Copiar endereço de ${f.name}`}
+                            onClick={() => void handleCopy(f.id, f.url as string)}
+                          >
+                            <Copy
+                              className={`h-4 w-4 ${copiedId === f.id ? "text-primary" : ""}`}
+                            />
+                          </Button>
+                          <a
+                            href={f.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title="Abrir link"
+                            aria-label={`Abrir ${f.name}`}
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-foreground transition-colors hover:bg-accent"
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                          </a>
+                        </>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          className="h-9 w-9 p-0"
+                          title="Baixar"
+                          aria-label={`Baixar ${f.name}`}
+                          onClick={() => void handleDownload(f.id)}
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                      )}
                       {canManage && (
                         <Button
                           variant="ghost"
