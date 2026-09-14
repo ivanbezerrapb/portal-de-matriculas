@@ -217,7 +217,10 @@ export const createLinkRecord = createServerFn({ method: "POST" })
           .trim()
           .min(5)
           .max(2000)
-          .refine((v) => /^https?:\/\//i.test(v), "O endereço deve começar com http:// ou https://"),
+          .refine(
+            (v) => /^https?:\/\//i.test(v),
+            "O endereço deve começar com http:// ou https://",
+          ),
       })
       .parse(data),
   )
