@@ -527,11 +527,21 @@ export const getDashboardStats = createServerFn({ method: "GET" })
 
     const rows = submissions ?? [];
     const bySchool = new Map<string, { name: string; visits: number; children: number }>();
+    // Série mensal do ano letivo (índice 0 = agosto ... 11 = julho).
+    const monthlyVisits = Array.from({ length: 12 }, () => 0);
+    const monthlyChildren = Array.from({ length: 12 }, () => 0);
+    const submissionMonth = new Map<string, number>();
     for (const row of rows) {
       const name = (row.schools as { name?: string } | null)?.name ?? "—";
       const entry = bySchool.get(row.school_id) ?? { name, visits: 0, children: 0 };
       entry.visits += 1;
       bySchool.set(row.school_id, entry);
+      const created = new Date(row.created_at as string);
+      if (!Number.isNaN(created.getTime())) {
+        const index = (created.getMonth() - 7 + 12) % 12;
+        monthlyVisits[index] += 1;
+        submissionMonth.set(row.id as string, index);
+      }
     }
 
     const attendantCounts = new Map<string, number>();
