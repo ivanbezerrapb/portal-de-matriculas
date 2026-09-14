@@ -139,8 +139,7 @@ function PipelinePage() {
       reason_id: string;
       note?: string;
       enrollment_count?: number;
-    }) =>
-      closeOpportunity({ data: d }),
+    }) => closeOpportunity({ data: d }),
     onSuccess: () => {
       toast.success("Oportunidade fechada.");
       setClosing(null);
