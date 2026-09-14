@@ -19,6 +19,7 @@ import {
   LogOut,
   School,
   Users,
+  UserCheck,
   FileText,
   LayoutTemplate,
   Menu,
