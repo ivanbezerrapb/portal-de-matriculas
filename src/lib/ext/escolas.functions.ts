@@ -5,10 +5,7 @@ import { requireAuth } from "./auth";
 export const listSchools = createServerFn({ method: "GET" })
   .middleware([requireAuth])
   .handler(async ({ context }) => {
-    const { data, error } = await context.supabase
-      .from("schools")
-      .select("*")
-      .order("name");
+    const { data, error } = await context.supabase.from("schools").select("*").order("name");
     if (error) throw new Error(error.message);
     return data;
   });
@@ -46,9 +43,7 @@ export const createSchool = createServerFn({ method: "POST" })
 
 export const updateSchool = createServerFn({ method: "POST" })
   .middleware([requireAuth])
-  .inputValidator((data) =>
-    z.object({ id: z.string().uuid() }).merge(schoolInput).parse(data),
-  )
+  .inputValidator((data) => z.object({ id: z.string().uuid() }).merge(schoolInput).parse(data))
   .handler(async ({ data, context }) => {
     const { error } = await context.supabase
       .from("schools")
@@ -68,10 +63,7 @@ export const deleteSchool = createServerFn({ method: "POST" })
   .middleware([requireAuth])
   .inputValidator((data) => z.object({ id: z.string().uuid() }).parse(data))
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase
-      .from("schools")
-      .delete()
-      .eq("id", data.id);
+    const { error } = await context.supabase.from("schools").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });

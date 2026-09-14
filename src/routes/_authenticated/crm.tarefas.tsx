@@ -4,6 +4,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Trash2 } from "lucide-react";
 import { deleteTask, listTasks, setTaskDone, type TaskRow } from "@/lib/ext/tarefas.functions";
+import { getMyPermissions } from "@/lib/ext/cadastros.functions";
 import { Button, Card, EmptyState, Select, Spinner } from "@/components/ui";
 
 export const Route = createFileRoute("/_authenticated/crm/tarefas")({
@@ -32,6 +33,13 @@ function taskDate(t: TaskRow) {
 function TarefasPage() {
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState<"pending" | "done" | "all">("pending");
+
+  const { data: perms } = useQuery({
+    queryKey: ["my-permissions"],
+    queryFn: () => getMyPermissions(),
+  });
+  // Direção acompanha as tarefas apenas em leitura.
+  const canWrite = !(perms?.isDirecao ?? false);
 
   const { data: tasks, isLoading } = useQuery({
     queryKey: ["crm-tasks", filter],
@@ -100,6 +108,7 @@ function TarefasPage() {
                     type="checkbox"
                     className="accent-[var(--color-primary)]"
                     checked={t.done}
+                    disabled={!canWrite}
                     onChange={(e) => doneM.mutate({ id: t.id, done: e.target.checked })}
                     aria-label={t.done ? "Reabrir tarefa" : "Concluir tarefa"}
                   />
@@ -132,14 +141,16 @@ function TarefasPage() {
                       </Button>
                     </Link>
                   )}
-                  <button
-                    type="button"
-                    aria-label="Excluir tarefa"
-                    className="rounded p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                    onClick={() => deleteM.mutate({ id: t.id })}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+                  {canWrite && (
+                    <button
+                      type="button"
+                      aria-label="Excluir tarefa"
+                      className="rounded p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                      onClick={() => deleteM.mutate({ id: t.id })}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  )}
                 </li>
               );
             })}

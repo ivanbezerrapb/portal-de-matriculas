@@ -490,7 +490,7 @@ function PipelinePage() {
                 </Link>
               )}
 
-              <OpportunityTasks opportunityId={card.id} />
+              <OpportunityTasks opportunityId={card.id} canWrite={canWrite} />
 
               {card.status === "open"
                 ? canClose && (
@@ -555,7 +555,13 @@ function PipelinePage() {
   );
 }
 
-function OpportunityTasks({ opportunityId }: { opportunityId: string }) {
+function OpportunityTasks({
+  opportunityId,
+  canWrite,
+}: {
+  opportunityId: string;
+  canWrite: boolean;
+}) {
   const queryClient = useQueryClient();
   const [title, setTitle] = useState("");
   const [due, setDue] = useState("");
@@ -602,6 +608,7 @@ function OpportunityTasks({ opportunityId }: { opportunityId: string }) {
               type="checkbox"
               className="accent-[var(--color-primary)]"
               checked={t.done}
+              disabled={!canWrite}
               onChange={(e) => doneM.mutate({ id: t.id, done: e.target.checked })}
               aria-label={t.done ? "Reabrir tarefa" : "Concluir tarefa"}
             />
@@ -617,40 +624,44 @@ function OpportunityTasks({ opportunityId }: { opportunityId: string }) {
                 </span>
               )}
             </span>
-            <button
-              type="button"
-              aria-label="Excluir tarefa"
-              className="rounded p-1 text-muted-foreground hover:text-destructive"
-              onClick={() => deleteM.mutate({ id: t.id })}
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </button>
+            {canWrite && (
+              <button
+                type="button"
+                aria-label="Excluir tarefa"
+                className="rounded p-1 text-muted-foreground hover:text-destructive"
+                onClick={() => deleteM.mutate({ id: t.id })}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            )}
           </li>
         ))}
         {(tasks ?? []).length === 0 && (
           <li className="text-xs text-muted-foreground">Nenhuma tarefa ainda.</li>
         )}
       </ul>
-      <form
-        className="mt-3 flex flex-col gap-2"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (!title.trim()) return;
-          createM.mutate();
-        }}
-      >
-        <Input
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="Nova tarefa…"
-        />
-        <div className="flex gap-2">
-          <Input type="date" value={due} onChange={(e) => setDue(e.target.value)} />
-          <Button type="submit" disabled={createM.isPending || !title.trim()}>
-            Adicionar
-          </Button>
-        </div>
-      </form>
+      {canWrite && (
+        <form
+          className="mt-3 flex flex-col gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!title.trim()) return;
+            createM.mutate();
+          }}
+        >
+          <Input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Nova tarefa…"
+          />
+          <div className="flex gap-2">
+            <Input type="date" value={due} onChange={(e) => setDue(e.target.value)} />
+            <Button type="submit" disabled={createM.isPending || !title.trim()}>
+              Adicionar
+            </Button>
+          </div>
+        </form>
+      )}
     </section>
   );
 }

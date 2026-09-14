@@ -17,24 +17,15 @@ export const getForm = createServerFn({ method: "GET" })
   .middleware([requireAuth])
   .inputValidator((data) => z.object({ id: z.string().uuid() }).parse(data))
   .handler(async ({ data, context }) => {
-    const [{ data: form, error }, { data: fields }, { data: templates }] =
-      await Promise.all([
-        context.supabase
-          .from("forms")
-          .select("*, schools(name)")
-          .eq("id", data.id)
-          .single(),
-        context.supabase
-          .from("form_fields")
-          .select("*")
-          .eq("form_id", data.id)
-          .order("position"),
-        context.supabase
-          .from("print_templates")
-          .select("*")
-          .eq("form_id", data.id)
-          .order("created_at"),
-      ]);
+    const [{ data: form, error }, { data: fields }, { data: templates }] = await Promise.all([
+      context.supabase.from("forms").select("*, schools(name)").eq("id", data.id).single(),
+      context.supabase.from("form_fields").select("*").eq("form_id", data.id).order("position"),
+      context.supabase
+        .from("print_templates")
+        .select("*")
+        .eq("form_id", data.id)
+        .order("created_at"),
+    ]);
     if (error) throw new Error(error.message);
     return { form, fields: fields ?? [], templates: templates ?? [] };
   });
@@ -132,22 +123,20 @@ export const duplicateForm = createServerFn({ method: "POST" })
     if (tplErr) throw new Error(tplErr.message);
 
     for (const t of templates ?? []) {
-      const { error: insErr } = await context.supabase
-        .from("print_templates")
-        .insert({
-          form_id: created.id,
-          name: t.name,
-          title: t.title,
-          header_text: t.header_text,
-          footer_text: t.footer_text,
-          show_logo: t.show_logo,
-          columns: t.columns,
-          page_size: t.page_size,
-          show_signature: t.show_signature,
-          field_ids: ((t.field_ids ?? []) as string[])
-            .map((fid) => idMap.get(fid))
-            .filter((v): v is string => Boolean(v)),
-        });
+      const { error: insErr } = await context.supabase.from("print_templates").insert({
+        form_id: created.id,
+        name: t.name,
+        title: t.title,
+        header_text: t.header_text,
+        footer_text: t.footer_text,
+        show_logo: t.show_logo,
+        columns: t.columns,
+        page_size: t.page_size,
+        show_signature: t.show_signature,
+        field_ids: ((t.field_ids ?? []) as string[])
+          .map((fid) => idMap.get(fid))
+          .filter((v): v is string => Boolean(v)),
+      });
       if (insErr) throw new Error(insErr.message);
     }
 
@@ -197,10 +186,7 @@ export const deleteForm = createServerFn({ method: "POST" })
   .middleware([requireAuth])
   .inputValidator((data) => z.object({ id: z.string().uuid() }).parse(data))
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase
-      .from("forms")
-      .delete()
-      .eq("id", data.id);
+    const { error } = await context.supabase.from("forms").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
@@ -261,9 +247,7 @@ export const saveFormFields = createServerFn({ method: "POST" })
         position: field.position,
       };
       if (field.id.startsWith("new-")) {
-        const { error } = await context.supabase
-          .from("form_fields")
-          .insert(payload);
+        const { error } = await context.supabase.from("form_fields").insert(payload);
         if (error) throw new Error(error.message);
       } else {
         const { error } = await context.supabase
@@ -323,9 +307,7 @@ export const savePrintTemplate = createServerFn({ method: "POST" })
         .eq("id", data.id);
       if (error) throw new Error(error.message);
     } else {
-      const { error } = await context.supabase
-        .from("print_templates")
-        .insert(payload);
+      const { error } = await context.supabase.from("print_templates").insert(payload);
       if (error) throw new Error(error.message);
     }
     return { ok: true };
@@ -343,21 +325,19 @@ export const duplicatePrintTemplate = createServerFn({ method: "POST" })
       .eq("id", data.id)
       .single();
     if (error) throw new Error(error.message);
-    const { error: insErr } = await context.supabase
-      .from("print_templates")
-      .insert({
-        form_id: src.form_id,
-        name: data.name,
-        title: src.title,
-        header_text: src.header_text,
-        footer_text: src.footer_text,
-        show_logo: src.show_logo,
-        columns: src.columns,
-        page_size: src.page_size,
-        show_signature: src.show_signature,
-        field_ids: src.field_ids,
-        layout: src.layout,
-      });
+    const { error: insErr } = await context.supabase.from("print_templates").insert({
+      form_id: src.form_id,
+      name: data.name,
+      title: src.title,
+      header_text: src.header_text,
+      footer_text: src.footer_text,
+      show_logo: src.show_logo,
+      columns: src.columns,
+      page_size: src.page_size,
+      show_signature: src.show_signature,
+      field_ids: src.field_ids,
+      layout: src.layout,
+    });
     if (insErr) throw new Error(insErr.message);
     return { ok: true };
   });
@@ -366,10 +346,7 @@ export const deletePrintTemplate = createServerFn({ method: "POST" })
   .middleware([requireAuth])
   .inputValidator((data) => z.object({ id: z.string().uuid() }).parse(data))
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase
-      .from("print_templates")
-      .delete()
-      .eq("id", data.id);
+    const { error } = await context.supabase.from("print_templates").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
