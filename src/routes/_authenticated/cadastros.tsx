@@ -181,7 +181,7 @@ function SubmissionsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl">
+    <div className="w-full">
       <h1 className="font-display text-2xl font-bold text-foreground">Cadastros</h1>
 
       <Card className="mt-6">
@@ -294,7 +294,7 @@ function SubmissionsPage() {
         />
       ) : (
         <div className="mt-4 overflow-x-auto rounded-lg border border-border bg-card">
-          <table className="w-full min-w-[760px] text-sm">
+          <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-muted/60 text-left text-xs uppercase tracking-wide text-muted-foreground">
                 <th className="px-4 py-3"></th>
@@ -769,7 +769,7 @@ function PersonCell({
   const exact = options.find((o) => o.name.toLowerCase() === query);
 
   return (
-    <div className="relative w-44">
+    <div className="relative w-full min-w-32">
       <Input
         autoFocus
         value={text}
