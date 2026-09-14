@@ -11,9 +11,7 @@ export function getSupabase(): Promise<SupabaseClient> {
     if (!url || !key) {
       return Promise.reject(new Error("Supabase externo não configurado."));
     }
-    return Promise.resolve(
-      createClient(url, key, { auth: { persistSession: false } }),
-    );
+    return Promise.resolve(createClient(url, key, { auth: { persistSession: false } }));
   }
   if (!clientPromise) {
     clientPromise = fetch("/api/public/config")

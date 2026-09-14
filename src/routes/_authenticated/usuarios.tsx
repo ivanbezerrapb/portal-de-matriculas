@@ -21,7 +21,7 @@ export const Route = createFileRoute("/_authenticated/usuarios")({
   component: UsersPage,
 });
 
-type Role = "admin" | "school_manager" | "print_operator" | "info_center";
+type Role = "admin" | "school_manager" | "print_operator" | "info_center" | "direcao";
 const ROLES = Object.entries(ROLE_LABELS) as [Role, string][];
 const NEEDS_SCHOOL: Role[] = ["school_manager", "print_operator", "info_center"];
 
@@ -108,7 +108,13 @@ function UsersPage() {
     return (users ?? []).filter((u) => {
       if (q && !normalize(`${u.full_name} ${u.email}`).includes(q)) return false;
       if (filterRole !== "all" && !u.roles.some((r) => r.role === filterRole)) return false;
-      if (filterSchool !== "all" && !u.roles.some((r) => r.school_id === filterSchool))
+      // Direção enxerga todas as escolas, então nunca é filtrada por unidade.
+      const isDirecao = u.roles.some((r) => r.role === "direcao");
+      if (
+        filterSchool !== "all" &&
+        !isDirecao &&
+        !u.roles.some((r) => r.school_id === filterSchool)
+      )
         return false;
       return true;
     });

@@ -116,24 +116,27 @@ function AuthenticatedLayout() {
   type NavEntry = NavLeaf | NavGroup;
 
   const isAdmin = perms?.isAdmin ?? false;
+  const isDirecao = perms?.isDirecao ?? false;
   const isManager = (perms?.managerSchools.length ?? 0) > 0;
   const isInfo = (perms?.infoSchools.length ?? 0) > 0;
-  const isSecretary = !isAdmin && !isManager && !isInfo;
+  const isSecretary = !isAdmin && !isDirecao && !isManager && !isInfo;
 
   const roleLabel = isAdmin
     ? "Administrador"
-    : isManager
-      ? "Gerente"
-      : isInfo
-        ? "Central de Informações"
-        : "Secretaria";
+    : isDirecao
+      ? "Direção"
+      : isManager
+        ? "Gerente"
+        : isInfo
+          ? "Central de Informações"
+          : "Secretaria";
 
   // Cada perfil enxerga apenas as telas que pode usar.
   const navEntries: NavEntry[] = [
-    ...(isAdmin || isManager
+    ...(isAdmin || isDirecao || isManager
       ? [{ to: "/dashboard", label: "Início", icon: LayoutDashboard } as NavLeaf]
       : []),
-    ...(isAdmin || isManager || isSecretary
+    ...(isAdmin || isDirecao || isManager || isSecretary
       ? [
           {
             key: "cadastros",
@@ -143,7 +146,7 @@ function AuthenticatedLayout() {
           } as NavGroup,
         ]
       : []),
-    ...(isAdmin || isInfo
+    ...(isAdmin || isDirecao || isInfo
       ? [
           {
             key: "crm",
@@ -151,7 +154,7 @@ function AuthenticatedLayout() {
             icon: Kanban,
             children: [
               { to: "/crm/pipeline", label: "Pipeline", icon: Kanban },
-              ...(isAdmin
+              ...(isAdmin || isDirecao
                 ? [
                     { to: "/crm/funil", label: "Funil", icon: Filter },
                     { to: "/crm/tarefas", label: "Tarefas", icon: ListTodo },
