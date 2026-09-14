@@ -151,6 +151,23 @@ function AuthenticatedLayout() {
           } as NavGroup,
         ]
       : []),
+    ...((fileAccess?.viewBrands.length ?? 0) > 0
+      ? [
+          {
+            key: "arquivos",
+            label: "Central de Arquivos",
+            icon: FolderOpen,
+            children: [
+              ...(fileAccess?.viewBrands.includes("conecta")
+                ? [{ to: "/arquivos/conecta", label: "Conecta", icon: FolderOpen }]
+                : []),
+              ...(fileAccess?.viewBrands.includes("interactivo")
+                ? [{ to: "/arquivos/interactivo", label: "Interactivo", icon: FolderOpen }]
+                : []),
+            ],
+          } as NavGroup,
+        ]
+      : []),
     ...(isAdmin
       ? [
           {
