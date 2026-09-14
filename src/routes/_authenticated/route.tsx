@@ -193,6 +193,7 @@ function AuthenticatedLayout() {
               { to: "/templates", label: "Templates", icon: LayoutTemplate },
               { to: "/escolas", label: "Escolas", icon: School },
               { to: "/usuarios", label: "Usuários", icon: Users },
+              { to: "/bancos-anteriores", label: "Bancos anteriores", icon: Database },
             ],
           } as NavGroup,
         ]
