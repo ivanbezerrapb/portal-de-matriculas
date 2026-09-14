@@ -506,6 +506,28 @@ function SubmissionsPage() {
                 autoFocus
               />
             </div>
+            <div className="mt-4">
+              <Label>Quem atendeu (Secretaria)</Label>
+              <PersonPicker
+                kind="secretaria"
+                value={dialogAttendant}
+                options={(presenters ?? []).filter(
+                  (p) => p.school_id === enrollmentDialog.schoolId && p.kind === "secretaria",
+                )}
+                onChange={setDialogAttendant}
+              />
+            </div>
+            <div className="mt-4">
+              <Label>Quem apresentou (Coordenação)</Label>
+              <PersonPicker
+                kind="coordenacao"
+                value={dialogPresenter}
+                options={(presenters ?? []).filter(
+                  (p) => p.school_id === enrollmentDialog.schoolId && p.kind === "coordenacao",
+                )}
+                onChange={setDialogPresenter}
+              />
+            </div>
             <div className="mt-5 flex justify-end gap-2">
               <Button variant="ghost" onClick={() => setEnrollmentDialog(null)}>
                 Cancelar
@@ -513,16 +535,46 @@ function SubmissionsPage() {
               <Button
                 disabled={
                   enrollM.isPending ||
+                  savingEnrollment ||
+                  !dialogAttendant ||
+                  !dialogPresenter ||
                   !Number.isInteger(Number(enrollmentCount)) ||
                   Number(enrollmentCount) < 1
                 }
-                onClick={() =>
-                  enrollM.mutate({
-                    id: enrollmentDialog.id,
-                    enrolled: true,
-                    enrollment_count: Number(enrollmentCount),
-                  })
-                }
+                onClick={async () => {
+                  if (!dialogAttendant || !dialogPresenter) return;
+                  setSavingEnrollment(true);
+                  try {
+                    await setSubmissionPeople({
+                      data: {
+                        submission_id: enrollmentDialog.id,
+                        kind: "secretaria",
+                        ...(dialogAttendant.presenter_id
+                          ? { presenter_id: dialogAttendant.presenter_id }
+                          : { new_name: dialogAttendant.label }),
+                      },
+                    });
+                    await setSubmissionPeople({
+                      data: {
+                        submission_id: enrollmentDialog.id,
+                        kind: "coordenacao",
+                        ...(dialogPresenter.presenter_id
+                          ? { presenter_id: dialogPresenter.presenter_id }
+                          : { new_name: dialogPresenter.label }),
+                      },
+                    });
+                    queryClient.invalidateQueries({ queryKey: ["presenters"] });
+                    enrollM.mutate({
+                      id: enrollmentDialog.id,
+                      enrolled: true,
+                      enrollment_count: Number(enrollmentCount),
+                    });
+                  } catch (err) {
+                    toast.error((err as Error).message);
+                  } finally {
+                    setSavingEnrollment(false);
+                  }
+                }}
               >
                 Confirmar
               </Button>
