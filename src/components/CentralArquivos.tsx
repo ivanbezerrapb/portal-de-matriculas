@@ -295,8 +295,47 @@ export function CentralArquivos({ brand }: { brand: Brand }) {
               </Button>
             </div>
           </div>
+
+          <div className="mt-4 border-t border-border pt-4">
+            <p className="text-sm font-medium text-foreground">Adicionar link de acesso</p>
+            <p className="text-xs text-muted-foreground">
+              Usa o mesmo destino e categoria escolhidos acima.
+            </p>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div>
+                <Label htmlFor="link-titulo">Título</Label>
+                <Input
+                  id="link-titulo"
+                  placeholder="Ex.: Pasta de materiais"
+                  value={linkName}
+                  onChange={(e) => setLinkName(e.target.value)}
+                />
+              </div>
+              <div className="lg:col-span-2">
+                <Label htmlFor="link-url">Endereço (URL)</Label>
+                <Input
+                  id="link-url"
+                  placeholder="https://..."
+                  value={linkUrl}
+                  onChange={(e) => setLinkUrl(e.target.value)}
+                />
+              </div>
+              <div className="flex items-end">
+                <Button
+                  className="w-full"
+                  variant="secondary"
+                  disabled={savingLink}
+                  onClick={() => void handleAddLink()}
+                >
+                  {savingLink ? <Spinner className="h-4 w-4" /> : <Link2 className="h-4 w-4" />}
+                  {savingLink ? "Salvando..." : "Adicionar link"}
+                </Button>
+              </div>
+            </div>
+          </div>
         </Card>
       )}
+
 
       {isLoading ? (
         <div className="flex justify-center py-10">
