@@ -13,7 +13,7 @@ import {
 } from "recharts";
 import { ChevronDown, ClipboardCheck, ClipboardList, School, Users } from "lucide-react";
 import { useState } from "react";
-import { getDashboardStats } from "@/lib/ext/cadastros.functions";
+import { getDashboardStats, getMyPermissions } from "@/lib/ext/cadastros.functions";
 import { listSchools } from "@/lib/ext/escolas.functions";
 import { Button, Card, Spinner } from "@/components/ui";
 import {
