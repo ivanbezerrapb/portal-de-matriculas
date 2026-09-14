@@ -203,6 +203,62 @@ export const createFileRecord = createServerFn({ method: "POST" })
     return created as SharedFile;
   });
 
+export const createLinkRecord = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((data) =>
+    z
+      .object({
+        brand: brandSchema,
+        school_id: z.string().uuid().nullable().optional(),
+        category_id: z.string().uuid().nullable().optional(),
+        name: z.string().trim().min(1).max(200),
+        url: z
+          .string()
+          .trim()
+          .min(5)
+          .max(2000)
+          .refine((v) => /^https?:\/\//i.test(v), "O endereço deve começar com http:// ou https://"),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    const access = await getAccess(context.supabase, context.userId);
+    if (!access.manageBrands.includes(data.brand)) {
+      throw new Error("Você não tem permissão para adicionar links nesta marca.");
+    }
+    if (data.school_id) {
+      const school = access.schools.find((s) => s.id === data.school_id);
+      if (!school || school.brand !== data.brand) {
+        throw new Error("Unidade inválida para esta marca.");
+      }
+    }
+
+    const { data: profile } = await context.supabase
+      .from("profiles")
+      .select("full_name")
+      .eq("id", context.userId)
+      .maybeSingle();
+
+    const { data: created, error } = await context.supabase
+      .from("shared_files")
+      .insert({
+        brand: data.brand,
+        school_id: data.school_id ?? null,
+        category_id: data.category_id ?? null,
+        kind: "link",
+        url: data.url.trim(),
+        name: data.name.trim(),
+        path: null,
+        uploaded_by: context.userId,
+        uploaded_by_name:
+          ((profile as { full_name?: string } | null)?.full_name ?? "") || context.userEmail,
+      })
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+    return created as SharedFile;
+  });
+
 export const getDownloadUrl = createServerFn({ method: "POST" })
   .middleware([requireAuth])
   .inputValidator((data) => z.object({ id: z.string().uuid() }).parse(data))
