@@ -397,7 +397,8 @@ function DashboardPage() {
               </DropdownMenuCheckboxItem>
             ))}
           </DropdownMenuContent>
-        </DropdownMenu>
+          </DropdownMenu>
+        )}
       </div>
 
       {isLoading || !data ? (
