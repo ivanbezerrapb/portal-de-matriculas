@@ -377,7 +377,7 @@ export const getDashboardStats = createServerFn({ method: "GET" })
 
     let query = context.supabase
       .from("submissions")
-      .select("id, form_id, school_id, created_at, schools(name)")
+      .select("id, form_id, school_id, created_at, enrolled, schools(name)")
       .gte("created_at", start)
       .lt("created_at", end)
       .order("created_at", { ascending: false });
@@ -396,36 +396,108 @@ export const getDashboardStats = createServerFn({ method: "GET" })
       bySchool.set(row.school_id, entry);
     }
 
-    // Soma da quantidade de crianças (campo interno dos formulários)
+    const seriesCounts = new Map<string, number>();
+    const seriesOrder: string[] = [];
+    const sourceCounts = new Map<string, number>();
+
+    // Soma das crianças e distribuição das respostas dos formulários.
     let children = 0;
     if (rows.length > 0) {
-      const { CHILDREN_COUNT_LABEL } = await import("./model");
+      const { CHILDREN_COUNT_LABEL, parseChildren, splitChildOptions } = await import("./model");
       const formIds = [...new Set(rows.map((r) => r.form_id))];
       const { data: fields } = await context.supabase
         .from("form_fields")
-        .select("id")
+        .select("id, label, type, options, internal, position")
         .in("form_id", formIds)
-        .eq("internal", true)
-        .eq("label", CHILDREN_COUNT_LABEL);
-      const fieldIds = (fields ?? []).map((f) => f.id as string);
-      if (fieldIds.length > 0) {
+        .order("position");
+
+      const normalize = (value: string) =>
+        value
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .trim()
+          .toLowerCase();
+      const countFieldIds = (fields ?? [])
+        .filter((f) => f.internal && f.label === CHILDREN_COUNT_LABEL)
+        .map((f) => f.id as string);
+      const childrenFields = (fields ?? []).filter((f) => f.type === "children");
+      const sourceFields = (fields ?? []).filter((f) =>
+        normalize(f.label as string).includes("como conheceu"),
+      );
+
+      for (const field of childrenFields) {
+        const { series } = splitChildOptions(field.options as string[] | null);
+        for (const label of series) {
+          if (!seriesOrder.includes(label)) seriesOrder.push(label);
+        }
+      }
+
+      const responseFieldIds = [
+        ...countFieldIds,
+        ...childrenFields.map((f) => f.id as string),
+        ...sourceFields.map((f) => f.id as string),
+      ];
+      if (responseFieldIds.length > 0) {
         const submissionIds = rows.map((r) => r.id as string);
         const { data: values } = await context.supabase
           .from("submission_values")
-          .select("value_number")
+          .select("field_id, value, value_number")
           .in("submission_id", submissionIds)
-          .in("field_id", fieldIds)
+          .in("field_id", responseFieldIds)
           .eq("part", "");
+
+        const countIds = new Set(countFieldIds);
+        const childrenIds = new Set(childrenFields.map((f) => f.id as string));
+        const sourceIds = new Set(sourceFields.map((f) => f.id as string));
         for (const v of values ?? []) {
-          children += Number((v as { value_number: number | null }).value_number ?? 0);
+          if (countIds.has(v.field_id as string)) {
+            children += Number(v.value_number ?? 0);
+          }
+          if (childrenIds.has(v.field_id as string)) {
+            for (const child of parseChildren(v.value)) {
+              const label = child.serie.trim();
+              if (label) seriesCounts.set(label, (seriesCounts.get(label) ?? 0) + 1);
+            }
+          }
+          if (sourceIds.has(v.field_id as string) && v.value) {
+            let answers: string[] = [];
+            try {
+              const parsed = JSON.parse(v.value);
+              answers = Array.isArray(parsed) ? parsed.map(String) : [String(parsed)];
+            } catch {
+              answers = [v.value];
+            }
+            for (const answer of answers) {
+              const label = answer.trim();
+              if (label) sourceCounts.set(label, (sourceCounts.get(label) ?? 0) + 1);
+            }
+          }
         }
       }
     }
+
+    const enrolled = rows.filter((row) => Boolean(row.enrolled)).length;
+    const orderedSeries = [...seriesCounts.entries()].sort(([a], [b]) => {
+      const ai = seriesOrder.indexOf(a);
+      const bi = seriesOrder.indexOf(b);
+      if (ai === -1 && bi === -1) return a.localeCompare(b, "pt-BR");
+      if (ai === -1) return 1;
+      if (bi === -1) return -1;
+      return ai - bi;
+    });
 
     return {
       year,
       visits: rows.length,
       children,
+      series: orderedSeries.map(([label, count]) => ({ label, count })),
+      enrollments: {
+        total: enrolled,
+        percentage: children > 0 ? Math.round((enrolled / children) * 1000) / 10 : 0,
+      },
+      sources: [...sourceCounts.entries()]
+        .map(([label, count]) => ({ label, count }))
+        .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, "pt-BR")),
       bySchool: [...bySchool.values()].sort((a, b) => b.count - a.count),
     };
   });
