@@ -2,7 +2,7 @@
 
 ## O que muda
 
-1. **Novo submenu Cadastros › Apresentação** — o item "Cadastros" do menu vira um grupo com dois itens: "Cadastros" (a lista atual) e "Apresentação". Na tela Apresentação ficam os nomes das pessoas, separados por unidade e por tipo:
+1. **Cadastros vira um grupo com dois itens** — "Lista de cadastros" (a tela atual, sem mudança de endereço) e "Apresentação". Na tela Apresentação ficam os nomes das pessoas, separados por unidade e por tipo:
    - **Secretaria** — quem atendeu o responsável primeiro.
    - **Coordenação** — quem apresentou a escola.
    Uma unidade nunca vê os nomes de outra. O Gerente cadastra na sua unidade; o Administrador escolhe a unidade.
