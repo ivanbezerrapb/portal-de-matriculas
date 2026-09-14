@@ -155,6 +155,21 @@ function SubmissionsPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const peopleM = useMutation({
+    mutationFn: (d: {
+      submission_id: string;
+      kind: PresenterKind;
+      presenter_id?: string | null;
+      new_name?: string;
+    }) => setSubmissionPeople({ data: d }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["submissions"] });
+      queryClient.invalidateQueries({ queryKey: ["presenters"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   function toggle(id: string) {
     setSelected((prev) => {
       const next = new Set(prev);
