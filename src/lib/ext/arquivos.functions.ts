@@ -67,6 +67,16 @@ async function getAccess(
     };
   }
 
+  // Direção vê tudo, mas não envia nem exclui nada.
+  if (perms.isDirecao) {
+    return {
+      isAdmin: false,
+      viewBrands: [...BRANDS],
+      manageBrands: [],
+      schools,
+    };
+  }
+
   const mySchoolIds = new Set(perms.roles.map((r) => r.school_id).filter(Boolean) as string[]);
   const managerIds = new Set(perms.managerSchools);
   const viewBrands = [...new Set(schools.filter((s) => mySchoolIds.has(s.id)).map((s) => s.brand))];

@@ -136,6 +136,7 @@ function SubmissionsPage() {
 
   const canPrint =
     (perms?.isAdmin ||
+      perms?.isDirecao ||
       (perms?.managerSchools.length ?? 0) > 0 ||
       (perms?.operatorSchools.length ?? 0) > 0) ??
     false;
@@ -186,7 +187,7 @@ function SubmissionsPage() {
 
       <Card className="mt-6">
         <div
-          className={`grid gap-3 sm:grid-cols-2 ${perms?.isAdmin ? "lg:grid-cols-5" : "lg:grid-cols-4"}`}
+          className={`grid gap-3 sm:grid-cols-2 ${perms?.isAdmin || perms?.isDirecao ? "lg:grid-cols-5" : "lg:grid-cols-4"}`}
         >
           <div className="lg:col-span-2">
             <Label htmlFor="q">Buscar por ID</Label>
@@ -197,7 +198,7 @@ function SubmissionsPage() {
               placeholder="Ex.: 0001/ESCA"
             />
           </div>
-          {perms?.isAdmin && (
+          {(perms?.isAdmin || perms?.isDirecao) && (
             <div>
               <Label htmlFor="f-school">Escola</Label>
               <Select id="f-school" value={schoolId} onChange={(e) => setSchoolId(e.target.value)}>
