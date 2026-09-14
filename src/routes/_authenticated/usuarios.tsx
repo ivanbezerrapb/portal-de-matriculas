@@ -44,6 +44,9 @@ function UsersPage() {
   const [addRoleFor, setAddRoleFor] = useState<string | null>(null);
   const [newRole, setNewRole] = useState<Role>("print_operator");
   const [newRoleSchool, setNewRoleSchool] = useState("");
+  const [filterName, setFilterName] = useState("");
+  const [filterRole, setFilterRole] = useState<Role | "all">("all");
+  const [filterSchool, setFilterSchool] = useState("all");
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["users"] });
 
