@@ -10,6 +10,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ChevronDown,
   ClipboardList,
+  Database,
   Filter,
   FolderOpen,
   Kanban,
@@ -193,6 +194,7 @@ function AuthenticatedLayout() {
               { to: "/templates", label: "Templates", icon: LayoutTemplate },
               { to: "/escolas", label: "Escolas", icon: School },
               { to: "/usuarios", label: "Usuários", icon: Users },
+              { to: "/bancos-anteriores", label: "Bancos anteriores", icon: Database },
             ],
           } as NavGroup,
         ]
