@@ -119,6 +119,7 @@ export async function writeChildrenCountValue(
 
 export type Perms = {
   isAdmin: boolean;
+  isDirecao: boolean;
   isEditor: boolean;
   infoSchools: string[];
   managerSchools: string[];
@@ -135,6 +136,7 @@ export async function getPerms(supabase: SupabaseClient, userId: string): Promis
   const rows = (data ?? []) as { role: string; school_id: string | null }[];
   return {
     isAdmin: rows.some((r) => r.role === "admin"),
+    isDirecao: rows.some((r) => r.role === "direcao"),
     isEditor: rows.some((r) => r.role === "submission_editor"),
     managerSchools: rows
       .filter((r) => r.role === "school_manager" && r.school_id)

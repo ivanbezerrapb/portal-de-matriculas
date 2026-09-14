@@ -262,6 +262,7 @@ export const ROLE_LABELS: Record<string, string> = {
   school_manager: "Gerente",
   print_operator: "Secretaria",
   info_center: "Central de Informações",
+  direcao: "Direção",
 };
 
 export type Funnel = {
