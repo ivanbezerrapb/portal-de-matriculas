@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { createUser, deleteUser, listUsers, setUserRole } from "@/lib/ext/usuarios.functions";
 import { listSchools } from "@/lib/ext/escolas.functions";
 import { ROLE_LABELS } from "@/lib/ext/model";
-import { Badge, Button, Card, Input, Label, Select, Spinner } from "@/components/ui";
+import { Badge, Button, Card, EmptyState, Input, Label, Select, Spinner } from "@/components/ui";
 
 export const Route = createFileRoute("/_authenticated/usuarios")({
   head: () => ({
