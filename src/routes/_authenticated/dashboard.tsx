@@ -275,9 +275,9 @@ function CumulativeChart({
   const todayLabel = `${String(now.getDate()).padStart(2, "0")}/${String(now.getMonth() + 1).padStart(2, "0")}`;
 
   const years = [
-    { year: currentYear - 2, values: cumulative(previous2, metric), color: CUMULATIVE_COLORS[0] },
-    { year: currentYear - 1, values: cumulative(previous, metric), color: CUMULATIVE_COLORS[1] },
-    { year: currentYear, values: cumulative(current, metric), color: CUMULATIVE_COLORS[2] },
+    { year: currentYear - 2, values: cumulative(previous2, metric), color: "var(--chart-1)" },
+    { year: currentYear - 1, values: cumulative(previous, metric), color: "var(--chart-2)" },
+    { year: currentYear, values: cumulative(current, metric), color: "var(--chart-3)" },
   ];
   const available = years.filter(
     (item) => item.year === currentYear || (item.values[11] ?? 0) > 0,
