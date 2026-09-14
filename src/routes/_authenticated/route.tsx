@@ -74,6 +74,14 @@ function AuthenticatedLayout() {
     retry: false,
   });
 
+  const { data: fileAccess } = useQuery({
+    queryKey: ["file-access"],
+    queryFn: () => getFileAccess(),
+    staleTime: 60_000,
+    retry: false,
+    enabled: !!perms,
+  });
+
   useEffect(() => {
     if (permsError) navigate({ to: "/auth", replace: true });
   }, [permsError, navigate]);
