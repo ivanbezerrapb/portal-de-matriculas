@@ -342,6 +342,8 @@ function DashboardPage() {
   const { data, isLoading } = useQuery({
     queryKey: ["dashboard-stats", selected],
     queryFn: () => getDashboardStats({ data: { schoolIds: selected } }),
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
   });
 
   function toggleSchool(id: string) {
