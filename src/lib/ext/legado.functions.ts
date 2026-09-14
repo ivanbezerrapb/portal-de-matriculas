@@ -243,6 +243,14 @@ export const getLegacyYearStats = createServerFn({ method: "GET" })
           entry.visits += 1;
           entry.children += childCount;
           schoolMap.set(schoolName, entry);
+          const monthIndex = schoolMonthIndex(raw[DATE_COLUMN]);
+          if (monthIndex !== null) {
+            const bucket = stats.monthly[monthIndex];
+            if (bucket) {
+              bucket.visits += 1;
+              bucket.children += childCount;
+            }
+          }
         }
         if (list.length < pageSize) break;
       }
