@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import {
   listPresenters,
@@ -13,7 +13,8 @@ import {
   setSubmissionPeople,
 } from "@/lib/ext/cadastros.functions";
 import { listSchools } from "@/lib/ext/escolas.functions";
-import { EmptyState, Input, Label, Select, Spinner } from "@/components/ui";
+import { listForms } from "@/lib/ext/formularios.functions";
+import { Card, EmptyState, Input, Label, Select, Spinner } from "@/components/ui";
 
 export const Route = createFileRoute("/_authenticated/apresentacao")({
   head: () => ({
@@ -37,7 +38,19 @@ export const Route = createFileRoute("/_authenticated/apresentacao")({
 
 function ApresentacaoPage() {
   const queryClient = useQueryClient();
+  const [search, setSearch] = useState("");
   const [schoolId, setSchoolId] = useState("");
+  const [formId, setFormId] = useState("");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+
+  const filters = {
+    search: search || undefined,
+    school_id: schoolId || undefined,
+    form_id: formId || undefined,
+    from: from || undefined,
+    to: to || undefined,
+  };
 
   const { data: perms } = useQuery({
     queryKey: ["my-permissions"],
@@ -47,30 +60,21 @@ function ApresentacaoPage() {
     queryKey: ["schools"],
     queryFn: () => listSchools(),
   });
-
-  const allowedSchools = (schools ?? []).filter(
-    (s) => perms?.isAdmin || perms?.managerSchools.includes(s.id),
-  );
-
-  useEffect(() => {
-    if (!schoolId && allowedSchools.length > 0) {
-      const first = allowedSchools[0];
-      if (first) setSchoolId(first.id);
-    }
-  }, [allowedSchools, schoolId]);
+  const { data: forms } = useQuery({
+    queryKey: ["forms"],
+    queryFn: () => listForms(),
+  });
 
   const { data: submissions, isLoading } = useQuery({
-    queryKey: ["submissions", { school_id: schoolId }],
-    queryFn: () => listSubmissions({ data: { school_id: schoolId } }),
-    enabled: !!schoolId,
+    queryKey: ["submissions", filters],
+    queryFn: () => listSubmissions({ data: filters }),
     refetchInterval: 30_000,
     refetchIntervalInBackground: false,
   });
 
   const { data: presenters } = useQuery({
-    queryKey: ["presenters", schoolId],
-    queryFn: () => listPresenters({ data: { school_id: schoolId, only_active: true } }),
-    enabled: !!schoolId,
+    queryKey: ["presenters"],
+    queryFn: () => listPresenters({ data: { only_active: true } }),
   });
 
   const peopleM = useMutation({
@@ -94,29 +98,61 @@ function ApresentacaoPage() {
 
   return (
     <div className="mx-auto max-w-5xl">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="font-display text-2xl font-bold text-foreground">Apresentação</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Informe quem atendeu na secretaria e quem apresentou a escola em cada cadastro.
-          </p>
+      <h1 className="font-display text-2xl font-bold text-foreground">Apresentação</h1>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Informe quem atendeu na secretaria e quem apresentou a escola em cada cadastro.
+      </p>
+
+      <Card className="mt-6">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="lg:col-span-2">
+            <Label htmlFor="q">Buscar por ID</Label>
+            <Input
+              id="q"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Ex.: 0001/ESCA"
+            />
+          </div>
+          <div>
+            <Label htmlFor="f-school">Escola</Label>
+            <Select id="f-school" value={schoolId} onChange={(e) => setSchoolId(e.target.value)}>
+              <option value="">Todas</option>
+              {(schools ?? []).map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="f-form">Formulário</Label>
+            <Select id="f-form" value={formId} onChange={(e) => setFormId(e.target.value)}>
+              <option value="">Todos</option>
+              {(forms ?? []).map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.title}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label htmlFor="f-from">De</Label>
+              <Input
+                id="f-from"
+                type="date"
+                value={from}
+                onChange={(e) => setFrom(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="f-to">Até</Label>
+              <Input id="f-to" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+            </div>
+          </div>
         </div>
-        <div className="w-56">
-          <Label htmlFor="p-school">Unidade</Label>
-          <Select
-            id="p-school"
-            value={schoolId}
-            onChange={(e) => setSchoolId(e.target.value)}
-            disabled={allowedSchools.length <= 1}
-          >
-            {allowedSchools.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </Select>
-        </div>
-      </div>
+      </Card>
 
       {isLoading ? (
         <div className="mt-10 flex justify-center">
@@ -126,11 +162,11 @@ function ApresentacaoPage() {
         <div className="mt-6">
           <EmptyState
             title="Nenhum cadastro encontrado"
-            description="Ainda não há cadastros nesta unidade."
+            description="Ajuste os filtros ou aguarde novos envios pelo link público."
           />
         </div>
       ) : (
-        <div className="mt-6 overflow-x-auto rounded-lg border border-border bg-card">
+        <div className="mt-4 overflow-x-auto rounded-lg border border-border bg-card">
           <table className="w-full min-w-[720px] text-sm">
             <thead>
               <tr className="border-b border-border bg-muted/60 text-left text-xs uppercase tracking-wide text-muted-foreground">
@@ -172,7 +208,9 @@ function ApresentacaoPage() {
                           (s as unknown as { attendant: { name?: string } | null }).attendant
                             ?.name ?? null
                         }
-                        options={(presenters ?? []).filter((p) => p.kind === "secretaria")}
+                        options={(presenters ?? []).filter(
+                          (p) => p.school_id === s.school_id && p.kind === "secretaria",
+                        )}
                         disabled={!editable}
                         onPick={(value) =>
                           peopleM.mutate({ submission_id: s.id, kind: "secretaria", ...value })
@@ -186,7 +224,9 @@ function ApresentacaoPage() {
                           (s as unknown as { presenter: { name?: string } | null }).presenter
                             ?.name ?? null
                         }
-                        options={(presenters ?? []).filter((p) => p.kind === "coordenacao")}
+                        options={(presenters ?? []).filter(
+                          (p) => p.school_id === s.school_id && p.kind === "coordenacao",
+                        )}
                         disabled={!editable}
                         onPick={(value) =>
                           peopleM.mutate({ submission_id: s.id, kind: "coordenacao", ...value })
