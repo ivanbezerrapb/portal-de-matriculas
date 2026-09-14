@@ -279,9 +279,7 @@ function CumulativeChart({
     { year: currentYear - 1, values: cumulative(previous, metric), color: "var(--chart-2)" },
     { year: currentYear, values: cumulative(current, metric), color: "var(--chart-3)" },
   ];
-  const available = years.filter(
-    (item) => item.year === currentYear || (item.values[11] ?? 0) > 0,
-  );
+  const available = years.filter((item) => item.year === currentYear || (item.values[11] ?? 0) > 0);
 
   const chartData = MONTH_LABELS.map((label, index) => {
     const point: Record<string, string | number | null> = { label };
