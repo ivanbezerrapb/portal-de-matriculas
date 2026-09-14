@@ -468,7 +468,6 @@ function DashboardPage() {
             <SeriesChart data={data.presenters} title="Quem mais apresentou (Coordenação)" />
             <SeriesChart data={data.enrollers} title="Quem mais efetivou (Efetivação)" />
           </div>
-
         </>
       )}
     </div>
