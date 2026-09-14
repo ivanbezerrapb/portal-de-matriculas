@@ -116,7 +116,13 @@ function SeriesTick({
   );
 }
 
-function SeriesChart({ data }: { data: IndicatorDatum[] }) {
+function SeriesChart({
+  data,
+  title = "Série de interesse",
+}: {
+  data: IndicatorDatum[];
+  title?: string;
+}) {
   const labelWidth = Math.min(
     170,
     Math.max(92, Math.max(...data.map((item) => Math.min(item.label.length, 24)), 0) * 6.5),
@@ -125,7 +131,7 @@ function SeriesChart({ data }: { data: IndicatorDatum[] }) {
 
   return (
     <Card className="min-w-0 p-4">
-      <h2 className="font-display text-sm font-semibold text-foreground">Série de interesse</h2>
+      <h2 className="font-display text-sm font-semibold text-foreground">{title}</h2>
       {data.length === 0 ? (
         <div className="flex h-52 items-center justify-center text-sm text-muted-foreground">
           Nenhuma resposta no período.
@@ -448,6 +454,11 @@ function DashboardPage() {
               </Card>
               <LossReasonsChart data={data.lossReasons} />
             </div>
+          </div>
+
+          <div className="mt-3 grid items-start gap-3 lg:grid-cols-2">
+            <SeriesChart data={data.attendants} title="Quem mais atendeu (Secretaria)" />
+            <SeriesChart data={data.presenters} title="Quem mais apresentou (Coordenação)" />
           </div>
         </>
       )}

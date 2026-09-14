@@ -19,6 +19,7 @@ import {
   LogOut,
   School,
   Users,
+  UserCheck,
   FileText,
   LayoutTemplate,
   Menu,
@@ -113,7 +114,19 @@ function AuthenticatedLayout() {
       ? [{ to: "/dashboard", label: "Início", icon: LayoutDashboard } as NavLeaf]
       : []),
     ...(isAdmin || isManager || isSecretary
-      ? [{ to: "/cadastros", label: "Cadastros", icon: ClipboardList } as NavLeaf]
+      ? [
+          {
+            key: "cadastros",
+            label: "Cadastros",
+            icon: ClipboardList,
+            children: [
+              { to: "/cadastros", label: "Lista de cadastros", icon: ClipboardList },
+              ...(isAdmin || isManager
+                ? [{ to: "/apresentacao", label: "Apresentação", icon: UserCheck }]
+                : []),
+            ],
+          } as NavGroup,
+        ]
       : []),
     ...(isAdmin || isInfo
       ? [
@@ -216,7 +229,9 @@ function AuthenticatedLayout() {
             <img
               src={collapsed ? symbolAsset.url : whiteLogoAsset.url}
               alt="Grupo Inter"
-              className={collapsed ? "h-full w-full object-contain" : "h-auto w-full object-contain"}
+              className={
+                collapsed ? "h-full w-full object-contain" : "h-auto w-full object-contain"
+              }
             />
           </div>
           <Button

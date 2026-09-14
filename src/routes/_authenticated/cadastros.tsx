@@ -3,7 +3,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { PrintSheets, type PrintSheetsState } from "@/components/print/PrintSheets";
-import { listSubmissions, setEnrollment } from "@/lib/ext/cadastros.functions";
+import { listSubmissions, setEnrollment, setSubmissionPeople } from "@/lib/ext/cadastros.functions";
+import { listPresenters, type PresenterKind } from "@/lib/ext/apresentacao.functions";
 import { listSchools } from "@/lib/ext/escolas.functions";
 import { listForms } from "@/lib/ext/formularios.functions";
 import { listPrintTemplates } from "@/lib/ext/impressao.functions";
@@ -60,6 +61,11 @@ function SubmissionsPage() {
   const { data: forms } = useQuery({
     queryKey: ["admin-forms"],
     queryFn: () => listForms(),
+  });
+
+  const { data: presenters } = useQuery({
+    queryKey: ["presenters"],
+    queryFn: () => listPresenters({ data: { only_active: true } }),
   });
 
   const filters = {
@@ -141,6 +147,21 @@ function SubmissionsPage() {
       queryClient.invalidateQueries({ queryKey: ["crm-tasks"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       setEnrollmentDialog(null);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const peopleM = useMutation({
+    mutationFn: (d: {
+      submission_id: string;
+      kind: PresenterKind;
+      presenter_id?: string | null;
+      new_name?: string;
+    }) => setSubmissionPeople({ data: d }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["submissions"] });
+      queryClient.invalidateQueries({ queryKey: ["presenters"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -272,6 +293,8 @@ function SubmissionsPage() {
                 <th className="px-4 py-3">Escola</th>
                 <th className="px-4 py-3">Crianças</th>
                 <th className="px-4 py-3">Data</th>
+                <th className="px-4 py-3">Atendimento</th>
+                <th className="px-4 py-3">Apresentação</th>
                 <th className="px-4 py-3">Matrícula</th>
                 <th className="px-4 py-3"></th>
               </tr>
@@ -318,6 +341,38 @@ function SubmissionsPage() {
                         dateStyle: "short",
                         timeStyle: "short",
                       })}
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <PersonCell
+                        kind="secretaria"
+                        current={
+                          (s as unknown as { attendant: { name?: string } | null }).attendant
+                            ?.name ?? null
+                        }
+                        options={(presenters ?? []).filter(
+                          (p) => p.school_id === s.school_id && p.kind === "secretaria",
+                        )}
+                        disabled={!canEnroll || peopleM.isPending}
+                        onPick={(value) =>
+                          peopleM.mutate({ submission_id: s.id, kind: "secretaria", ...value })
+                        }
+                      />
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <PersonCell
+                        kind="coordenacao"
+                        current={
+                          (s as unknown as { presenter: { name?: string } | null }).presenter
+                            ?.name ?? null
+                        }
+                        options={(presenters ?? []).filter(
+                          (p) => p.school_id === s.school_id && p.kind === "coordenacao",
+                        )}
+                        disabled={!canEnroll || peopleM.isPending}
+                        onPick={(value) =>
+                          peopleM.mutate({ submission_id: s.id, kind: "coordenacao", ...value })
+                        }
+                      />
                     </td>
                     <td className="px-4 py-2.5">
                       <label className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -473,6 +528,96 @@ function SubmissionsPage() {
           />
         </>
       )}
+    </div>
+  );
+}
+
+function PersonCell({
+  kind,
+  current,
+  options,
+  disabled,
+  onPick,
+}: {
+  kind: PresenterKind;
+  current: string | null;
+  options: { id: string; name: string }[];
+  disabled: boolean;
+  onPick: (value: { presenter_id?: string | null; new_name?: string }) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState("");
+
+  if (disabled) {
+    return <span className="text-muted-foreground">{current ?? "—"}</span>;
+  }
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => {
+          setText(current ?? "");
+          setOpen(true);
+        }}
+        className="rounded-md px-2 py-1 text-left text-sm text-foreground hover:bg-accent"
+      >
+        {current ?? <span className="text-muted-foreground">—</span>}
+      </button>
+    );
+  }
+
+  const query = text.trim().toLowerCase();
+  const matches = options.filter((o) => o.name.toLowerCase().includes(query));
+  const exact = options.find((o) => o.name.toLowerCase() === query);
+
+  return (
+    <div className="relative w-44">
+      <Input
+        autoFocus
+        value={text}
+        placeholder={kind === "secretaria" ? "Quem atendeu" : "Quem apresentou"}
+        onChange={(e) => setText(e.target.value)}
+        onBlur={() => window.setTimeout(() => setOpen(false), 150)}
+      />
+      <div className="absolute z-20 mt-1 max-h-56 w-full overflow-auto rounded-md border border-border bg-card shadow-lg">
+        {matches.map((o) => (
+          <button
+            key={o.id}
+            className="block w-full px-3 py-1.5 text-left text-sm hover:bg-accent"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              onPick({ presenter_id: o.id });
+              setOpen(false);
+            }}
+          >
+            {o.name}
+          </button>
+        ))}
+        {query.length >= 2 && !exact && (
+          <button
+            className="block w-full px-3 py-1.5 text-left text-sm font-medium text-primary hover:bg-accent"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              onPick({ new_name: text.trim() });
+              setOpen(false);
+            }}
+          >
+            Cadastrar «{text.trim()}»
+          </button>
+        )}
+        {current && (
+          <button
+            className="block w-full px-3 py-1.5 text-left text-sm text-muted-foreground hover:bg-accent"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              onPick({ presenter_id: null });
+              setOpen(false);
+            }}
+          >
+            Limpar
+          </button>
+        )}
+      </div>
     </div>
   );
 }
