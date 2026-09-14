@@ -15,6 +15,7 @@ import { ChevronDown, ClipboardCheck, ClipboardList, School, Users } from "lucid
 import { useState } from "react";
 import { getDashboardStats, getMyPermissions } from "@/lib/ext/cadastros.functions";
 import { listSchools } from "@/lib/ext/escolas.functions";
+import { getLegacyYearStats } from "@/lib/ext/legado.functions";
 import { Button, Card, Spinner } from "@/components/ui";
 import {
   DropdownMenu,
