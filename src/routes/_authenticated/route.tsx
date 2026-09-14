@@ -18,8 +18,6 @@ import {
   Trophy,
   LogOut,
   School,
-  Users,
-  UserCheck,
   FileText,
   LayoutTemplate,
   Menu,
@@ -121,9 +119,6 @@ function AuthenticatedLayout() {
             icon: ClipboardList,
             children: [
               { to: "/cadastros", label: "Lista de cadastros", icon: ClipboardList },
-              ...(isAdmin || isManager
-                ? [{ to: "/apresentacao", label: "Apresentação", icon: UserCheck }]
-                : []),
             ],
           } as NavGroup,
         ]
