@@ -208,6 +208,55 @@ function SourcesChart({ data }: { data: IndicatorDatum[] }) {
   );
 }
 
+function LossReasonsChart({ data }: { data: IndicatorDatum[] }) {
+  return (
+    <Card className="min-w-0 p-4">
+      <h2 className="font-display text-sm font-semibold text-foreground">Motivos de perda</h2>
+      {data.length === 0 ? (
+        <div className="flex h-36 items-center justify-center text-sm text-muted-foreground">
+          Nenhuma perda no período.
+        </div>
+      ) : (
+        <div className="mt-2 grid items-center gap-3 sm:grid-cols-[minmax(0,0.8fr)_minmax(120px,1fr)] lg:grid-cols-1 xl:grid-cols-[minmax(0,0.8fr)_minmax(120px,1fr)]">
+          <ChartContainer
+            config={{ count: { label: "Quantidade" } }}
+            className="mx-auto h-36 w-full aspect-auto"
+          >
+            <PieChart>
+              <ChartTooltip content={<ChartTooltipContent nameKey="label" />} />
+              <Pie
+                data={data}
+                dataKey="count"
+                nameKey="label"
+                innerRadius={30}
+                outerRadius={54}
+                paddingAngle={2}
+                strokeWidth={0}
+              >
+                {data.map((item, index) => (
+                  <Cell key={item.label} fill={SOURCE_COLORS[index % SOURCE_COLORS.length]} />
+                ))}
+              </Pie>
+            </PieChart>
+          </ChartContainer>
+          <ul className="grid gap-1.5">
+            {data.map((item, index) => (
+              <li key={item.label} className="flex min-w-0 items-start gap-2 text-xs">
+                <span
+                  className="mt-0.5 h-2.5 w-2.5 shrink-0 rounded-sm"
+                  style={{ backgroundColor: SOURCE_COLORS[index % SOURCE_COLORS.length] }}
+                />
+                <span className="min-w-0 flex-1 text-foreground">{item.label}</span>
+                <span className="font-semibold text-foreground">{item.count}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </Card>
+  );
+}
+
 function DashboardPage() {
   const [selected, setSelected] = useState<string[]>([]);
 
@@ -288,30 +337,35 @@ function DashboardPage() {
             <div className="lg:col-span-2">
               <SeriesChart data={data.series} />
             </div>
-            <Card className="flex min-h-64 flex-col justify-between p-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent text-primary">
-                  <ClipboardCheck className="h-4 w-4" />
+            <div className="grid content-start gap-3">
+              <Card className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent text-primary">
+                    <ClipboardCheck className="h-4 w-4" />
+                  </div>
+                  <h2 className="font-display text-sm font-semibold text-foreground">
+                    Matrículas efetivadas
+                  </h2>
                 </div>
-                <h2 className="font-display text-sm font-semibold text-foreground">
-                  Matrículas efetivadas
-                </h2>
-              </div>
-              <div>
-                <p className="font-display text-4xl font-semibold text-foreground">
-                  {data.enrollments.total}
-                </p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {data.enrollments.percentage.toLocaleString("pt-BR")}% do total de crianças
-                </p>
-              </div>
-              <div className="h-2 overflow-hidden rounded-full bg-muted">
-                <div
-                  className="h-full rounded-full bg-primary transition-[width]"
-                  style={{ width: `${Math.min(data.enrollments.percentage, 100)}%` }}
-                />
-              </div>
-            </Card>
+                <div className="mt-4 flex items-end justify-between gap-3">
+                  <div>
+                    <p className="font-display text-3xl font-semibold text-foreground">
+                      {data.enrollments.total}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {data.enrollments.percentage.toLocaleString("pt-BR")}% do total de crianças
+                    </p>
+                  </div>
+                  <div className="mb-1 h-2 w-24 overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-full rounded-full bg-primary transition-[width]"
+                      style={{ width: `${Math.min(data.enrollments.percentage, 100)}%` }}
+                    />
+                  </div>
+                </div>
+              </Card>
+              <LossReasonsChart data={data.lossReasons} />
+            </div>
           </div>
 
           <div className="mt-3">
