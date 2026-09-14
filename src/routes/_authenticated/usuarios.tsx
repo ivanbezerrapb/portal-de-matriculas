@@ -177,13 +177,55 @@ function UsersPage() {
         </form>
       </Card>
 
+      <Card className="mt-6">
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div>
+            <Label>Nome</Label>
+            <Input
+              value={filterName}
+              onChange={(e) => setFilterName(e.target.value)}
+              placeholder="Buscar por nome ou e-mail..."
+            />
+          </div>
+          <div>
+            <Label>Perfil</Label>
+            <Select value={filterRole} onChange={(e) => setFilterRole(e.target.value as Role | "all")}>
+              <option value="all">Todos os perfis</option>
+              {ROLES.map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div>
+            <Label>Escola</Label>
+            <Select value={filterSchool} onChange={(e) => setFilterSchool(e.target.value)}>
+              <option value="all">Todas as escolas</option>
+              {(schools ?? []).map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </Select>
+          </div>
+        </div>
+      </Card>
+
       {isLoading ? (
         <div className="mt-10 flex justify-center">
           <Spinner />
         </div>
+      ) : filteredUsers.length === 0 ? (
+        <div className="mt-6">
+          <EmptyState
+            title="Nenhum usuário encontrado"
+            description="Ajuste os filtros para ver outros usuários."
+          />
+        </div>
       ) : (
         <div className="mt-6 flex flex-col gap-3">
-          {(users ?? []).map((u) => (
+          {filteredUsers.map((u) => (
             <Card key={u.id}>
               <div className="flex flex-wrap items-center gap-3">
                 <div className="min-w-0 flex-1">
