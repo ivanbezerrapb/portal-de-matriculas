@@ -237,6 +237,9 @@ export type Submission = {
   created_at: string;
   updated_at: string;
   updated_by: string | null;
+  children_count?: number | null;
+  enrolled?: boolean;
+  enrollment_count?: number;
 };
 
 export type PrintTemplate = {

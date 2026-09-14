@@ -78,6 +78,7 @@ function SeriesChart({ data }: { data: IndicatorDatum[] }) {
     220,
     Math.max(112, Math.max(...data.map((item) => item.label.length), 0) * 7),
   );
+  const chartHeight = Math.max(208, data.length * 34);
 
   return (
     <Card className="min-w-0 p-4">
@@ -89,7 +90,8 @@ function SeriesChart({ data }: { data: IndicatorDatum[] }) {
       ) : (
         <ChartContainer
           config={{ count: { label: "Quantidade", color: "var(--primary)" } }}
-          className="mt-3 h-52 w-full aspect-auto"
+          className="mt-3 w-full aspect-auto"
+          style={{ height: chartHeight }}
         >
           <BarChart
             data={data}
@@ -104,6 +106,7 @@ function SeriesChart({ data }: { data: IndicatorDatum[] }) {
               tickLine={false}
               axisLine={false}
               width={labelWidth}
+              interval={0}
             />
             <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
             <Bar dataKey="count" fill="var(--color-count)" radius={[0, 4, 4, 0]} />

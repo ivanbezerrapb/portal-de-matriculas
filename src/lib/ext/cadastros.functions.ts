@@ -260,14 +260,31 @@ export const updateSubmission = createServerFn({ method: "POST" })
 
 export const setEnrollment = createServerFn({ method: "POST" })
   .middleware([requireAuth])
-  .inputValidator((data) => z.object({ id: z.string().uuid(), enrolled: z.boolean() }).parse(data))
+  .inputValidator((data) =>
+    z
+      .object({
+        id: z.string().uuid(),
+        enrolled: z.boolean(),
+        enrollment_count: z.number().int().positive().optional(),
+      })
+      .superRefine((value, ctx) => {
+        if (value.enrolled && value.enrollment_count == null) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["enrollment_count"],
+            message: "Informe a quantidade de matrículas efetivadas.",
+          });
+        }
+      })
+      .parse(data),
+  )
   .handler(async ({ data, context }) => {
     const { getPerms } = await import("./server");
     const perms = await getPerms(context.supabase, context.userId);
 
     const { data: submission, error } = await context.supabase
       .from("submissions")
-      .select("id, school_id, enrolled")
+      .select("id, school_id, enrolled, enrollment_count")
       .eq("id", data.id)
       .single();
     if (error) throw new Error(error.message);
@@ -282,6 +299,7 @@ export const setEnrollment = createServerFn({ method: "POST" })
       .from("submissions")
       .update({
         enrolled: data.enrolled,
+        enrollment_count: data.enrolled ? data.enrollment_count : 0,
         enrolled_at: data.enrolled ? now : null,
         enrolled_by: data.enrolled ? context.userId : null,
         updated_at: now,
@@ -348,6 +366,12 @@ export const setEnrollment = createServerFn({ method: "POST" })
           before: submission.enrolled ? "Sim" : "Não",
           after: data.enrolled ? "Sim" : "Não",
         },
+        {
+          field_id: "enrollment_count",
+          label: "Quantidade de matrículas",
+          before: String(submission.enrollment_count ?? 0),
+          after: String(data.enrolled ? data.enrollment_count : 0),
+        },
       ],
     });
 
@@ -377,7 +401,7 @@ export const getDashboardStats = createServerFn({ method: "GET" })
 
     let query = context.supabase
       .from("submissions")
-      .select("id, form_id, school_id, created_at, enrolled, schools(name)")
+      .select("id, form_id, school_id, created_at, enrolled, enrollment_count, schools(name)")
       .gte("created_at", start)
       .lt("created_at", end)
       .order("created_at", { ascending: false });
@@ -468,7 +492,10 @@ export const getDashboardStats = createServerFn({ method: "GET" })
       }
     }
 
-    const enrolled = rows.filter((row) => Boolean(row.enrolled)).length;
+    const enrolled = rows.reduce(
+      (total, row) => total + (row.enrolled ? Number(row.enrollment_count ?? 0) : 0),
+      0,
+    );
     const orderedSeries = [...seriesCounts.entries()].sort(
       ([a, countA], [b, countB]) => countB - countA || a.localeCompare(b, "pt-BR"),
     );
