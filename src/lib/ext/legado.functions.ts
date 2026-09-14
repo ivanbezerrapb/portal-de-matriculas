@@ -158,13 +158,25 @@ export const listLegacyRows = createServerFn({ method: "GET" })
 
 const SCHOOL_COLUMN = "ESCOLA";
 const CHILDREN_COLUMN = "Quantos alunos pretende trazer para estudar conosco?";
+const DATE_COLUMN = "Carimbo de data/hora";
 
 export type LegacyYearStats = {
   year: number;
   visits: number;
   children: number;
   bySchool: { name: string; visits: number; children: number }[];
+  monthly: { month: number; visits: number; children: number }[];
 };
+
+// "dd/mm/aaaa hh:mm:ss" -> índice do mês no ano letivo (0 = agosto ... 11 = julho)
+function schoolMonthIndex(raw: unknown): number | null {
+  const text = String(raw ?? "").trim();
+  const match = /^(\d{2})\/(\d{2})\/(\d{4})/.exec(text);
+  if (!match) return null;
+  const month = Number(match[2]);
+  if (!Number.isFinite(month) || month < 1 || month > 12) return null;
+  return (month - 8 + 12) % 12;
+}
 
 export const getLegacyYearStats = createServerFn({ method: "GET" })
   .middleware([requireAuth])
