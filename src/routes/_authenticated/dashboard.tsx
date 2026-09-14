@@ -378,7 +378,7 @@ function DashboardPage() {
     <div className="mx-auto max-w-6xl">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="font-display text-lg font-semibold text-primary">VISÃO GERAL</h1>
-        {perms?.isAdmin && (
+        {(perms?.isAdmin || perms?.isDirecao) && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" className="w-full justify-between sm:w-64">
