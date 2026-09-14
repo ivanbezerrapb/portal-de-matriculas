@@ -465,7 +465,7 @@ export const setSubmissionPeople = createServerFn({ method: "POST" })
       changes: [
         {
           field_id: column,
-          label: data.kind === "secretaria" ? "Atendimento" : "Apresentação",
+          label: kindLabel,
           before: String((submission as unknown as Record<string, string | null>)[column] ?? ""),
           after: String(presenterId ?? ""),
         },
@@ -502,7 +502,7 @@ export const getDashboardStats = createServerFn({ method: "GET" })
     let query = context.supabase
       .from("submissions")
       .select(
-        "id, form_id, school_id, created_at, enrolled, enrollment_count, schools(name), attendant:presenters!submissions_attendant_id_fkey(name), presenter:presenters!submissions_presenter_id_fkey(name)",
+        "id, form_id, school_id, created_at, enrolled, enrollment_count, schools(name), attendant:presenters!submissions_attendant_id_fkey(name), presenter:presenters!submissions_presenter_id_fkey(name), enroller:presenters!submissions_enroller_id_fkey(name)",
       )
       .gte("created_at", start)
       .lt("created_at", end)
@@ -536,13 +536,17 @@ export const getDashboardStats = createServerFn({ method: "GET" })
 
     const attendantCounts = new Map<string, number>();
     const presenterCounts = new Map<string, number>();
+    const enrollerCounts = new Map<string, number>();
     for (const row of rows) {
       const attendant = (row as unknown as { attendant: { name?: string } | null }).attendant;
       const presenter = (row as unknown as { presenter: { name?: string } | null }).presenter;
+      const enroller = (row as unknown as { enroller: { name?: string } | null }).enroller;
       const a = attendant?.name?.trim();
       const p = presenter?.name?.trim();
+      const e = enroller?.name?.trim();
       if (a) attendantCounts.set(a, (attendantCounts.get(a) ?? 0) + 1);
       if (p) presenterCounts.set(p, (presenterCounts.get(p) ?? 0) + 1);
+      if (e) enrollerCounts.set(e, (enrollerCounts.get(e) ?? 0) + 1);
     }
 
     const seriesCounts = new Map<string, number>();
