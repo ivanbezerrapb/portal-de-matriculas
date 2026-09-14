@@ -20,7 +20,9 @@ export const listSubmissions = createServerFn({ method: "GET" })
   .handler(async ({ data, context }) => {
     let query = context.supabase
       .from("submissions")
-      .select("*, forms(title), schools(name)")
+      .select(
+        "*, forms(title), schools(name), attendant:presenters!submissions_attendant_id_fkey(id, name), presenter:presenters!submissions_presenter_id_fkey(id, name)",
+      )
       .order("created_at", { ascending: false })
       .limit(500);
     if (data.search) {
