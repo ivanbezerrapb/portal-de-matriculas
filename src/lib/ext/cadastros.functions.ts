@@ -492,7 +492,9 @@ export const getDashboardStats = createServerFn({ method: "GET" })
 
     let query = context.supabase
       .from("submissions")
-      .select("id, form_id, school_id, created_at, enrolled, enrollment_count, schools(name)")
+      .select(
+        "id, form_id, school_id, created_at, enrolled, enrollment_count, schools(name), attendant:presenters!submissions_attendant_id_fkey(name), presenter:presenters!submissions_presenter_id_fkey(name)",
+      )
       .gte("created_at", start)
       .lt("created_at", end)
       .order("created_at", { ascending: false });
