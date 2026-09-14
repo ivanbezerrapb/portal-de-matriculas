@@ -6,8 +6,11 @@ import {
   CartesianGrid,
   Cell,
   LabelList,
+  Line,
+  LineChart,
   Pie,
   PieChart,
+  ReferenceLine,
   XAxis,
   YAxis,
 } from "recharts";
@@ -223,6 +226,137 @@ function SourcesChart({ data }: { data: IndicatorDatum[] }) {
           </ul>
         </div>
       )}
+    </Card>
+  );
+}
+
+const MONTH_LABELS = [
+  "Ago",
+  "Set",
+  "Out",
+  "Nov",
+  "Dez",
+  "Jan",
+  "Fev",
+  "Mar",
+  "Abr",
+  "Mai",
+  "Jun",
+  "Jul",
+];
+
+type MonthlyDatum = { month: number; visits: number; children: number };
+
+function cumulative(data: MonthlyDatum[] | null | undefined, metric: "visits" | "children") {
+  const byMonth = new Map((data ?? []).map((item) => [item.month, item]));
+  let total = 0;
+  return Array.from({ length: 12 }, (_, month) => {
+    total += byMonth.get(month)?.[metric] ?? 0;
+    return total;
+  });
+}
+
+function CumulativeChart({
+  currentYear,
+  current,
+  previous,
+  previous2,
+}: {
+  currentYear: number;
+  current: MonthlyDatum[];
+  previous: MonthlyDatum[] | null;
+  previous2: MonthlyDatum[] | null;
+}) {
+  const [metric, setMetric] = useState<"visits" | "children">("visits");
+  const now = new Date();
+  const currentIndex = (now.getMonth() - 7 + 12) % 12;
+  const todayLabel = `${String(now.getDate()).padStart(2, "0")}/${String(now.getMonth() + 1).padStart(2, "0")}`;
+
+  const years = [
+    { year: currentYear - 2, values: cumulative(previous2, metric), color: "var(--chart-1)" },
+    { year: currentYear - 1, values: cumulative(previous, metric), color: "var(--chart-2)" },
+    { year: currentYear, values: cumulative(current, metric), color: "var(--chart-3)" },
+  ];
+  const available = years.filter((item) => item.year === currentYear || (item.values[11] ?? 0) > 0);
+
+  const chartData = MONTH_LABELS.map((label, index) => {
+    const point: Record<string, string | number | null> = { label };
+    for (const item of available) {
+      const isCurrent = item.year === currentYear;
+      point[`y${item.year}`] = isCurrent && index > currentIndex ? null : (item.values[index] ?? 0);
+    }
+    return point;
+  });
+
+  const config = Object.fromEntries(
+    available.map((item) => [`y${item.year}`, { label: String(item.year), color: item.color }]),
+  );
+
+  return (
+    <Card className="flex h-full min-w-0 flex-col p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="font-display text-sm font-semibold text-foreground">
+          Evolução acumulada{" "}
+          <span className="font-normal text-muted-foreground">(até a mesma data)</span>
+        </h2>
+        <div className="flex items-center gap-1">
+          <Button
+            variant={metric === "visits" ? "primary" : "outline"}
+            className="h-7 px-2 text-xs"
+            onClick={() => setMetric("visits")}
+          >
+            Visitas
+          </Button>
+          <Button
+            variant={metric === "children" ? "primary" : "outline"}
+            className="h-7 px-2 text-xs"
+            onClick={() => setMetric("children")}
+          >
+            Crianças
+          </Button>
+        </div>
+      </div>
+
+      <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted-foreground">
+        {available.map((item) => (
+          <span key={item.year} className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color }} />
+            {item.year}
+            <span className="font-semibold text-foreground">{item.values[currentIndex] ?? 0}</span>
+          </span>
+        ))}
+      </div>
+
+      <ChartContainer config={config} className="mt-2 h-64 w-full flex-1 aspect-auto">
+        <LineChart data={chartData} margin={{ top: 12, right: 12, bottom: 4, left: 0 }}>
+          <CartesianGrid vertical={false} />
+          <XAxis dataKey="label" tickLine={false} axisLine={false} interval={0} fontSize={11} />
+          <YAxis allowDecimals={false} tickLine={false} axisLine={false} width={40} />
+          <ChartTooltip content={<ChartTooltipContent />} />
+          <ReferenceLine
+            x={MONTH_LABELS[currentIndex] ?? "Ago"}
+            stroke="var(--muted-foreground)"
+            strokeDasharray="4 4"
+            label={{
+              value: `Hoje ${todayLabel}`,
+              position: "insideTopLeft",
+              fill: "var(--muted-foreground)",
+              fontSize: 11,
+            }}
+          />
+          {available.map((item) => (
+            <Line
+              key={item.year}
+              type="monotone"
+              dataKey={`y${item.year}`}
+              stroke={item.color}
+              strokeWidth={2}
+              dot={false}
+              connectNulls={false}
+            />
+          ))}
+        </LineChart>
+      </ChartContainer>
     </Card>
   );
 }
@@ -448,7 +582,15 @@ function DashboardPage() {
             />
           </div>
 
-          <div className="mt-3">
+          <div className="mt-3 grid gap-3 lg:grid-cols-3">
+            <div className="lg:col-span-2">
+              <CumulativeChart
+                currentYear={currentYear}
+                current={data.monthly}
+                previous={legacyFor(currentYear - 1)?.monthly ?? null}
+                previous2={legacyFor(currentYear - 2)?.monthly ?? null}
+              />
+            </div>
             <SchoolComparisonChart data={data.bySchool} />
           </div>
 

@@ -527,11 +527,21 @@ export const getDashboardStats = createServerFn({ method: "GET" })
 
     const rows = submissions ?? [];
     const bySchool = new Map<string, { name: string; visits: number; children: number }>();
+    // Série mensal do ano letivo (índice 0 = agosto ... 11 = julho).
+    const monthlyVisits = Array.from({ length: 12 }, () => 0);
+    const monthlyChildren = Array.from({ length: 12 }, () => 0);
+    const submissionMonth = new Map<string, number>();
     for (const row of rows) {
       const name = (row.schools as { name?: string } | null)?.name ?? "—";
       const entry = bySchool.get(row.school_id) ?? { name, visits: 0, children: 0 };
       entry.visits += 1;
       bySchool.set(row.school_id, entry);
+      const created = new Date(row.created_at as string);
+      if (!Number.isNaN(created.getTime())) {
+        const index = (created.getMonth() - 7 + 12) % 12;
+        monthlyVisits[index] = (monthlyVisits[index] ?? 0) + 1;
+        submissionMonth.set(row.id as string, index);
+      }
     }
 
     const attendantCounts = new Map<string, number>();
@@ -610,6 +620,10 @@ export const getDashboardStats = createServerFn({ method: "GET" })
             const schoolId = submissionSchools.get(v.submission_id as string);
             const schoolEntry = schoolId ? bySchool.get(schoolId) : undefined;
             if (schoolEntry) schoolEntry.children += childCount;
+            const month = submissionMonth.get(v.submission_id as string);
+            if (month !== undefined) {
+              monthlyChildren[month] = (monthlyChildren[month] ?? 0) + childCount;
+            }
           }
           if (childrenIds.has(v.field_id as string)) {
             for (const child of parseChildren(v.value)) {
@@ -666,6 +680,11 @@ export const getDashboardStats = createServerFn({ method: "GET" })
       enrollers: [...enrollerCounts.entries()]
         .map(([label, count]) => ({ label, count }))
         .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, "pt-BR")),
+      monthly: monthlyVisits.map((visits, month) => ({
+        month,
+        visits,
+        children: monthlyChildren[month] ?? 0,
+      })),
       bySchool: [...bySchool.values()].sort(
         (a, b) => b.visits - a.visits || a.name.localeCompare(b.name, "pt-BR"),
       ),
