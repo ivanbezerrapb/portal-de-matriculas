@@ -229,7 +229,9 @@ function AuthenticatedLayout() {
             <img
               src={collapsed ? symbolAsset.url : whiteLogoAsset.url}
               alt="Grupo Inter"
-              className={collapsed ? "h-full w-full object-contain" : "h-auto w-full object-contain"}
+              className={
+                collapsed ? "h-full w-full object-contain" : "h-auto w-full object-contain"
+              }
             />
           </div>
           <Button

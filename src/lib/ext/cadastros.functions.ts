@@ -455,9 +455,7 @@ export const setSubmissionPeople = createServerFn({ method: "POST" })
         {
           field_id: column,
           label: data.kind === "secretaria" ? "Atendimento" : "Apresentação",
-          before: String(
-            (submission as unknown as Record<string, string | null>)[column] ?? "",
-          ),
+          before: String((submission as unknown as Record<string, string | null>)[column] ?? ""),
           after: String(presenterId ?? ""),
         },
       ],
