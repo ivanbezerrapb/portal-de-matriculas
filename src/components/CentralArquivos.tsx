@@ -336,26 +336,26 @@ export function CentralArquivos({ brand }: { brand: Brand }) {
         </Card>
       )}
 
-
       {isLoading ? (
         <div className="flex justify-center py-10">
           <Spinner />
         </div>
       ) : (files ?? []).length === 0 ? (
         <EmptyState
-          title="Nenhum arquivo por aqui"
+          title="Nada por aqui ainda"
           description={
             canManage
-              ? "Envie o primeiro arquivo para a equipe."
-              : "Assim que a gestão enviar arquivos, eles aparecem aqui."
+              ? "Envie o primeiro arquivo ou link para a equipe."
+              : "Assim que a gestão enviar arquivos ou links, eles aparecem aqui."
           }
         />
       ) : (
         <Card className="overflow-x-auto p-0">
-          <table className="w-full min-w-[720px] text-sm">
+          <table className="w-full min-w-[860px] text-sm">
             <thead className="border-b border-border bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
-                <th className="px-4 py-3">Arquivo</th>
+                <th className="px-4 py-3">Tipo</th>
+                <th className="px-4 py-3">Nome</th>
                 <th className="px-4 py-3">Categoria</th>
                 <th className="px-4 py-3">Destino</th>
                 <th className="px-4 py-3">Tamanho</th>
@@ -367,27 +367,71 @@ export function CentralArquivos({ brand }: { brand: Brand }) {
             <tbody>
               {(files ?? []).map((f) => (
                 <tr key={f.id} className="border-b border-border/60 last:border-0">
-                  <td className="px-4 py-3 font-medium text-foreground">{f.name}</td>
+                  <td className="px-4 py-3 text-muted-foreground">
+                    {f.kind === "link" ? "Link" : "Arquivo"}
+                  </td>
+                  <td className="px-4 py-3 font-medium text-foreground">
+                    {f.name}
+                    {f.kind === "link" && f.url && (
+                      <a
+                        href={f.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-0.5 block max-w-[320px] truncate text-xs font-normal text-primary underline underline-offset-2"
+                        title={f.url}
+                      >
+                        {f.url}
+                      </a>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-muted-foreground">
                     {f.file_categories?.name ?? "—"}
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">
                     {f.schools?.name ?? BRAND_LABELS[brand]}
                   </td>
-                  <td className="px-4 py-3 text-muted-foreground">{formatSize(f.size_bytes)}</td>
+                  <td className="px-4 py-3 text-muted-foreground">
+                    {f.kind === "link" ? "—" : formatSize(f.size_bytes)}
+                  </td>
                   <td className="px-4 py-3 text-muted-foreground">{f.uploaded_by_name ?? "—"}</td>
                   <td className="px-4 py-3 text-muted-foreground">{formatDate(f.created_at)}</td>
                   <td className="px-4 py-3">
                     <div className="flex justify-end gap-1">
-                      <Button
-                        variant="ghost"
-                        className="h-9 w-9 p-0"
-                        title="Baixar"
-                        aria-label={`Baixar ${f.name}`}
-                        onClick={() => void handleDownload(f.id)}
-                      >
-                        <Download className="h-4 w-4" />
-                      </Button>
+                      {f.kind === "link" && f.url ? (
+                        <>
+                          <Button
+                            variant="ghost"
+                            className="h-9 w-9 p-0"
+                            title={copiedId === f.id ? "Copiado!" : "Copiar endereço"}
+                            aria-label={`Copiar endereço de ${f.name}`}
+                            onClick={() => void handleCopy(f.id, f.url as string)}
+                          >
+                            <Copy
+                              className={`h-4 w-4 ${copiedId === f.id ? "text-primary" : ""}`}
+                            />
+                          </Button>
+                          <a
+                            href={f.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title="Abrir link"
+                            aria-label={`Abrir ${f.name}`}
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-foreground transition-colors hover:bg-accent"
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                          </a>
+                        </>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          className="h-9 w-9 p-0"
+                          title="Baixar"
+                          aria-label={`Baixar ${f.name}`}
+                          onClick={() => void handleDownload(f.id)}
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                      )}
                       {canManage && (
                         <Button
                           variant="ghost"
