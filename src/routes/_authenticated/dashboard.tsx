@@ -247,8 +247,6 @@ const MONTH_LABELS = [
 
 type MonthlyDatum = { month: number; visits: number; children: number };
 
-const CUMULATIVE_COLORS = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)"];
-
 function cumulative(data: MonthlyDatum[] | null | undefined, metric: "visits" | "children") {
   const byMonth = new Map((data ?? []).map((item) => [item.month, item]));
   let total = 0;
