@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AuthenticatedApresentacaoRouteImport } from './routes/_authenticated/apresentacao'
 import { Route as AuthenticatedCadastrosRouteImport } from './routes/_authenticated/cadastros'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedEscolasRouteImport } from './routes/_authenticated/escolas'
@@ -42,6 +43,12 @@ const AuthRoute = AuthRouteImport.update({
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedApresentacaoRoute =
+  AuthenticatedApresentacaoRouteImport.update({
+    id: '/apresentacao',
+    path: '/apresentacao',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedCadastrosRoute = AuthenticatedCadastrosRouteImport.update({
   id: '/cadastros',
   path: '/cadastros',
@@ -126,6 +133,7 @@ const ApiPublicConfigRoute = ApiPublicConfigRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/apresentacao': typeof AuthenticatedApresentacaoRoute
   '/cadastros': typeof AuthenticatedCadastrosRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/escolas': typeof AuthenticatedEscolasRoute
@@ -145,6 +153,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/apresentacao': typeof AuthenticatedApresentacaoRoute
   '/cadastros': typeof AuthenticatedCadastrosRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/escolas': typeof AuthenticatedEscolasRoute
@@ -166,6 +175,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/_authenticated/apresentacao': typeof AuthenticatedApresentacaoRoute
   '/_authenticated/cadastros': typeof AuthenticatedCadastrosRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/escolas': typeof AuthenticatedEscolasRoute
@@ -187,6 +197,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/apresentacao'
     | '/cadastros'
     | '/dashboard'
     | '/escolas'
@@ -206,6 +217,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/apresentacao'
     | '/cadastros'
     | '/dashboard'
     | '/escolas'
@@ -226,6 +238,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/_authenticated/apresentacao'
     | '/_authenticated/cadastros'
     | '/_authenticated/dashboard'
     | '/_authenticated/escolas'
@@ -273,6 +286,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/apresentacao': {
+      id: '/_authenticated/apresentacao'
+      path: '/apresentacao'
+      fullPath: '/apresentacao'
+      preLoaderRoute: typeof AuthenticatedApresentacaoRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/cadastros': {
       id: '/_authenticated/cadastros'
@@ -383,6 +403,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedApresentacaoRoute: typeof AuthenticatedApresentacaoRoute
   AuthenticatedCadastrosRoute: typeof AuthenticatedCadastrosRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedEscolasRoute: typeof AuthenticatedEscolasRoute
@@ -399,6 +420,7 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedApresentacaoRoute: AuthenticatedApresentacaoRoute,
   AuthenticatedCadastrosRoute: AuthenticatedCadastrosRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedEscolasRoute: AuthenticatedEscolasRoute,

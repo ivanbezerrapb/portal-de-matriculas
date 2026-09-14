@@ -113,7 +113,19 @@ function AuthenticatedLayout() {
       ? [{ to: "/dashboard", label: "Início", icon: LayoutDashboard } as NavLeaf]
       : []),
     ...(isAdmin || isManager || isSecretary
-      ? [{ to: "/cadastros", label: "Cadastros", icon: ClipboardList } as NavLeaf]
+      ? [
+          {
+            key: "cadastros",
+            label: "Cadastros",
+            icon: ClipboardList,
+            children: [
+              { to: "/cadastros", label: "Lista de cadastros", icon: ClipboardList },
+              ...(isAdmin || isManager
+                ? [{ to: "/apresentacao", label: "Apresentação", icon: UserCheck }]
+                : []),
+            ],
+          } as NavGroup,
+        ]
       : []),
     ...(isAdmin || isInfo
       ? [
