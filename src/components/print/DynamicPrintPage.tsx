@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -8,12 +9,7 @@ import {
   type RefCallback,
 } from "react";
 import { BlockView } from "@/components/print/BlockView";
-import {
-  MM_PX,
-  type PrintBlock,
-  type PrintContext,
-  type PrintPage,
-} from "@/lib/ext/print-layout";
+import { MM_PX, type PrintBlock, type PrintContext, type PrintPage } from "@/lib/ext/print-layout";
 
 export type PositionedPrintBlock = {
   block: PrintBlock;
@@ -60,9 +56,7 @@ export function useDynamicPrintLayout(
     setHeights((current) => {
       const changed =
         Object.keys(next).length !== Object.keys(current).length ||
-        Object.entries(next).some(
-          ([id, height]) => Math.abs((current[id] ?? 0) - height) > 0.15,
-        );
+        Object.entries(next).some(([id, height]) => Math.abs((current[id] ?? 0) - height) > 0.15);
       return changed ? next : current;
     });
     setMeasured(true);
@@ -80,10 +74,7 @@ export function useDynamicPrintLayout(
 
       placed.forEach((previous) => {
         const originalBottom = previous.block.y + previous.block.h;
-        if (
-          block.y >= originalBottom &&
-          overlapsHorizontally(block, previous.block)
-        ) {
+        if (block.y >= originalBottom && overlapsHorizontally(block, previous.block)) {
           const originalGap = block.y - originalBottom;
           y = Math.max(y, previous.y + previous.h + originalGap);
         }
@@ -119,13 +110,54 @@ export function DynamicPrintPage({
   onStatusChange?: (status: { ready: boolean; overflow: boolean }) => void;
 }) {
   const layout = useDynamicPrintLayout(page, ctx, height);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const [imagesReady, setImagesReady] = useState(false);
+
+  // Só consideramos a página pronta quando as imagens terminam de baixar —
+  // sem isso, a primeira impressão sai sem a logo.
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    const images = Array.from(root.querySelectorAll("img"));
+    const pending = images.filter((img) => !img.complete);
+    if (pending.length === 0) {
+      setImagesReady(true);
+      return;
+    }
+    setImagesReady(false);
+    let left = pending.length;
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      setImagesReady(true);
+    };
+    const settle = () => {
+      left -= 1;
+      if (left <= 0) finish();
+    };
+    pending.forEach((img) => {
+      img.addEventListener("load", settle);
+      img.addEventListener("error", settle);
+    });
+    // Rede lenta ou imagem quebrada não pode travar a impressão.
+    const timer = window.setTimeout(finish, 5000);
+    return () => {
+      window.clearTimeout(timer);
+      pending.forEach((img) => {
+        img.removeEventListener("load", settle);
+        img.removeEventListener("error", settle);
+      });
+    };
+  }, [layout.blocks]);
 
   useLayoutEffect(() => {
-    onStatusChange?.({ ready: layout.measured, overflow: layout.overflow });
-  }, [layout.measured, layout.overflow, onStatusChange]);
+    onStatusChange?.({ ready: layout.measured && imagesReady, overflow: layout.overflow });
+  }, [layout.measured, layout.overflow, imagesReady, onStatusChange]);
 
   return (
     <div
+      ref={rootRef}
       className={className}
       style={{
         position: "relative",
