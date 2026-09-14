@@ -47,8 +47,12 @@ function SubmissionsPage() {
     id: string;
     publicId: string;
     childrenCount: number | null;
+    schoolId: string;
   } | null>(null);
   const [enrollmentCount, setEnrollmentCount] = useState("1");
+  const [dialogAttendant, setDialogAttendant] = useState<PersonChoice | null>(null);
+  const [dialogPresenter, setDialogPresenter] = useState<PersonChoice | null>(null);
+  const [savingEnrollment, setSavingEnrollment] = useState(false);
 
   const { data: perms } = useQuery({
     queryKey: ["my-permissions"],
