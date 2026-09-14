@@ -338,7 +338,7 @@ function CumulativeChart({
           <YAxis allowDecimals={false} tickLine={false} axisLine={false} width={40} />
           <ChartTooltip content={<ChartTooltipContent />} />
           <ReferenceLine
-            x={MONTH_LABELS[currentIndex]}
+            x={MONTH_LABELS[currentIndex] ?? "Ago"}
             stroke="var(--muted-foreground)"
             strokeDasharray="4 4"
             label={{
