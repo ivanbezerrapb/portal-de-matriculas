@@ -72,7 +72,9 @@ export const appendLegacyRows = createServerFn({ method: "POST" })
       .object({
         dataset_id: z.string().uuid(),
         start_index: z.number().int().min(0),
-        rows: z.array(z.record(z.string(), z.unknown())).max(500),
+        rows: z
+          .array(z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()])))
+          .max(500),
       })
       .parse(data),
   )
@@ -133,12 +135,19 @@ export const listLegacyRows = createServerFn({ method: "GET" })
       .eq("dataset_id", data.dataset_id);
     const term = data.search.trim();
     if (term) query = query.ilike("data::text", `%${term}%`);
-    const { data: rows, error, count } = await query
+    const {
+      data: rows,
+      error,
+      count,
+    } = await query
       .order("row_index")
       .range(data.page * pageSize, data.page * pageSize + pageSize - 1);
     if (error) throw new Error(error.message);
     return {
-      rows: (rows ?? []) as { row_index: number; data: Record<string, unknown> }[],
+      rows: (rows ?? []) as {
+        row_index: number;
+        data: Record<string, string | number | boolean | null>;
+      }[],
       total: count ?? 0,
       pageSize,
     };
