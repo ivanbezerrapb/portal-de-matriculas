@@ -1,10 +1,21 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { School, Users, ClipboardList } from "lucide-react";
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
+import { ChevronDown, ClipboardCheck, ClipboardList, School, Users } from "lucide-react";
 import { useState } from "react";
 import { getDashboardStats } from "@/lib/ext/cadastros.functions";
 import { listSchools } from "@/lib/ext/escolas.functions";
-import { Card, Spinner } from "@/components/ui";
+import { Button, Card, Spinner } from "@/components/ui";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
@@ -30,32 +41,64 @@ function YearCard({
   children: number | null;
 }) {
   return (
-    <Card>
-      <p className="text-sm font-semibold text-primary">{label}</p>
-      <div className="mt-4 space-y-3">
+    <Card className="p-4">
+      <p className="text-xs font-semibold text-primary">{label}</p>
+      <div className="mt-3 grid grid-cols-2 gap-3">
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-secondary text-primary">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-secondary text-primary">
             <ClipboardList className="h-4 w-4" />
           </div>
           <div>
             <p className="text-xs font-medium text-muted-foreground">Total de visitas</p>
-            <p className="font-display text-2xl font-semibold text-foreground">
+            <p className="font-display text-xl font-semibold text-foreground">
               {visits === null ? "—" : visits}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent text-primary">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent text-primary">
             <Users className="h-4 w-4" />
           </div>
           <div>
             <p className="text-xs font-medium text-muted-foreground">Total de crianças</p>
-            <p className="font-display text-2xl font-semibold text-foreground">
+            <p className="font-display text-xl font-semibold text-foreground">
               {children === null ? "—" : children}
             </p>
           </div>
         </div>
       </div>
+    </Card>
+  );
+}
+
+function IndicatorChart({
+  title,
+  data,
+}: {
+  title: string;
+  data: { label: string; count: number }[];
+}) {
+  return (
+    <Card className="min-w-0 p-4">
+      <h2 className="font-display text-sm font-semibold text-foreground">{title}</h2>
+      {data.length === 0 ? (
+        <div className="flex h-52 items-center justify-center text-sm text-muted-foreground">
+          Nenhuma resposta no período.
+        </div>
+      ) : (
+        <ChartContainer
+          config={{ count: { label: "Quantidade", color: "var(--primary)" } }}
+          className="mt-3 h-52 w-full aspect-auto"
+        >
+          <BarChart data={data} margin={{ top: 8, right: 8, bottom: 4, left: 0 }}>
+            <CartesianGrid vertical={false} />
+            <XAxis dataKey="label" tickLine={false} axisLine={false} interval={0} />
+            <YAxis allowDecimals={false} tickLine={false} axisLine={false} width={24} />
+            <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
+            <Bar dataKey="count" fill="var(--color-count)" radius={[4, 4, 0, 0]} />
+          </BarChart>
+        </ChartContainer>
+      )}
     </Card>
   );
 }
@@ -79,58 +122,50 @@ function DashboardPage() {
   }
 
   const currentYear = data?.year ?? new Date().getFullYear();
+  const schoolLabel =
+    selected.length === 0
+      ? "Todas as escolas"
+      : selected.length === 1
+        ? ((schools ?? []).find((school) => school.id === selected[0])?.name ?? "1 escola")
+        : `${selected.length} escolas`;
 
   return (
     <div className="mx-auto max-w-6xl">
-      <div>
-        <p className="text-sm font-semibold text-primary">Visão geral</p>
-        <h1 className="mt-1 font-display text-2xl font-semibold text-foreground">Início</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Acompanhe as visitas recebidas pelas escolas.
-        </p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="font-display text-lg font-semibold text-primary">VISÃO GERAL</h1>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" className="w-full justify-between sm:w-64">
+              <span className="truncate">{schoolLabel}</span>
+              <ChevronDown className="h-4 w-4 shrink-0" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-64">
+            <DropdownMenuLabel>Filtrar escolas</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onSelect={() => setSelected([])}>Todas as escolas</DropdownMenuItem>
+            <DropdownMenuSeparator />
+            {(schools ?? []).map((school) => (
+              <DropdownMenuCheckboxItem
+                key={school.id as string}
+                checked={selected.includes(school.id as string)}
+                onCheckedChange={() => toggleSchool(school.id as string)}
+                onSelect={(event) => event.preventDefault()}
+              >
+                {school.name as string}
+              </DropdownMenuCheckboxItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
-      <Card className="mt-6">
-        <p className="text-sm font-medium text-foreground">Escolas</p>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => setSelected([])}
-            className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${
-              selected.length === 0
-                ? "border-primary bg-primary text-primary-foreground"
-                : "border-border text-muted-foreground hover:bg-secondary"
-            }`}
-          >
-            Todas
-          </button>
-          {(schools ?? []).map((s) => {
-            const active = selected.includes(s.id as string);
-            return (
-              <button
-                key={s.id as string}
-                type="button"
-                onClick={() => toggleSchool(s.id as string)}
-                className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${
-                  active
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-border text-muted-foreground hover:bg-secondary"
-                }`}
-              >
-                {s.name as string}
-              </button>
-            );
-          })}
-        </div>
-      </Card>
-
       {isLoading || !data ? (
-        <div className="mt-10 flex justify-center">
+        <div className="mt-8 flex justify-center">
           <Spinner />
         </div>
       ) : (
         <>
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-4 grid gap-3 lg:grid-cols-3">
             <YearCard
               label={`${currentYear + 1} (${currentYear})`}
               visits={data.visits}
@@ -144,7 +179,41 @@ function DashboardPage() {
             />
           </div>
 
-          <Card className="mt-6">
+          <div className="mt-3 grid gap-3 lg:grid-cols-3">
+            <div className="lg:col-span-2">
+              <IndicatorChart title="Série de interesse" data={data.series} />
+            </div>
+            <Card className="flex min-h-64 flex-col justify-between p-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent text-primary">
+                  <ClipboardCheck className="h-4 w-4" />
+                </div>
+                <h2 className="font-display text-sm font-semibold text-foreground">
+                  Matrículas efetivadas
+                </h2>
+              </div>
+              <div>
+                <p className="font-display text-4xl font-semibold text-foreground">
+                  {data.enrollments.total}
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {data.enrollments.percentage.toLocaleString("pt-BR")}% do total de crianças
+                </p>
+              </div>
+              <div className="h-2 overflow-hidden rounded-full bg-muted">
+                <div
+                  className="h-full rounded-full bg-primary transition-[width]"
+                  style={{ width: `${Math.min(data.enrollments.percentage, 100)}%` }}
+                />
+              </div>
+            </Card>
+          </div>
+
+          <div className="mt-3">
+            <IndicatorChart title="Como conheceu a escola" data={data.sources} />
+          </div>
+
+          <Card className="mt-3 p-4">
             <div className="flex items-center gap-3">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent text-primary">
                 <School className="h-4 w-4" />
