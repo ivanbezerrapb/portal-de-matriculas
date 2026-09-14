@@ -1,7 +1,6 @@
 import {
   useCallback,
   useEffect,
-
   useLayoutEffect,
   useMemo,
   useRef,
@@ -10,12 +9,7 @@ import {
   type RefCallback,
 } from "react";
 import { BlockView } from "@/components/print/BlockView";
-import {
-  MM_PX,
-  type PrintBlock,
-  type PrintContext,
-  type PrintPage,
-} from "@/lib/ext/print-layout";
+import { MM_PX, type PrintBlock, type PrintContext, type PrintPage } from "@/lib/ext/print-layout";
 
 export type PositionedPrintBlock = {
   block: PrintBlock;
@@ -62,9 +56,7 @@ export function useDynamicPrintLayout(
     setHeights((current) => {
       const changed =
         Object.keys(next).length !== Object.keys(current).length ||
-        Object.entries(next).some(
-          ([id, height]) => Math.abs((current[id] ?? 0) - height) > 0.15,
-        );
+        Object.entries(next).some(([id, height]) => Math.abs((current[id] ?? 0) - height) > 0.15);
       return changed ? next : current;
     });
     setMeasured(true);
@@ -82,10 +74,7 @@ export function useDynamicPrintLayout(
 
       placed.forEach((previous) => {
         const originalBottom = previous.block.y + previous.block.h;
-        if (
-          block.y >= originalBottom &&
-          overlapsHorizontally(block, previous.block)
-        ) {
+        if (block.y >= originalBottom && overlapsHorizontally(block, previous.block)) {
           const originalGap = block.y - originalBottom;
           y = Math.max(y, previous.y + previous.h + originalGap);
         }
@@ -179,7 +168,6 @@ export function DynamicPrintPage({
         ...style,
       }}
     >
-
       {layout.blocks.map(({ block, y, dynamic }) => (
         <div
           key={block.id}
