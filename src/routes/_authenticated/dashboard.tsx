@@ -116,7 +116,13 @@ function SeriesTick({
   );
 }
 
-function SeriesChart({ data }: { data: IndicatorDatum[] }) {
+function SeriesChart({
+  data,
+  title = "Série de interesse",
+}: {
+  data: IndicatorDatum[];
+  title?: string;
+}) {
   const labelWidth = Math.min(
     170,
     Math.max(92, Math.max(...data.map((item) => Math.min(item.label.length, 24)), 0) * 6.5),
