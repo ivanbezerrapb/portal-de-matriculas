@@ -13,7 +13,7 @@ import {
 } from "recharts";
 import { ChevronDown, ClipboardCheck, ClipboardList, School, Users } from "lucide-react";
 import { useState } from "react";
-import { getDashboardStats } from "@/lib/ext/cadastros.functions";
+import { getDashboardStats, getMyPermissions } from "@/lib/ext/cadastros.functions";
 import { listSchools } from "@/lib/ext/escolas.functions";
 import { Button, Card, Spinner } from "@/components/ui";
 import {
@@ -339,6 +339,11 @@ function LossReasonsChart({ data }: { data: IndicatorDatum[] }) {
 function DashboardPage() {
   const [selected, setSelected] = useState<string[]>([]);
 
+  const { data: perms } = useQuery({
+    queryKey: ["my-permissions"],
+    queryFn: () => getMyPermissions(),
+  });
+
   const { data: schools } = useQuery({
     queryKey: ["schools"],
     queryFn: () => listSchools(),
@@ -368,30 +373,32 @@ function DashboardPage() {
     <div className="mx-auto max-w-6xl">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="font-display text-lg font-semibold text-primary">VISÃO GERAL</h1>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="w-full justify-between sm:w-64">
-              <span className="truncate">{schoolLabel}</span>
-              <ChevronDown className="h-4 w-4 shrink-0" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-64">
-            <DropdownMenuLabel>Filtrar escolas</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onSelect={() => setSelected([])}>Todas as escolas</DropdownMenuItem>
-            <DropdownMenuSeparator />
-            {(schools ?? []).map((school) => (
-              <DropdownMenuCheckboxItem
-                key={school.id as string}
-                checked={selected.includes(school.id as string)}
-                onCheckedChange={() => toggleSchool(school.id as string)}
-                onSelect={(event) => event.preventDefault()}
-              >
-                {school.name as string}
-              </DropdownMenuCheckboxItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        {perms?.isAdmin && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="w-full justify-between sm:w-64">
+                <span className="truncate">{schoolLabel}</span>
+                <ChevronDown className="h-4 w-4 shrink-0" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-64">
+              <DropdownMenuLabel>Filtrar escolas</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={() => setSelected([])}>Todas as escolas</DropdownMenuItem>
+              <DropdownMenuSeparator />
+              {(schools ?? []).map((school) => (
+                <DropdownMenuCheckboxItem
+                  key={school.id as string}
+                  checked={selected.includes(school.id as string)}
+                  onCheckedChange={() => toggleSchool(school.id as string)}
+                  onSelect={(event) => event.preventDefault()}
+                >
+                  {school.name as string}
+                </DropdownMenuCheckboxItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
 
       {isLoading || !data ? (
