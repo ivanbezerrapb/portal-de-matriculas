@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { createUser, deleteUser, listUsers, setUserRole } from "@/lib/ext/usuarios.functions";
 import { listSchools } from "@/lib/ext/escolas.functions";
