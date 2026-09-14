@@ -287,7 +287,7 @@ export const deleteFile = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: row, error: readError } = await context.supabase
       .from("shared_files")
-      .select("id, path, brand")
+      .select("id, path, brand, kind")
       .eq("id", data.id)
       .maybeSingle();
     if (readError) throw new Error(readError.message);
