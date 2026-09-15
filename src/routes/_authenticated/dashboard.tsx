@@ -527,7 +527,7 @@ function DashboardPage() {
         : `${selected.length} escolas`;
 
   return (
-    <div className="w-full min-w-0">
+    <div className="@container/dashboard w-full min-w-0">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="font-display text-lg font-semibold text-primary">VISÃO GERAL</h1>
         {(perms?.isAdmin || perms?.isDirecao) && (
@@ -564,7 +564,7 @@ function DashboardPage() {
         </div>
       ) : (
         <>
-          <div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-4 grid gap-3 @min-[36rem]/dashboard:grid-cols-2 @min-[52rem]/dashboard:grid-cols-3">
             <YearCard
               label={`${currentYear} (${currentYear - 1})`}
               visits={data.visits}
@@ -582,8 +582,8 @@ function DashboardPage() {
             />
           </div>
 
-          <div className="mt-3 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-            <div className="md:col-span-2">
+          <div className="mt-3 grid gap-3 @min-[36rem]/dashboard:grid-cols-2 @min-[52rem]/dashboard:grid-cols-3">
+            <div className="@min-[36rem]/dashboard:col-span-2">
               <CumulativeChart
                 currentYear={currentYear}
                 current={data.monthly}
@@ -591,13 +591,15 @@ function DashboardPage() {
                 previous2={legacyFor(currentYear - 2)?.monthly ?? null}
               />
             </div>
-            <SchoolComparisonChart data={data.bySchool} />
+            <div className="@min-[36rem]/dashboard:col-span-2 @min-[52rem]/dashboard:col-span-1">
+              <SchoolComparisonChart data={data.bySchool} />
+            </div>
           </div>
 
-          <div className="mt-3 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-3 grid gap-3 @min-[36rem]/dashboard:grid-cols-2 @min-[52rem]/dashboard:grid-cols-3">
             <SourcesChart data={data.sources} />
             <SeriesChart data={data.series} />
-            <div className="flex flex-col gap-3 md:col-span-2 lg:col-span-1">
+            <div className="flex flex-col gap-3 @min-[36rem]/dashboard:col-span-2 @min-[52rem]/dashboard:col-span-1">
               <Card className="flex flex-1 flex-col p-4">
                 <div className="flex items-center gap-3">
                   <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent text-primary">
@@ -628,7 +630,7 @@ function DashboardPage() {
             </div>
           </div>
 
-          <div className="mt-3 grid items-start gap-3 md:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-3 grid items-start gap-3 @min-[36rem]/dashboard:grid-cols-2 @min-[52rem]/dashboard:grid-cols-3">
             <SeriesChart
               data={data.attendants}
               title="Quem mais atendeu (Secretaria)"
