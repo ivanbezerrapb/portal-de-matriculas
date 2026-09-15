@@ -527,7 +527,7 @@ function DashboardPage() {
         : `${selected.length} escolas`;
 
   return (
-    <div className="mx-auto max-w-6xl">
+    <div className="w-full min-w-0">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="font-display text-lg font-semibold text-primary">VISÃO GERAL</h1>
         {(perms?.isAdmin || perms?.isDirecao) && (
@@ -564,7 +564,7 @@ function DashboardPage() {
         </div>
       ) : (
         <>
-          <div className="mt-4 grid gap-3 lg:grid-cols-3">
+          <div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
             <YearCard
               label={`${currentYear} (${currentYear - 1})`}
               visits={data.visits}
@@ -582,8 +582,8 @@ function DashboardPage() {
             />
           </div>
 
-          <div className="mt-3 grid gap-3 lg:grid-cols-3">
-            <div className="lg:col-span-2">
+          <div className="mt-3 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+            <div className="md:col-span-2">
               <CumulativeChart
                 currentYear={currentYear}
                 current={data.monthly}
@@ -594,10 +594,10 @@ function DashboardPage() {
             <SchoolComparisonChart data={data.bySchool} />
           </div>
 
-          <div className="mt-3 grid gap-3 lg:grid-cols-3">
+          <div className="mt-3 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
             <SourcesChart data={data.sources} />
             <SeriesChart data={data.series} />
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-3 md:col-span-2 lg:col-span-1">
               <Card className="flex flex-1 flex-col p-4">
                 <div className="flex items-center gap-3">
                   <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent text-primary">
@@ -628,7 +628,7 @@ function DashboardPage() {
             </div>
           </div>
 
-          <div className="mt-3 grid items-start gap-3 lg:grid-cols-3">
+          <div className="mt-3 grid items-start gap-3 md:grid-cols-2 lg:grid-cols-3">
             <SeriesChart
               data={data.attendants}
               title="Quem mais atendeu (Secretaria)"
