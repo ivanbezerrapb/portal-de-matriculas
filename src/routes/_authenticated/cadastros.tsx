@@ -14,10 +14,10 @@ import { Button, Card, EmptyState, Input, Label, Select, Spinner } from "@/compo
 export const Route = createFileRoute("/_authenticated/cadastros")({
   head: () => ({
     meta: [
-      { title: "Cadastros — Grupo Inter" },
-      { name: "description", content: "Consulte e gerencie os cadastros escolares." },
-      { property: "og:title", content: "Cadastros — Grupo Inter" },
-      { property: "og:description", content: "Consulte e gerencie os cadastros escolares." },
+      { title: "Lista de Visitantes — Grupo Inter" },
+      { name: "description", content: "Consulte e gerencie as visitas escolares." },
+      { property: "og:title", content: "Lista de Visitantes — Grupo Inter" },
+      { property: "og:description", content: "Consulte e gerencie as visitas escolares." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -183,7 +183,7 @@ function SubmissionsPage() {
 
   return (
     <div className="w-full">
-      <h1 className="font-display text-2xl font-bold text-foreground">Cadastros</h1>
+      <h1 className="font-display text-2xl font-bold text-foreground">Lista de Visitantes</h1>
 
       <Card className="mt-6">
         <div
