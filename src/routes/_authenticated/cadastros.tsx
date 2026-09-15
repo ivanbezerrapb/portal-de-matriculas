@@ -358,22 +358,6 @@ function SubmissionsPage() {
                     </td>
                     <td className="px-4 py-2.5">
                       <PersonCell
-                        kind="secretaria"
-                        current={
-                          (s as unknown as { attendant: { name?: string } | null }).attendant
-                            ?.name ?? null
-                        }
-                        options={(presenters ?? []).filter(
-                          (p) => p.school_id === s.school_id && p.kind === "secretaria",
-                        )}
-                        disabled={!canEnroll || peopleM.isPending}
-                        onPick={(value) =>
-                          peopleM.mutate({ submission_id: s.id, kind: "secretaria", ...value })
-                        }
-                      />
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <PersonCell
                         kind="coordenacao"
                         current={
                           (s as unknown as { presenter: { name?: string } | null }).presenter
@@ -385,6 +369,22 @@ function SubmissionsPage() {
                         disabled={!canEnroll || peopleM.isPending}
                         onPick={(value) =>
                           peopleM.mutate({ submission_id: s.id, kind: "coordenacao", ...value })
+                        }
+                      />
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <PersonCell
+                        kind="secretaria"
+                        current={
+                          (s as unknown as { attendant: { name?: string } | null }).attendant
+                            ?.name ?? null
+                        }
+                        options={(presenters ?? []).filter(
+                          (p) => p.school_id === s.school_id && p.kind === "secretaria",
+                        )}
+                        disabled={!canEnroll || peopleM.isPending}
+                        onPick={(value) =>
+                          peopleM.mutate({ submission_id: s.id, kind: "secretaria", ...value })
                         }
                       />
                     </td>
