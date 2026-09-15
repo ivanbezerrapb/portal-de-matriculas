@@ -304,8 +304,8 @@ function SubmissionsPage() {
                 <th className="px-4 py-3">Escola</th>
                 <th className="px-4 py-3">Crianças</th>
                 <th className="px-4 py-3">Data</th>
-                <th className="px-4 py-3">Atendimento</th>
                 <th className="px-4 py-3">Apresentação</th>
+                <th className="px-4 py-3">Atendimento</th>
                 <th className="px-4 py-3">Efetivação</th>
                 <th className="px-4 py-3">Matrícula</th>
                 <th className="px-4 py-3"></th>
