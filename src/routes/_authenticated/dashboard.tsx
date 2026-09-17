@@ -688,6 +688,12 @@ function DashboardPage() {
             </div>
           </div>
 
+          <div className="mt-3 grid gap-3 @min-[36rem]/dashboard:grid-cols-2 @min-[52rem]/dashboard:grid-cols-3">
+            <div className="@min-[36rem]/dashboard:col-span-2">
+              <NeighborhoodChart data={data.neighborhoods} />
+            </div>
+          </div>
+
           <div className="mt-3 grid items-start gap-3 @min-[36rem]/dashboard:grid-cols-2 @min-[52rem]/dashboard:grid-cols-3">
             <SeriesChart
               data={data.attendants}
