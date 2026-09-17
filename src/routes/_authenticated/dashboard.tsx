@@ -91,16 +91,18 @@ function SeriesTick({
   x = 0,
   y = 0,
   payload,
+  maxChars = 28,
 }: {
   x?: number;
   y?: number;
   payload?: { value?: string };
+  maxChars?: number;
 }) {
   const label = payload?.value ?? "";
   const words = label.split(/\s+/);
   const lines = words.reduce<string[]>((result, word) => {
     const last = result[result.length - 1];
-    if (!last || `${last} ${word}`.length > 28) result.push(word);
+    if (!last || `${last} ${word}`.length > maxChars) result.push(word);
     else result[result.length - 1] = `${last} ${word}`;
     return result;
   }, []);
