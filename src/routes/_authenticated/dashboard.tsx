@@ -205,7 +205,7 @@ function NeighborhoodChart({ data }: { data: NeighborhoodGroup[] }) {
                       label: item.city ? `${item.label} — ${item.city}` : item.label,
                     }))}
                     layout="vertical"
-                    margin={{ top: 4, right: 12, bottom: 0, left: 0 }}
+                    margin={{ top: 4, right: 32, bottom: 0, left: 0 }}
                   >
                     <CartesianGrid horizontal={false} />
                     <XAxis type="number" allowDecimals={false} tickLine={false} axisLine={false} />
@@ -219,7 +219,15 @@ function NeighborhoodChart({ data }: { data: NeighborhoodGroup[] }) {
                       tick={<SeriesTick />}
                     />
                     <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
-                    <Bar dataKey="count" fill="var(--color-count)" radius={[0, 4, 4, 0]} />
+                    <Bar dataKey="count" fill="var(--color-count)" radius={[0, 4, 4, 0]}>
+                      <LabelList
+                        dataKey="count"
+                        position="right"
+                        offset={6}
+                        className="fill-foreground"
+                        fontSize={11}
+                      />
+                    </Bar>
                   </BarChart>
                 </ChartContainer>
               )}
