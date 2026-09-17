@@ -193,57 +193,54 @@ function NeighborhoodChart({ data }: { data: NeighborhoodGroup[] }) {
           {data.map((group) => {
             const longest = Math.max(
               0,
-              ...group.items.map((item) =>
-                (item.city ? `${item.label} — ${item.city}` : item.label).length,
+              ...group.items.map(
+                (item) => (item.city ? `${item.label} — ${item.city}` : item.label).length,
               ),
             );
-            const labelWidth = Math.min(
-              200,
-              Math.max(150, Math.min(longest, 22) * 7.2),
-            );
+            const labelWidth = Math.min(200, Math.max(150, Math.min(longest, 22) * 7.2));
             return (
-            <div key={group.school} className="min-w-0">
-              <p className="text-xs font-semibold text-primary">{group.school}</p>
-              {group.items.length === 0 ? (
-                <p className="mt-3 text-sm text-muted-foreground">Nenhum endereço no período.</p>
-              ) : (
-                <ChartContainer
-                  config={{ count: { label: "Visitas", color: "var(--primary)" } }}
-                  className="mt-2 w-full aspect-auto"
-                  style={{ height: Math.max(140, group.items.length * 46) }}
-                >
-                  <BarChart
-                    data={group.items.map((item) => ({
-                      ...item,
-                      label: item.city ? `${item.label} — ${item.city}` : item.label,
-                    }))}
-                    layout="vertical"
-                    margin={{ top: 4, right: 32, bottom: 0, left: 0 }}
+              <div key={group.school} className="min-w-0">
+                <p className="text-xs font-semibold text-primary">{group.school}</p>
+                {group.items.length === 0 ? (
+                  <p className="mt-3 text-sm text-muted-foreground">Nenhum endereço no período.</p>
+                ) : (
+                  <ChartContainer
+                    config={{ count: { label: "Visitas", color: "var(--primary)" } }}
+                    className="mt-2 w-full aspect-auto"
+                    style={{ height: Math.max(140, group.items.length * 46) }}
                   >
-                    <CartesianGrid horizontal={false} />
-                    <YAxis
-                      type="category"
-                      dataKey="label"
-                      tickLine={false}
-                      axisLine={false}
-                      width={labelWidth}
-                      interval={0}
-                      tick={<SeriesTick maxChars={16} />}
-                    />
-                    <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
-                    <Bar dataKey="count" fill="var(--color-count)" radius={[0, 4, 4, 0]}>
-                      <LabelList
-                        dataKey="count"
-                        position="right"
-                        offset={6}
-                        className="fill-foreground"
-                        fontSize={11}
+                    <BarChart
+                      data={group.items.map((item) => ({
+                        ...item,
+                        label: item.city ? `${item.label} — ${item.city}` : item.label,
+                      }))}
+                      layout="vertical"
+                      margin={{ top: 4, right: 32, bottom: 0, left: 0 }}
+                    >
+                      <CartesianGrid horizontal={false} />
+                      <YAxis
+                        type="category"
+                        dataKey="label"
+                        tickLine={false}
+                        axisLine={false}
+                        width={labelWidth}
+                        interval={0}
+                        tick={<SeriesTick maxChars={16} />}
                       />
-                    </Bar>
-                  </BarChart>
-                </ChartContainer>
-              )}
-            </div>
+                      <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
+                      <Bar dataKey="count" fill="var(--color-count)" radius={[0, 4, 4, 0]}>
+                        <LabelList
+                          dataKey="count"
+                          position="right"
+                          offset={6}
+                          className="fill-foreground"
+                          fontSize={11}
+                        />
+                      </Bar>
+                    </BarChart>
+                  </ChartContainer>
+                )}
+              </div>
             );
           })}
         </div>
