@@ -205,7 +205,7 @@ function NeighborhoodChart({ data }: { data: NeighborhoodGroup[] }) {
                       label: item.city ? `${item.label} — ${item.city}` : item.label,
                     }))}
                     layout="vertical"
-                    margin={{ top: 4, right: 12, bottom: 0, left: 0 }}
+                    margin={{ top: 4, right: 32, bottom: 0, left: 0 }}
                   >
                     <CartesianGrid horizontal={false} />
                     <XAxis type="number" allowDecimals={false} tickLine={false} axisLine={false} />
