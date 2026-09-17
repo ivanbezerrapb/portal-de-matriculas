@@ -747,6 +747,7 @@ export const getDashboardStats = createServerFn({ method: "GET" })
         visits,
         children: monthlyChildren[month] ?? 0,
       })),
+      neighborhoods,
       bySchool: [...bySchool.values()].sort(
         (a, b) => b.visits - a.visits || a.name.localeCompare(b.name, "pt-BR"),
       ),
