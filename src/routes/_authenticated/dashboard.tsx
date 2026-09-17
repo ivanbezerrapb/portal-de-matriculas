@@ -244,7 +244,8 @@ function NeighborhoodChart({ data }: { data: NeighborhoodGroup[] }) {
                 </ChartContainer>
               )}
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </Card>
