@@ -173,6 +173,64 @@ function SeriesChart({
   );
 }
 
+type NeighborhoodGroup = {
+  school: string;
+  items: { label: string; city: string; count: number }[];
+};
+
+function NeighborhoodChart({ data }: { data: NeighborhoodGroup[] }) {
+  return (
+    <Card className="flex h-full min-w-0 flex-col p-4">
+      <h2 className="font-display text-sm font-semibold text-foreground">Visitantes por bairro</h2>
+      {data.length === 0 ? (
+        <div className="flex h-52 items-center justify-center text-sm text-muted-foreground">
+          Nenhum endereço no período.
+        </div>
+      ) : (
+        <div className="mt-3 grid gap-4 @min-[40rem]/dashboard:grid-cols-2">
+          {data.map((group) => (
+            <div key={group.school} className="min-w-0">
+              <p className="text-xs font-semibold text-primary">{group.school}</p>
+              {group.items.length === 0 ? (
+                <p className="mt-3 text-sm text-muted-foreground">Nenhum endereço no período.</p>
+              ) : (
+                <ChartContainer
+                  config={{ count: { label: "Visitas", color: "var(--primary)" } }}
+                  className="mt-2 w-full aspect-auto"
+                  style={{ height: Math.max(140, group.items.length * 34) }}
+                >
+                  <BarChart
+                    data={group.items.map((item) => ({
+                      ...item,
+                      label: item.city ? `${item.label} — ${item.city}` : item.label,
+                    }))}
+                    layout="vertical"
+                    margin={{ top: 4, right: 12, bottom: 0, left: 0 }}
+                  >
+                    <CartesianGrid horizontal={false} />
+                    <XAxis type="number" allowDecimals={false} tickLine={false} axisLine={false} />
+                    <YAxis
+                      type="category"
+                      dataKey="label"
+                      tickLine={false}
+                      axisLine={false}
+                      width={150}
+                      interval={0}
+                      tick={<SeriesTick />}
+                    />
+                    <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
+                    <Bar dataKey="count" fill="var(--color-count)" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ChartContainer>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
+  );
+}
+
 const SOURCE_COLORS = [
   "var(--chart-1)",
   "var(--chart-2)",
