@@ -208,7 +208,6 @@ function NeighborhoodChart({ data }: { data: NeighborhoodGroup[] }) {
                     margin={{ top: 4, right: 32, bottom: 0, left: 0 }}
                   >
                     <CartesianGrid horizontal={false} />
-                    <XAxis type="number" allowDecimals={false} tickLine={false} axisLine={false} />
                     <YAxis
                       type="category"
                       dataKey="label"
