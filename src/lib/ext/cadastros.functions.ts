@@ -648,6 +648,68 @@ export const getDashboardStats = createServerFn({ method: "GET" })
       }
     }
 
+    // Bairros/cidades por unidade (campo do tipo Endereço, gravado em partes).
+    type NeighborhoodItem = { label: string; city: string; count: number };
+    const neighborhoods: { school: string; items: NeighborhoodItem[] }[] = [];
+    if (rows.length > 0) {
+      const submissionIds = rows.map((r) => r.id as string);
+      const { data: addressValues } = await context.supabase
+        .from("submission_values")
+        .select("submission_id, part, value")
+        .in("submission_id", submissionIds)
+        .in("part", ["bairro", "cidade"]);
+
+      const bairroBySub = new Map<string, string>();
+      const cidadeBySub = new Map<string, string>();
+      for (const v of addressValues ?? []) {
+        const text = String(v.value ?? "").trim();
+        if (!text) continue;
+        if (v.part === "bairro") bairroBySub.set(v.submission_id as string, text);
+        else cidadeBySub.set(v.submission_id as string, text);
+      }
+
+      const key = (value: string) =>
+        value
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/\s+/g, " ")
+          .trim()
+          .toLowerCase();
+
+      const perSchool = new Map<
+        string,
+        { name: string; items: Map<string, { labels: Map<string, number>; city: string; count: number }> }
+      >();
+      for (const row of rows) {
+        const bairro = bairroBySub.get(row.id as string);
+        if (!bairro) continue;
+        const cidade = cidadeBySub.get(row.id as string) ?? "";
+        const schoolId = row.school_id as string;
+        const schoolName = (row.schools as { name?: string } | null)?.name ?? "—";
+        const school = perSchool.get(schoolId) ?? { name: schoolName, items: new Map() };
+        const k = `${key(bairro)}|${key(cidade)}`;
+        const entry = school.items.get(k) ?? { labels: new Map<string, number>(), city: cidade, count: 0 };
+        entry.count += 1;
+        entry.labels.set(bairro, (entry.labels.get(bairro) ?? 0) + 1);
+        school.items.set(k, entry);
+        perSchool.set(schoolId, school);
+      }
+
+      for (const school of perSchool.values()) {
+        const items = [...school.items.values()]
+          .map((entry) => {
+            const label = [...entry.labels.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? "";
+            return { label, city: entry.city, count: entry.count };
+          })
+          .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, "pt-BR"));
+        const top = items.slice(0, 8);
+        const rest = items.slice(8).reduce((total, item) => total + item.count, 0);
+        if (rest > 0) top.push({ label: "Outros", city: "", count: rest });
+        neighborhoods.push({ school: school.name, items: top });
+      }
+      neighborhoods.sort((a, b) => a.school.localeCompare(b.school, "pt-BR"));
+    }
+
     const enrolled = rows.reduce(
       (total, row) => total + (row.enrolled ? Number(row.enrollment_count ?? 0) : 0),
       0,
