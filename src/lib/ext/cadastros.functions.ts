@@ -678,7 +678,10 @@ export const getDashboardStats = createServerFn({ method: "GET" })
 
       const perSchool = new Map<
         string,
-        { name: string; items: Map<string, { labels: Map<string, number>; city: string; count: number }> }
+        {
+          name: string;
+          items: Map<string, { labels: Map<string, number>; city: string; count: number }>;
+        }
       >();
       for (const row of rows) {
         const bairro = bairroBySub.get(row.id as string);
@@ -688,7 +691,11 @@ export const getDashboardStats = createServerFn({ method: "GET" })
         const schoolName = (row.schools as { name?: string } | null)?.name ?? "—";
         const school = perSchool.get(schoolId) ?? { name: schoolName, items: new Map() };
         const k = `${key(bairro)}|${key(cidade)}`;
-        const entry = school.items.get(k) ?? { labels: new Map<string, number>(), city: cidade, count: 0 };
+        const entry = school.items.get(k) ?? {
+          labels: new Map<string, number>(),
+          city: cidade,
+          count: 0,
+        };
         entry.count += 1;
         entry.labels.set(bairro, (entry.labels.get(bairro) ?? 0) + 1);
         school.items.set(k, entry);
