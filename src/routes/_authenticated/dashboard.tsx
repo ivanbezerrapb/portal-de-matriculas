@@ -187,7 +187,7 @@ function NeighborhoodChart({ data }: { data: NeighborhoodGroup[] }) {
           Nenhum endereço no período.
         </div>
       ) : (
-        <div className="mt-3 grid gap-4 @min-[40rem]/dashboard:grid-cols-2">
+        <div className="mt-3 grid gap-4 grid-cols-[repeat(auto-fit,minmax(16rem,1fr))]">
           {data.map((group) => (
             <div key={group.school} className="min-w-0">
               <p className="text-xs font-semibold text-primary">{group.school}</p>
