@@ -219,7 +219,15 @@ function NeighborhoodChart({ data }: { data: NeighborhoodGroup[] }) {
                       tick={<SeriesTick />}
                     />
                     <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
-                    <Bar dataKey="count" fill="var(--color-count)" radius={[0, 4, 4, 0]} />
+                    <Bar dataKey="count" fill="var(--color-count)" radius={[0, 4, 4, 0]}>
+                      <LabelList
+                        dataKey="count"
+                        position="right"
+                        offset={6}
+                        className="fill-foreground"
+                        fontSize={11}
+                      />
+                    </Bar>
                   </BarChart>
                 </ChartContainer>
               )}
