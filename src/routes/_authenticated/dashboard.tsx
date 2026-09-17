@@ -189,8 +189,19 @@ function NeighborhoodChart({ data }: { data: NeighborhoodGroup[] }) {
           Nenhum endereço no período.
         </div>
       ) : (
-        <div className="mt-3 grid gap-4 grid-cols-[repeat(auto-fit,minmax(16rem,1fr))]">
-          {data.map((group) => (
+        <div className="mt-3 grid gap-4 grid-cols-1 min-[520px]:grid-cols-2">
+          {data.map((group) => {
+            const longest = Math.max(
+              0,
+              ...group.items.map((item) =>
+                (item.city ? `${item.label} — ${item.city}` : item.label).length,
+              ),
+            );
+            const labelWidth = Math.min(
+              200,
+              Math.max(150, Math.min(longest, 22) * 7.2),
+            );
+            return (
             <div key={group.school} className="min-w-0">
               <p className="text-xs font-semibold text-primary">{group.school}</p>
               {group.items.length === 0 ? (
@@ -199,7 +210,7 @@ function NeighborhoodChart({ data }: { data: NeighborhoodGroup[] }) {
                 <ChartContainer
                   config={{ count: { label: "Visitas", color: "var(--primary)" } }}
                   className="mt-2 w-full aspect-auto"
-                  style={{ height: Math.max(140, group.items.length * 34) }}
+                  style={{ height: Math.max(140, group.items.length * 46) }}
                 >
                   <BarChart
                     data={group.items.map((item) => ({
@@ -215,9 +226,9 @@ function NeighborhoodChart({ data }: { data: NeighborhoodGroup[] }) {
                       dataKey="label"
                       tickLine={false}
                       axisLine={false}
-                      width={150}
+                      width={labelWidth}
                       interval={0}
-                      tick={<SeriesTick />}
+                      tick={<SeriesTick maxChars={16} />}
                     />
                     <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
                     <Bar dataKey="count" fill="var(--color-count)" radius={[0, 4, 4, 0]}>
