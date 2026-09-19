@@ -967,3 +967,95 @@ function PrinterIcon() {
     </svg>
   );
 }
+
+function formatFieldValue(value: string | null | undefined): string[] {
+  const raw = (value ?? "").trim();
+  if (!raw) return [];
+  if (raw.startsWith("{")) {
+    const line = formatAddress(parseAddress(raw)).trim();
+    return line ? [line] : [];
+  }
+  return raw
+    .split(" | ")
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
+function SubmissionViewDialog({ id, onClose }: { id: string; onClose: () => void }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ["submission", id],
+    queryFn: () => getSubmission({ data: { id } }),
+  });
+
+  const submission = data?.submission as
+    | { public_id: string; created_at: string; forms?: { title?: string } | null; schools?: { name?: string } | null }
+    | undefined;
+  const fields = (data?.fields ?? []) as FormField[];
+  const values = new Map(
+    ((data?.values ?? []) as { field_id: string; value: string | null }[]).map((v) => [
+      v.field_id,
+      v.value,
+    ]),
+  );
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="flex max-h-[85vh] w-full max-w-2xl flex-col rounded-xl border border-border bg-card shadow-lg"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="border-b border-border px-5 py-4">
+          <h2 className="font-display text-lg font-semibold text-foreground">
+            {submission ? submission.public_id : "Cadastro"}
+          </h2>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {submission
+              ? [
+                  submission.schools?.name,
+                  submission.forms?.title,
+                  new Date(submission.created_at).toLocaleString("pt-BR"),
+                ]
+                  .filter(Boolean)
+                  .join(" · ")
+              : "Carregando..."}
+          </p>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-5 py-4">
+          {isLoading ? (
+            <div className="flex justify-center py-8">
+              <Spinner />
+            </div>
+          ) : (
+            <dl className="space-y-3">
+              {fields.map((f) => {
+                const lines = formatFieldValue(values.get(f.id));
+                return (
+                  <div key={f.id} className="border-b border-border/60 pb-3 last:border-0">
+                    <dt className="text-xs font-medium text-muted-foreground">{f.label}</dt>
+                    <dd className="mt-0.5 text-sm break-words text-foreground">
+                      {lines.length === 0 ? (
+                        <span className="text-muted-foreground">—</span>
+                      ) : (
+                        lines.map((line, i) => <div key={i}>{line}</div>)
+                      )}
+                    </dd>
+                  </div>
+                );
+              })}
+            </dl>
+          )}
+        </div>
+
+        <div className="flex justify-end border-t border-border px-5 py-3">
+          <Button variant="ghost" onClick={onClose}>
+            Fechar
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
