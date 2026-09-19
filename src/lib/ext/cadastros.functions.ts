@@ -291,7 +291,10 @@ export const setEnrollment = createServerFn({ method: "POST" })
       .single();
     if (error) throw new Error(error.message);
 
-    const allowed = perms.isAdmin || perms.managerSchools.includes(submission.school_id);
+    const allowed =
+      perms.isAdmin ||
+      perms.managerSchools.includes(submission.school_id) ||
+      perms.operatorSchools.includes(submission.school_id);
     if (!allowed) {
       throw new Error("Você não tem permissão para alterar a matrícula deste cadastro.");
     }
@@ -405,7 +408,11 @@ export const setSubmissionPeople = createServerFn({ method: "POST" })
       .single();
     if (error) throw new Error(error.message);
 
-    if (!perms.isAdmin && !perms.managerSchools.includes(submission.school_id)) {
+    if (
+      !perms.isAdmin &&
+      !perms.managerSchools.includes(submission.school_id) &&
+      !perms.operatorSchools.includes(submission.school_id)
+    ) {
       throw new Error("Você não tem permissão para alterar este cadastro.");
     }
 

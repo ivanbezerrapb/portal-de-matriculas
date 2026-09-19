@@ -50,7 +50,11 @@ async function assertCanManage(
 ) {
   const { getPerms } = await import("./server");
   const perms = await getPerms(supabase, userId);
-  if (!perms.isAdmin && !perms.managerSchools.includes(schoolId)) {
+  if (
+    !perms.isAdmin &&
+    !perms.managerSchools.includes(schoolId) &&
+    !perms.operatorSchools.includes(schoolId)
+  ) {
     throw new Error("Você não tem permissão para gerenciar os nomes desta unidade.");
   }
 }
