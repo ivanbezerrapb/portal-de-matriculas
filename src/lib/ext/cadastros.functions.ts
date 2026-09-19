@@ -78,10 +78,32 @@ export const listSubmissions = createServerFn({ method: "GET" })
       }
     }
 
+    // Funil atual de cada cadastro (cartão no CRM).
+    const { data: opps } = await context.supabase
+      .from("opportunities")
+      .select("submission_id, funnel_id, status, funnels(name)")
+      .in(
+        "submission_id",
+        rows.map((r) => r.id),
+      );
+    const funnelBySubmission = new Map<string, { funnel_id: string; funnel_name: string }>();
+    for (const o of (opps ?? []) as unknown as {
+      submission_id: string | null;
+      funnel_id: string;
+      funnels: { name: string } | null;
+    }[]) {
+      if (!o.submission_id) continue;
+      funnelBySubmission.set(o.submission_id, {
+        funnel_id: o.funnel_id,
+        funnel_name: o.funnels?.name ?? "",
+      });
+    }
+
     return rows.map((r) => {
       const fid = fieldByForm.get(r.form_id);
       const name = fid ? valueMap.get(`${r.id}:${fid}`) : "";
-      return { ...r, responsible_name: name?.trim() || null };
+      const funnel = funnelBySubmission.get(r.id) ?? null;
+      return { ...r, responsible_name: name?.trim() || null, funnel };
     });
   });
 
@@ -383,6 +405,170 @@ export const setEnrollment = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+// ---------- Envio manual do lead para um funil ----------
+
+export const sendSubmissionToFunnel = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((data) =>
+    z
+      .object({
+        submission_id: z.string().uuid(),
+        funnel_id: z.string().uuid(),
+        attendant_name: z.string().trim().min(2).max(120).optional(),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    const { getPerms } = await import("./server");
+    const perms = await getPerms(context.supabase, context.userId);
+
+    const { data: submission, error } = await context.supabase
+      .from("submissions")
+      .select("id, school_id, form_id, public_id")
+      .eq("id", data.submission_id)
+      .single();
+    if (error) throw new Error(error.message);
+
+    if (
+      !perms.isAdmin &&
+      !perms.managerSchools.includes(submission.school_id) &&
+      !perms.operatorSchools.includes(submission.school_id)
+    ) {
+      throw new Error("Você não tem permissão para alterar este cadastro.");
+    }
+
+    const { data: funnel } = await context.supabase
+      .from("funnels")
+      .select("id, school_id, name")
+      .eq("id", data.funnel_id)
+      .maybeSingle();
+    if (!funnel) throw new Error("Funil não encontrado.");
+    if (funnel.school_id !== submission.school_id) {
+      throw new Error("Este funil é de outra unidade.");
+    }
+
+    const { data: stage } = await context.supabase
+      .from("funnel_stages")
+      .select("id")
+      .eq("funnel_id", funnel.id)
+      .order("position")
+      .limit(1)
+      .maybeSingle();
+    if (!stage) throw new Error("Este funil ainda não tem etapas.");
+
+    const { data: last } = await context.supabase
+      .from("opportunities")
+      .select("position")
+      .eq("stage_id", stage.id)
+      .order("position", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const position = (last?.position ?? -1) + 1;
+
+    const { data: existing } = await context.supabase
+      .from("opportunities")
+      .select("id")
+      .eq("submission_id", submission.id)
+      .maybeSingle();
+
+    if (existing) {
+      const { error: moveError } = await context.supabase
+        .from("opportunities")
+        .update({
+          funnel_id: funnel.id,
+          stage_id: stage.id,
+          position,
+          status: "open",
+          close_reason_id: null,
+          close_note: null,
+          closed_at: null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", existing.id);
+      if (moveError) throw new Error(moveError.message);
+    } else {
+      // Nome do cartão: ID do cadastro + responsável (quando houver).
+      const { data: destination } = await context.supabase
+        .from("form_destinations")
+        .select("name_field_id, phone_field_id, email_field_id")
+        .eq("form_id", submission.form_id)
+        .maybeSingle();
+      const fieldIds = [
+        destination?.name_field_id,
+        destination?.phone_field_id,
+        destination?.email_field_id,
+      ].filter(Boolean) as string[];
+      const values = new Map<string, string>();
+      if (fieldIds.length > 0) {
+        const { data: vals } = await context.supabase
+          .from("submission_values")
+          .select("field_id, value")
+          .eq("submission_id", submission.id)
+          .eq("part", "")
+          .in("field_id", fieldIds);
+        for (const v of vals ?? []) values.set(v.field_id, (v.value ?? "").trim());
+      }
+      const pick = (fieldId: string | null | undefined) =>
+        (fieldId ? values.get(fieldId) : "") || null;
+      const responsible = pick(destination?.name_field_id);
+      const cardName = responsible
+        ? `${submission.public_id} · ${responsible}`
+        : submission.public_id;
+
+      const { error: insertError } = await context.supabase.from("opportunities").insert({
+        funnel_id: funnel.id,
+        stage_id: stage.id,
+        school_id: submission.school_id,
+        submission_id: submission.id,
+        name: cardName,
+        phone: pick(destination?.phone_field_id),
+        email: pick(destination?.email_field_id),
+        position,
+      });
+      if (insertError) throw new Error(insertError.message);
+    }
+
+    await context.supabase
+      .from("submissions")
+      .update({ crm_status: "sent", crm_reason: `Enviado manualmente para ${funnel.name}` })
+      .eq("id", submission.id);
+
+    // Atendimento: nome do responsável pelo funil escolhido.
+    let attendantId: string | null = null;
+    if (data.attendant_name) {
+      const name = data.attendant_name.trim();
+      const { data: found } = await context.supabase
+        .from("presenters")
+        .select("id")
+        .eq("school_id", submission.school_id)
+        .eq("kind", "secretaria")
+        .ilike("name", name)
+        .maybeSingle();
+      if (found) {
+        attendantId = found.id;
+      } else {
+        const { data: created, error: createError } = await context.supabase
+          .from("presenters")
+          .insert({ school_id: submission.school_id, kind: "secretaria", name })
+          .select("id")
+          .single();
+        if (createError) throw new Error(createError.message);
+        attendantId = created.id;
+      }
+      const { error: updError } = await context.supabase
+        .from("submissions")
+        .update({
+          attendant_id: attendantId,
+          updated_at: new Date().toISOString(),
+          updated_by: context.userId,
+        })
+        .eq("id", submission.id);
+      if (updError) throw new Error(updError.message);
+    }
+
+    return { ok: true, funnel_id: funnel.id, attendant_id: attendantId };
+  });
+
 // ---------- Quem atendeu / quem apresentou ----------
 
 export const setSubmissionPeople = createServerFn({ method: "POST" })
@@ -553,17 +739,13 @@ export const getDashboardStats = createServerFn({ method: "GET" })
 
     const attendantCounts = new Map<string, number>();
     const presenterCounts = new Map<string, number>();
-    const enrollerCounts = new Map<string, number>();
     for (const row of rows) {
       const attendant = (row as unknown as { attendant: { name?: string } | null }).attendant;
       const presenter = (row as unknown as { presenter: { name?: string } | null }).presenter;
-      const enroller = (row as unknown as { enroller: { name?: string } | null }).enroller;
       const a = attendant?.name?.trim();
       const p = presenter?.name?.trim();
-      const e = enroller?.name?.trim();
       if (a) attendantCounts.set(a, (attendantCounts.get(a) ?? 0) + 1);
       if (p) presenterCounts.set(p, (presenterCounts.get(p) ?? 0) + 1);
-      if (e) enrollerCounts.set(e, (enrollerCounts.get(e) ?? 0) + 1);
     }
 
     const seriesCounts = new Map<string, number>();
@@ -751,9 +933,6 @@ export const getDashboardStats = createServerFn({ method: "GET" })
         .map(([label, count]) => ({ label, count }))
         .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, "pt-BR")),
       presenters: [...presenterCounts.entries()]
-        .map(([label, count]) => ({ label, count }))
-        .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, "pt-BR")),
-      enrollers: [...enrollerCounts.entries()]
         .map(([label, count]) => ({ label, count }))
         .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, "pt-BR")),
       monthly: monthlyVisits.map((visits, month) => ({

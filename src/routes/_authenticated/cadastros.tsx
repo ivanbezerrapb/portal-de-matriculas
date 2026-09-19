@@ -3,7 +3,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { PrintSheets, type PrintSheetsState } from "@/components/print/PrintSheets";
-import { listSubmissions, setEnrollment, setSubmissionPeople } from "@/lib/ext/cadastros.functions";
+import {
+  listSubmissions,
+  sendSubmissionToFunnel,
+  setEnrollment,
+  setSubmissionPeople,
+} from "@/lib/ext/cadastros.functions";
+import { listFunnelOwners, listFunnels } from "@/lib/ext/funis.functions";
 import { listPresenters, type PresenterKind } from "@/lib/ext/apresentacao.functions";
 import { listSchools } from "@/lib/ext/escolas.functions";
 import { listForms } from "@/lib/ext/formularios.functions";
@@ -52,8 +58,15 @@ function SubmissionsPage() {
   const [enrollmentCount, setEnrollmentCount] = useState("1");
   const [dialogAttendant, setDialogAttendant] = useState<PersonChoice | null>(null);
   const [dialogPresenter, setDialogPresenter] = useState<PersonChoice | null>(null);
-  const [dialogEnroller, setDialogEnroller] = useState<PersonChoice | null>(null);
   const [savingEnrollment, setSavingEnrollment] = useState(false);
+  const [funnelDialog, setFunnelDialog] = useState<{
+    submissionId: string;
+    publicId: string;
+    funnelId: string;
+    funnelName: string;
+    owners: string[];
+  } | null>(null);
+  const [funnelAttendant, setFunnelAttendant] = useState("");
 
   const { data: perms } = useQuery({
     queryKey: ["my-permissions"],
@@ -71,6 +84,16 @@ function SubmissionsPage() {
   const { data: presenters } = useQuery({
     queryKey: ["presenters"],
     queryFn: () => listPresenters({ data: { only_active: true } }),
+  });
+
+  const { data: funnelsData } = useQuery({
+    queryKey: ["funnels"],
+    queryFn: () => listFunnels(),
+  });
+
+  const { data: funnelOwners } = useQuery({
+    queryKey: ["funnel-owners"],
+    queryFn: () => listFunnelOwners(),
   });
 
   const filters = {
@@ -147,7 +170,6 @@ function SubmissionsPage() {
       (perms?.operatorSchools.length ?? 0) > 0) ??
     false;
 
-
   const enrollM = useMutation({
     mutationFn: (d: { id: string; enrolled: boolean; enrollment_count?: number }) =>
       setEnrollment({ data: d }),
@@ -176,6 +198,55 @@ function SubmissionsPage() {
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  const funnelM = useMutation({
+    mutationFn: (d: { submission_id: string; funnel_id: string; attendant_name?: string }) =>
+      sendSubmissionToFunnel({ data: d }),
+    onSuccess: () => {
+      toast.success("Lead enviado para o funil. Tarefa de 1º contato criada.");
+      queryClient.invalidateQueries({ queryKey: ["submissions"] });
+      queryClient.invalidateQueries({ queryKey: ["presenters"] });
+      queryClient.invalidateQueries({ queryKey: ["pipeline"] });
+      queryClient.invalidateQueries({ queryKey: ["crm-tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+      setFunnelDialog(null);
+      setFunnelAttendant("");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  // Ao escolher um funil: responsáveis vinculados definem o Atendimento.
+  function pickFunnel(
+    submission: { id: string; public_id: string },
+    funnelId: string,
+    funnelName: string,
+  ) {
+    const owners = [
+      ...new Set(
+        (funnelOwners ?? []).filter((o) => o.funnel_id === funnelId).map((o) => o.name.trim()),
+      ),
+    ].filter(Boolean);
+    if (owners.length === 1 && owners[0]) {
+      funnelM.mutate({
+        submission_id: submission.id,
+        funnel_id: funnelId,
+        attendant_name: owners[0],
+      });
+      return;
+    }
+    if (owners.length === 0) {
+      funnelM.mutate({ submission_id: submission.id, funnel_id: funnelId });
+      return;
+    }
+    setFunnelAttendant(owners[0] ?? "");
+    setFunnelDialog({
+      submissionId: submission.id,
+      publicId: submission.public_id,
+      funnelId,
+      funnelName,
+      owners,
+    });
+  }
 
   function toggle(id: string) {
     setSelected((prev) => {
@@ -311,7 +382,7 @@ function SubmissionsPage() {
                 <th className="px-4 py-3">Data</th>
                 <th className="px-4 py-3">Apresentação</th>
                 <th className="px-4 py-3">Atendimento</th>
-                <th className="px-4 py-3">Efetivação</th>
+                <th className="px-4 py-3">Funil</th>
                 <th className="px-4 py-3">Matrícula</th>
                 <th className="px-4 py-3"></th>
               </tr>
@@ -394,20 +465,37 @@ function SubmissionsPage() {
                       />
                     </td>
                     <td className="px-4 py-2.5">
-                      <PersonCell
-                        kind="efetivacao"
-                        current={
-                          (s as unknown as { enroller: { name?: string } | null }).enroller?.name ??
-                          null
-                        }
-                        options={(presenters ?? []).filter(
-                          (p) => p.school_id === s.school_id && p.kind === "efetivacao",
-                        )}
-                        disabled={!canEnroll || peopleM.isPending}
-                        onPick={(value) =>
-                          peopleM.mutate({ submission_id: s.id, kind: "efetivacao", ...value })
-                        }
-                      />
+                      {(() => {
+                        const current = (
+                          s as unknown as {
+                            funnel: { funnel_id: string; funnel_name: string } | null;
+                          }
+                        ).funnel;
+                        const options = (funnelsData?.funnels ?? []).filter(
+                          (f) => f.school_id === s.school_id,
+                        );
+                        return (
+                          <select
+                            className="w-full min-w-32 rounded-md border border-border bg-background px-2 py-1 text-xs"
+                            value={current?.funnel_id ?? ""}
+                            disabled={!canEnroll || funnelM.isPending}
+                            onChange={(e) => {
+                              const id = e.target.value;
+                              if (!id || id === current?.funnel_id) return;
+                              const funnel = options.find((f) => f.id === id);
+                              pickFunnel(s, id, funnel?.name ?? "");
+                            }}
+                            aria-label={`Funil de ${s.public_id}`}
+                          >
+                            <option value="">—</option>
+                            {options.map((f) => (
+                              <option key={f.id} value={f.id}>
+                                {f.name}
+                              </option>
+                            ))}
+                          </select>
+                        );
+                      })()}
                     </td>
                     <td className="px-4 py-2.5">
                       <label className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -425,9 +513,6 @@ function SubmissionsPage() {
                               const pre = (
                                 s as unknown as { presenter: { id?: string; name?: string } | null }
                               ).presenter;
-                              const enr = (
-                                s as unknown as { enroller: { id?: string; name?: string } | null }
-                              ).enroller;
                               setDialogAttendant(
                                 att?.id && att.name
                                   ? { presenter_id: att.id, label: att.name }
@@ -438,11 +523,7 @@ function SubmissionsPage() {
                                   ? { presenter_id: pre.id, label: pre.name }
                                   : null,
                               );
-                              setDialogEnroller(
-                                enr?.id && enr.name
-                                  ? { presenter_id: enr.id, label: enr.name }
-                                  : null,
-                              );
+
                               setEnrollmentDialog({
                                 id: s.id,
                                 publicId: s.public_id,
@@ -567,17 +648,6 @@ function SubmissionsPage() {
                 onChange={setDialogPresenter}
               />
             </div>
-            <div className="mt-4">
-              <Label>Quem efetivou (Efetivação)</Label>
-              <PersonPicker
-                kind="efetivacao"
-                value={dialogEnroller}
-                options={(presenters ?? []).filter(
-                  (p) => p.school_id === enrollmentDialog.schoolId && p.kind === "efetivacao",
-                )}
-                onChange={setDialogEnroller}
-              />
-            </div>
             <div className="mt-5 flex justify-end gap-2">
               <Button variant="ghost" onClick={() => setEnrollmentDialog(null)}>
                 Cancelar
@@ -588,12 +658,11 @@ function SubmissionsPage() {
                   savingEnrollment ||
                   !dialogAttendant ||
                   !dialogPresenter ||
-                  !dialogEnroller ||
                   !Number.isInteger(Number(enrollmentCount)) ||
                   Number(enrollmentCount) < 1
                 }
                 onClick={async () => {
-                  if (!dialogAttendant || !dialogPresenter || !dialogEnroller) return;
+                  if (!dialogAttendant || !dialogPresenter) return;
                   setSavingEnrollment(true);
                   try {
                     await setSubmissionPeople({
@@ -614,15 +683,7 @@ function SubmissionsPage() {
                           : { new_name: dialogPresenter.label }),
                       },
                     });
-                    await setSubmissionPeople({
-                      data: {
-                        submission_id: enrollmentDialog.id,
-                        kind: "efetivacao",
-                        ...(dialogEnroller.presenter_id
-                          ? { presenter_id: dialogEnroller.presenter_id }
-                          : { new_name: dialogEnroller.label }),
-                      },
-                    });
+
                     queryClient.invalidateQueries({ queryKey: ["presenters"] });
                     enrollM.mutate({
                       id: enrollmentDialog.id,
@@ -637,6 +698,48 @@ function SubmissionsPage() {
                 }}
               >
                 Confirmar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {funnelDialog && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-background/70 p-4">
+          <div className="w-full max-w-md rounded-lg border border-border bg-card p-5 shadow-lg">
+            <h2 className="text-base font-semibold text-foreground">Quem atendeu?</h2>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {funnelDialog.publicId} · funil {funnelDialog.funnelName}
+            </p>
+            <div className="mt-4">
+              <Label>Responsável</Label>
+              <select
+                className="mt-1 w-full rounded-md border border-border bg-background px-2 py-2 text-sm"
+                value={funnelAttendant}
+                onChange={(e) => setFunnelAttendant(e.target.value)}
+              >
+                {funnelDialog.owners.map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => setFunnelDialog(null)}>
+                Cancelar
+              </Button>
+              <Button
+                disabled={!funnelAttendant || funnelM.isPending}
+                onClick={() =>
+                  funnelM.mutate({
+                    submission_id: funnelDialog.submissionId,
+                    funnel_id: funnelDialog.funnelId,
+                    attendant_name: funnelAttendant,
+                  })
+                }
+              >
+                Enviar para o funil
               </Button>
             </div>
           </div>
