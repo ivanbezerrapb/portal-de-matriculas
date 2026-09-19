@@ -185,7 +185,8 @@ export async function applyDestination(
 
   // Quando o funil tem uma única pessoa vinculada, ela já assume o cartão.
   let ownerId: string | null = null;
-  const { data: ownerLinks } = await supabase
+  const { extAdmin } = await import("./server");
+  const { data: ownerLinks } = await extAdmin()
     .from("user_funnels")
     .select("user_id")
     .eq("funnel_id", funnelId)
