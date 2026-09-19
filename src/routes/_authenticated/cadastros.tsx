@@ -745,6 +745,48 @@ function SubmissionsPage() {
 
       {viewId && <SubmissionViewDialog id={viewId} onClose={() => setViewId(null)} />}
 
+      {restrictedConfirm && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-background/70 p-4">
+          <div className="w-full max-w-md rounded-lg border border-border bg-card p-5 shadow-lg">
+            <div className="flex items-start gap-3">
+              <AlertTriangle
+                size={22}
+                strokeWidth={2}
+                className="mt-0.5 shrink-0 text-[oklch(0.72_0.18_60)]"
+              />
+              <div>
+                <h2 className="text-base font-semibold text-foreground">
+                  Atenção — cadastro com restrição
+                </h2>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  O cadastro <span className="font-mono">{restrictedConfirm.submission.public_id}</span>{" "}
+                  informou acompanhamento médico, psicológico ou psicopedagógico. Ele só deve ser
+                  enviado ao funil <strong>{restrictedConfirm.funnelName}</strong> após avaliação.
+                </p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Tem certeza que deseja incluir este cadastro no funil?
+                </p>
+              </div>
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => setRestrictedConfirm(null)}>
+                Cancelar
+              </Button>
+              <Button
+                disabled={funnelM.isPending}
+                onClick={() => {
+                  const c = restrictedConfirm;
+                  setRestrictedConfirm(null);
+                  pickFunnel(c.submission, c.funnelId, c.funnelName, true);
+                }}
+              >
+                Sim, incluir no funil
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {funnelDialog && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-background/70 p-4">
           <div className="w-full max-w-md rounded-lg border border-border bg-card p-5 shadow-lg">
