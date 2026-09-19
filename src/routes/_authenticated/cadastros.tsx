@@ -67,7 +67,7 @@ function SubmissionsPage() {
     publicId: string;
     funnelId: string;
     funnelName: string;
-    owners: string[];
+    owners: { userId: string; name: string }[];
   } | null>(null);
   const [funnelAttendant, setFunnelAttendant] = useState("");
   const [restrictedConfirm, setRestrictedConfirm] = useState<{
@@ -209,7 +209,12 @@ function SubmissionsPage() {
   });
 
   const funnelM = useMutation({
-    mutationFn: (d: { submission_id: string; funnel_id: string; attendant_name?: string }) =>
+    mutationFn: (d: {
+      submission_id: string;
+      funnel_id: string;
+      attendant_user_id?: string;
+      attendant_name?: string;
+    }) =>
       sendSubmissionToFunnel({ data: d }),
     onSuccess: () => {
       toast.success("Lead enviado para o funil. Tarefa de 1º contato criada.");
@@ -239,16 +244,19 @@ function SubmissionsPage() {
       });
       return;
     }
-    const owners = [
-      ...new Set(
-        (funnelOwners ?? []).filter((o) => o.funnel_id === funnelId).map((o) => o.name.trim()),
-      ),
-    ].filter(Boolean);
+    const owners = Array.from(
+      new Map(
+        (funnelOwners ?? [])
+          .filter((o) => o.funnel_id === funnelId)
+          .map((o) => [o.user_id, { userId: o.user_id, name: o.name.trim() }]),
+      ).values(),
+    ).filter((owner) => owner.name);
     if (owners.length === 1 && owners[0]) {
       funnelM.mutate({
         submission_id: submission.id,
         funnel_id: funnelId,
-        attendant_name: owners[0],
+        attendant_user_id: owners[0].userId,
+        attendant_name: owners[0].name,
       });
       return;
     }
@@ -256,7 +264,7 @@ function SubmissionsPage() {
       funnelM.mutate({ submission_id: submission.id, funnel_id: funnelId });
       return;
     }
-    setFunnelAttendant(owners[0] ?? "");
+    setFunnelAttendant(owners[0]?.userId ?? "");
     setFunnelDialog({
       submissionId: submission.id,
       publicId: submission.public_id,
@@ -798,9 +806,9 @@ function SubmissionsPage() {
                 value={funnelAttendant}
                 onChange={(e) => setFunnelAttendant(e.target.value)}
               >
-                {funnelDialog.owners.map((name) => (
-                  <option key={name} value={name}>
-                    {name}
+                {funnelDialog.owners.map((owner) => (
+                  <option key={owner.userId} value={owner.userId}>
+                    {owner.name}
                   </option>
                 ))}
               </select>
@@ -815,7 +823,10 @@ function SubmissionsPage() {
                   funnelM.mutate({
                     submission_id: funnelDialog.submissionId,
                     funnel_id: funnelDialog.funnelId,
-                    attendant_name: funnelAttendant,
+                    attendant_user_id: funnelAttendant,
+                    attendant_name:
+                      funnelDialog.owners.find((owner) => owner.userId === funnelAttendant)?.name ??
+                      undefined,
                   })
                 }
               >

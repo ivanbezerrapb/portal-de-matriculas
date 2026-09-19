@@ -5,7 +5,9 @@ import { toast } from "sonner";
 import { Trash2 } from "lucide-react";
 import { deleteTask, listTasks, setTaskDone, type TaskRow } from "@/lib/ext/tarefas.functions";
 import { getMyPermissions } from "@/lib/ext/cadastros.functions";
-import { Button, Card, EmptyState, Select, Spinner } from "@/components/ui";
+import { listSchools } from "@/lib/ext/escolas.functions";
+import { listFunnelOwners, listFunnels } from "@/lib/ext/funis.functions";
+import { Badge, Button, Card, EmptyState, Label, Select, Spinner } from "@/components/ui";
 
 export const Route = createFileRoute("/_authenticated/crm/tarefas")({
   head: () => ({
@@ -33,6 +35,9 @@ function taskDate(t: TaskRow) {
 function TarefasPage() {
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState<"pending" | "done" | "all">("pending");
+  const [schoolId, setSchoolId] = useState("");
+  const [funnelId, setFunnelId] = useState("");
+  const [ownerId, setOwnerId] = useState("");
 
   const { data: perms } = useQuery({
     queryKey: ["my-permissions"],
@@ -41,11 +46,41 @@ function TarefasPage() {
   // Direção acompanha as tarefas apenas em leitura.
   const canWrite = !(perms?.isDirecao ?? false);
 
+  const { data: schools } = useQuery({ queryKey: ["schools"], queryFn: () => listSchools() });
+  const { data: funnelsData } = useQuery({ queryKey: ["funnels"], queryFn: () => listFunnels() });
+  const { data: owners } = useQuery({
+    queryKey: ["funnel-owners"],
+    queryFn: () => listFunnelOwners(),
+  });
+  const funnels = (funnelsData?.funnels ?? []).filter(
+    (funnel) => !schoolId || funnel.school_id === schoolId,
+  );
+  const ownerOptions = Array.from(
+    new Map(
+      (owners ?? [])
+        .filter((owner) => !funnelId || owner.funnel_id === funnelId)
+        .filter((owner) => {
+          if (!schoolId) return true;
+          return funnels.some((funnel) => funnel.id === owner.funnel_id);
+        })
+        .map((owner) => [owner.user_id, owner.name]),
+    ).entries(),
+  ).sort((a, b) => a[1].localeCompare(b[1]));
+
   const { data: tasks, isLoading } = useQuery({
-    queryKey: ["crm-tasks", filter],
+    queryKey: ["crm-tasks", filter, schoolId, funnelId, ownerId],
     queryFn: () =>
       listTasks({
-        data: filter === "all" ? {} : { done: filter === "done" },
+        data: {
+          ...(filter === "all" ? {} : { done: filter === "done" }),
+          ...(schoolId ? { school_id: schoolId } : {}),
+          ...(funnelId ? { funnel_id: funnelId } : {}),
+          ...(ownerId === "unassigned"
+            ? { unassigned: true }
+            : ownerId
+              ? { owner_id: ownerId }
+              : {}),
+        },
       }),
     refetchInterval: 30_000,
     refetchIntervalInBackground: false,
@@ -70,7 +105,7 @@ function TarefasPage() {
   });
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="mx-auto w-full max-w-6xl">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-sm font-medium text-primary">CRM</p>
@@ -79,12 +114,73 @@ function TarefasPage() {
             Afazeres das oportunidades, ordenados por data.
           </p>
         </div>
-        <Select value={filter} onChange={(e) => setFilter(e.target.value as typeof filter)}>
-          <option value="pending">Pendentes</option>
-          <option value="done">Feitas</option>
-          <option value="all">Todas</option>
-        </Select>
       </div>
+
+      <Card className="mt-6">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div>
+            <Label htmlFor="task-status">Situação</Label>
+            <Select
+              id="task-status"
+              value={filter}
+              onChange={(e) => setFilter(e.target.value as typeof filter)}
+            >
+              <option value="pending">Pendentes</option>
+              <option value="done">Feitas</option>
+              <option value="all">Todas</option>
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="task-school">Escola</Label>
+            <Select
+              id="task-school"
+              value={schoolId}
+              onChange={(e) => {
+                setSchoolId(e.target.value);
+                setFunnelId("");
+                setOwnerId("");
+              }}
+            >
+              <option value="">Todas</option>
+              {(schools ?? []).map((school) => (
+                <option key={school.id} value={school.id}>
+                  {school.name}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="task-funnel">Funil</Label>
+            <Select
+              id="task-funnel"
+              value={funnelId}
+              onChange={(e) => {
+                setFunnelId(e.target.value);
+                setOwnerId("");
+              }}
+            >
+              <option value="">Todos</option>
+              {funnels.map((funnel) => (
+                <option key={funnel.id} value={funnel.id}>
+                  {funnel.name}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="task-owner">Responsável</Label>
+            <Select id="task-owner" value={ownerId} onChange={(e) => setOwnerId(e.target.value)}>
+              <option value="">Todos</option>
+              <option value="unassigned">Sem responsável</option>
+              {ownerOptions.map(([id, name]) => (
+                <option key={id} value={id}>
+                  {name}
+                </option>
+              ))}
+            </Select>
+          </div>
+        </div>
+      </Card>
 
       {isLoading ? (
         <div className="mt-10 flex justify-center">
@@ -98,7 +194,7 @@ function TarefasPage() {
           />
         </div>
       ) : (
-        <Card className="mt-6 p-0">
+        <Card className="mt-4 p-0">
           <ul className="divide-y divide-border">
             {tasks.map((t) => {
               const d = taskDate(t);
@@ -130,6 +226,14 @@ function TarefasPage() {
                         </span>
                       )}
                     </p>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      <Badge color="muted">
+                        Funil: {t.opportunities?.funnels?.name ?? "Sem funil"}
+                      </Badge>
+                      <Badge color={t.opportunities?.owner ? "green" : "amber"}>
+                        Responsável: {t.opportunities?.owner?.full_name ?? "Sem responsável"}
+                      </Badge>
+                    </div>
                   </div>
                   {t.opportunities && (
                     <Link
