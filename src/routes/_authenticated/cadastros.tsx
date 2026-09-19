@@ -463,8 +463,7 @@ function SubmissionsPage() {
                     </td>
                     <td className="px-4 py-2.5 text-muted-foreground">
                       {(() => {
-                        const series =
-                          (s as unknown as { series?: string[] }).series ?? [];
+                        const series = (s as unknown as { series?: string[] }).series ?? [];
                         const filled = series.filter((x) => x);
                         if (filled.length === 0) return "—";
                         return filled.map((serie, i) => (
