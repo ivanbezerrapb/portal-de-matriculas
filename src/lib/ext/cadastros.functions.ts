@@ -119,7 +119,12 @@ export const listSubmissions = createServerFn({ method: "GET" })
       const fid = fieldByForm.get(r.form_id);
       const name = fid ? valueMap.get(`${r.id}:${fid}`) : "";
       const funnel = funnelBySubmission.get(r.id) ?? null;
-      return { ...r, responsible_name: name?.trim() || null, funnel };
+      return {
+        ...r,
+        responsible_name: name?.trim() || null,
+        funnel,
+        restricted: restrictedIds.has(r.id),
+      };
     });
   });
 
