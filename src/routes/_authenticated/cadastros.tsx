@@ -58,8 +58,15 @@ function SubmissionsPage() {
   const [enrollmentCount, setEnrollmentCount] = useState("1");
   const [dialogAttendant, setDialogAttendant] = useState<PersonChoice | null>(null);
   const [dialogPresenter, setDialogPresenter] = useState<PersonChoice | null>(null);
-  const [dialogEnroller, setDialogEnroller] = useState<PersonChoice | null>(null);
   const [savingEnrollment, setSavingEnrollment] = useState(false);
+  const [funnelDialog, setFunnelDialog] = useState<{
+    submissionId: string;
+    publicId: string;
+    funnelId: string;
+    funnelName: string;
+    owners: string[];
+  } | null>(null);
+  const [funnelAttendant, setFunnelAttendant] = useState("");
 
   const { data: perms } = useQuery({
     queryKey: ["my-permissions"],
@@ -77,6 +84,16 @@ function SubmissionsPage() {
   const { data: presenters } = useQuery({
     queryKey: ["presenters"],
     queryFn: () => listPresenters({ data: { only_active: true } }),
+  });
+
+  const { data: funnelsData } = useQuery({
+    queryKey: ["funnels"],
+    queryFn: () => listFunnels(),
+  });
+
+  const { data: funnelOwners } = useQuery({
+    queryKey: ["funnel-owners"],
+    queryFn: () => listFunnelOwners(),
   });
 
   const filters = {
