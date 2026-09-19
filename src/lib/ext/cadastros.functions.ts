@@ -78,10 +78,32 @@ export const listSubmissions = createServerFn({ method: "GET" })
       }
     }
 
+    // Funil atual de cada cadastro (cartão no CRM).
+    const { data: opps } = await context.supabase
+      .from("opportunities")
+      .select("submission_id, funnel_id, status, funnels(name)")
+      .in(
+        "submission_id",
+        rows.map((r) => r.id),
+      );
+    const funnelBySubmission = new Map<string, { funnel_id: string; funnel_name: string }>();
+    for (const o of (opps ?? []) as unknown as {
+      submission_id: string | null;
+      funnel_id: string;
+      funnels: { name: string } | null;
+    }[]) {
+      if (!o.submission_id) continue;
+      funnelBySubmission.set(o.submission_id, {
+        funnel_id: o.funnel_id,
+        funnel_name: o.funnels?.name ?? "",
+      });
+    }
+
     return rows.map((r) => {
       const fid = fieldByForm.get(r.form_id);
       const name = fid ? valueMap.get(`${r.id}:${fid}`) : "";
-      return { ...r, responsible_name: name?.trim() || null };
+      const funnel = funnelBySubmission.get(r.id) ?? null;
+      return { ...r, responsible_name: name?.trim() || null, funnel };
     });
   });
 
