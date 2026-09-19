@@ -2,8 +2,11 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
+import { Eye } from "lucide-react";
 import { PrintSheets, type PrintSheetsState } from "@/components/print/PrintSheets";
+import { formatAddress, parseAddress, type FormField } from "@/lib/ext/model";
 import {
+  getSubmission,
   listSubmissions,
   sendSubmissionToFunnel,
   setEnrollment,
@@ -67,6 +70,7 @@ function SubmissionsPage() {
     owners: string[];
   } | null>(null);
   const [funnelAttendant, setFunnelAttendant] = useState("");
+  const [viewId, setViewId] = useState<string | null>(null);
 
   const { data: perms } = useQuery({
     queryKey: ["my-permissions"],
@@ -544,16 +548,26 @@ function SubmissionsPage() {
                       </label>
                     </td>
                     <td className="px-2 py-2.5 text-right">
-                      {canPrint && (
+                      <div className="flex items-center justify-end gap-1">
                         <button
-                          title="Imprimir este cadastro"
-                          aria-label={`Imprimir ${s.public_id}`}
-                          onClick={() => printRow(s.id, s.form_id)}
+                          title="Visualizar dados preenchidos"
+                          aria-label={`Visualizar ${s.public_id}`}
+                          onClick={() => setViewId(s.id)}
                           className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
                         >
-                          <PrinterIcon />
+                          <Eye size={18} strokeWidth={1.8} />
                         </button>
-                      )}
+                        {canPrint && (
+                          <button
+                            title="Imprimir este cadastro"
+                            aria-label={`Imprimir ${s.public_id}`}
+                            onClick={() => printRow(s.id, s.form_id)}
+                            className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+                          >
+                            <PrinterIcon />
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
@@ -703,6 +717,8 @@ function SubmissionsPage() {
           </div>
         </div>
       )}
+
+      {viewId && <SubmissionViewDialog id={viewId} onClose={() => setViewId(null)} />}
 
       {funnelDialog && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-background/70 p-4">
@@ -948,5 +964,102 @@ function PrinterIcon() {
       <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
       <rect x="6" y="14" width="12" height="8" rx="1" />
     </svg>
+  );
+}
+
+function formatFieldValue(value: string | null | undefined): string[] {
+  const raw = (value ?? "").trim();
+  if (!raw) return [];
+  if (raw.startsWith("{")) {
+    const line = formatAddress(parseAddress(raw)).trim();
+    return line ? [line] : [];
+  }
+  return raw
+    .split(" | ")
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
+function SubmissionViewDialog({ id, onClose }: { id: string; onClose: () => void }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ["submission", id],
+    queryFn: () => getSubmission({ data: { id } }),
+  });
+
+  const submission = data?.submission as
+    | {
+        public_id: string;
+        created_at: string;
+        forms?: { title?: string } | null;
+        schools?: { name?: string } | null;
+      }
+    | undefined;
+  const fields = (data?.fields ?? []) as FormField[];
+  const values = new Map(
+    ((data?.values ?? []) as { field_id: string; value: string | null }[]).map((v) => [
+      v.field_id,
+      v.value,
+    ]),
+  );
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="flex max-h-[85vh] w-full max-w-2xl flex-col rounded-xl border border-border bg-card shadow-lg"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="border-b border-border px-5 py-4">
+          <h2 className="font-display text-lg font-semibold text-foreground">
+            {submission ? submission.public_id : "Cadastro"}
+          </h2>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {submission
+              ? [
+                  submission.schools?.name,
+                  submission.forms?.title,
+                  new Date(submission.created_at).toLocaleString("pt-BR"),
+                ]
+                  .filter(Boolean)
+                  .join(" · ")
+              : "Carregando..."}
+          </p>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-5 py-4">
+          {isLoading ? (
+            <div className="flex justify-center py-8">
+              <Spinner />
+            </div>
+          ) : (
+            <dl className="space-y-3">
+              {fields.map((f) => {
+                const lines = formatFieldValue(values.get(f.id));
+                return (
+                  <div key={f.id} className="border-b border-border/60 pb-3 last:border-0">
+                    <dt className="text-xs font-medium text-muted-foreground">{f.label}</dt>
+                    <dd className="mt-0.5 text-sm break-words text-foreground">
+                      {lines.length === 0 ? (
+                        <span className="text-muted-foreground">—</span>
+                      ) : (
+                        lines.map((line, i) => <div key={i}>{line}</div>)
+                      )}
+                    </dd>
+                  </div>
+                );
+              })}
+            </dl>
+          )}
+        </div>
+
+        <div className="flex justify-end border-t border-border px-5 py-3">
+          <Button variant="ghost" onClick={onClose}>
+            Fechar
+          </Button>
+        </div>
+      </div>
+    </div>
   );
 }
