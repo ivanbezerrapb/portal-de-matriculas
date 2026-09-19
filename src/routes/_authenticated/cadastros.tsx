@@ -4,7 +4,7 @@ import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { Eye } from "lucide-react";
 import { PrintSheets, type PrintSheetsState } from "@/components/print/PrintSheets";
-import { formatAddress, parseAddress, type FormField } from "@/lib/ext/model";
+import { formatAddress, parseAddress, parseChildren, type FormField } from "@/lib/ext/model";
 import {
   getSubmission,
   listSubmissions,
@@ -967,12 +967,31 @@ function PrinterIcon() {
   );
 }
 
+function formatBRDate(raw: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(raw.trim());
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : raw.trim();
+}
+
 function formatFieldValue(value: string | null | undefined): string[] {
   const raw = (value ?? "").trim();
   if (!raw) return [];
   if (raw.startsWith("{")) {
     const line = formatAddress(parseAddress(raw)).trim();
     return line ? [line] : [];
+  }
+  if (raw.startsWith("[")) {
+    const children = parseChildren(raw);
+    if (children.length > 0) {
+      return children.map((c) => {
+        const parts = [
+          c.nome.trim(),
+          c.nascimento ? `(${formatBRDate(c.nascimento)})` : "",
+          c.serie.trim(),
+          c.turno.trim(),
+        ].filter(Boolean);
+        return parts.join(" - ");
+      });
+    }
   }
   return raw
     .split(" | ")
