@@ -440,13 +440,13 @@ function SubmissionsPage() {
                           {s.public_id}
                         </Link>
                         {(s as unknown as { restricted?: boolean }).restricted && (
-                          <AlertTriangle
-                            size={16}
-                            strokeWidth={2}
-                            className="shrink-0 text-[oklch(0.72_0.18_60)]"
-                            aria-label="Cadastro com restrição"
+                          <span
                             title="Atenção: cadastro com acompanhamento médico/psicológico informado"
-                          />
+                            aria-label="Cadastro com restrição"
+                            className="inline-flex text-[oklch(0.72_0.18_60)]"
+                          >
+                            <AlertTriangle size={16} strokeWidth={2} className="shrink-0" />
+                          </span>
                         )}
                       </div>
                     </td>
