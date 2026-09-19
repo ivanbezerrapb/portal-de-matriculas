@@ -493,18 +493,23 @@ export const sendSubmissionToFunnel = createServerFn({ method: "POST" })
       throw new Error("Este funil é de outra unidade.");
     }
 
+    const { extAdmin } = await import("./server");
+    const { data: ownerLinks, error: ownersError } = await extAdmin()
+      .from("user_funnels")
+      .select("user_id")
+      .eq("funnel_id", funnel.id)
+      .limit(2);
+    if (ownersError) throw new Error(ownersError.message);
+
     let ownerId: string | null = null;
     if (data.attendant_user_id) {
-      const { extAdmin } = await import("./server");
-      const { data: ownerLink, error: ownerError } = await extAdmin()
-        .from("user_funnels")
-        .select("user_id")
-        .eq("funnel_id", funnel.id)
-        .eq("user_id", data.attendant_user_id)
-        .maybeSingle();
-      if (ownerError) throw new Error(ownerError.message);
-      if (!ownerLink) throw new Error("Este responsável não está vinculado ao funil.");
-      ownerId = ownerLink.user_id;
+      const isLinked = ownerLinks?.some((link) => link.user_id === data.attendant_user_id);
+      if (!isLinked) throw new Error("Este responsável não está vinculado ao funil.");
+      ownerId = data.attendant_user_id;
+    } else if (ownerLinks?.length === 1) {
+      ownerId = ownerLinks[0]?.user_id ?? null;
+    } else if ((ownerLinks?.length ?? 0) > 1) {
+      throw new Error("Escolha o responsável por este cartão antes de enviar ao funil.");
     }
 
     const { data: stage } = await context.supabase
