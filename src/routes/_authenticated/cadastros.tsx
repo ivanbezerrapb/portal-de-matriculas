@@ -70,6 +70,11 @@ function SubmissionsPage() {
     owners: string[];
   } | null>(null);
   const [funnelAttendant, setFunnelAttendant] = useState("");
+  const [restrictedConfirm, setRestrictedConfirm] = useState<{
+    submission: { id: string; public_id: string };
+    funnelId: string;
+    funnelName: string;
+  } | null>(null);
   const [viewId, setViewId] = useState<string | null>(null);
 
   const { data: perms } = useQuery({
@@ -221,10 +226,19 @@ function SubmissionsPage() {
 
   // Ao escolher um funil: responsáveis vinculados definem o Atendimento.
   function pickFunnel(
-    submission: { id: string; public_id: string },
+    submission: { id: string; public_id: string; restricted?: boolean },
     funnelId: string,
     funnelName: string,
+    confirmed = false,
   ) {
+    if (submission.restricted && !confirmed) {
+      setRestrictedConfirm({
+        submission: { id: submission.id, public_id: submission.public_id },
+        funnelId,
+        funnelName,
+      });
+      return;
+    }
     const owners = [
       ...new Set(
         (funnelOwners ?? []).filter((o) => o.funnel_id === funnelId).map((o) => o.name.trim()),
