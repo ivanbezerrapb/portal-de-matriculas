@@ -152,4 +152,3 @@ export async function getPerms(supabase: SupabaseClient, userId: string): Promis
     roles: rows,
   };
 }
-

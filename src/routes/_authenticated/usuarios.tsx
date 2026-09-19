@@ -374,7 +374,9 @@ function UsersPage() {
                     <div className="mt-3 flex flex-wrap items-center gap-3">
                       {funnels
                         .filter((f) =>
-                          u.roles.some((r) => r.role === "info_center" && r.school_id === f.school_id),
+                          u.roles.some(
+                            (r) => r.role === "info_center" && r.school_id === f.school_id,
+                          ),
                         )
                         .map((f) => (
                           <label key={f.id} className="flex items-center gap-2 text-sm">
@@ -404,8 +406,6 @@ function UsersPage() {
                   )}
                 </div>
               )}
-
-
 
               {addRoleFor === u.id && (
                 <div className="mt-3 flex flex-wrap items-end gap-2 rounded-md bg-muted p-3">
