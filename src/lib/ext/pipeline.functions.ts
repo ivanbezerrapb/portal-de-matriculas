@@ -16,7 +16,8 @@ async function validateOwner(
   ownerId: string | null | undefined,
 ) {
   if (!ownerId) return null;
-  const { data, error } = await supabase
+  const { extAdmin } = await import("./server");
+  const { data, error } = await extAdmin()
     .from("user_funnels")
     .select("user_id")
     .eq("funnel_id", funnelId)
@@ -59,13 +60,30 @@ export const listPipeline = createServerFn({ method: "GET" })
     const status = data.status ?? "open";
     const { data: opportunities, error: oppError } = await context.supabase
       .from("opportunities")
-      .select(
-        "*, submissions(public_id, children_count), crm_close_reasons(label, kind), owner:profiles!opportunities_owner_id_fkey(id, full_name)",
-      )
+      .select("*, submissions(public_id, children_count), crm_close_reasons(label, kind)")
       .eq("funnel_id", data.funnel_id)
       .eq("status", status)
       .order(status === "open" ? "position" : "closed_at");
     if (oppError) throw new Error(oppError.message);
+
+    const ownerIds = [
+      ...new Set(
+        ((opportunities ?? []) as { owner_id: string | null }[])
+          .map((opportunity) => opportunity.owner_id)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    ];
+    const ownerNames = new Map<string, string | null>();
+    if (ownerIds.length > 0) {
+      const { extAdmin } = await import("./server");
+      const { data: profiles } = await extAdmin()
+        .from("profiles")
+        .select("id, full_name")
+        .in("id", ownerIds);
+      for (const profile of (profiles ?? []) as { id: string; full_name: string | null }[]) {
+        ownerNames.set(profile.id, profile.full_name);
+      }
+    }
 
     // Próxima atividade pendente de cada oportunidade.
     const ids = ((opportunities ?? []) as { id: string }[]).map((o) => o.id);
@@ -91,7 +109,12 @@ export const listPipeline = createServerFn({ method: "GET" })
 
     return {
       stages: (stages ?? []) as FunnelStage[],
-      opportunities: (opportunities ?? []) as OpportunityRow[],
+      opportunities: (opportunities ?? []).map((opportunity: any) => ({
+        ...opportunity,
+        owner: opportunity.owner_id
+          ? { id: opportunity.owner_id, full_name: ownerNames.get(opportunity.owner_id) ?? null }
+          : null,
+      })) as OpportunityRow[],
       nextTasks,
     };
   });

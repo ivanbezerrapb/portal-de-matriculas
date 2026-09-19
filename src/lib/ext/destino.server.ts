@@ -183,6 +183,15 @@ export async function applyDestination(
     return { status: "none", reason: "Etapa inválida" };
   }
 
+  // Quando o funil tem uma única pessoa vinculada, ela já assume o cartão.
+  let ownerId: string | null = null;
+  const { data: ownerLinks } = await supabase
+    .from("user_funnels")
+    .select("user_id")
+    .eq("funnel_id", funnelId)
+    .limit(2);
+  if (ownerLinks?.length === 1) ownerId = ownerLinks[0]?.user_id ?? null;
+
   const { data: last } = await supabase
     .from("opportunities")
     .select("position")
@@ -200,6 +209,7 @@ export async function applyDestination(
     phone: pick(destination?.phone_field_id),
     email: pick(destination?.email_field_id),
     details,
+    owner_id: ownerId,
     position: ((last?.position as number | undefined) ?? -1) + 1,
   });
   if (error) {

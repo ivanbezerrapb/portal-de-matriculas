@@ -36,7 +36,7 @@ export const listTasks = createServerFn({ method: "GET" })
     let q = context.supabase
       .from("crm_tasks")
       .select(
-        "*, opportunities!inner(id, name, school_id, funnel_id, owner_id, funnels(name), schools(name), owner:profiles!opportunities_owner_id_fkey(id, full_name))",
+        "*, opportunities!inner(id, name, school_id, funnel_id, owner_id, funnels(name), schools(name))",
       )
       .order("done")
       .order("due_date", { nullsFirst: false })
@@ -49,7 +49,38 @@ export const listTasks = createServerFn({ method: "GET" })
     if (data.unassigned) q = q.is("opportunities.owner_id", null);
     const { data: rows, error } = await q;
     if (error) throw new Error(error.message);
-    return (rows ?? []) as TaskRow[];
+    const ownerIds = [
+      ...new Set(
+        ((rows ?? []) as { opportunities: { owner_id: string | null } | null }[])
+          .map((row) => row.opportunities?.owner_id)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    ];
+    const ownerNames = new Map<string, string | null>();
+    if (ownerIds.length > 0) {
+      const { extAdmin } = await import("./server");
+      const { data: profiles } = await extAdmin()
+        .from("profiles")
+        .select("id, full_name")
+        .in("id", ownerIds);
+      for (const profile of (profiles ?? []) as { id: string; full_name: string | null }[]) {
+        ownerNames.set(profile.id, profile.full_name);
+      }
+    }
+    return (rows ?? []).map((row: any) => ({
+      ...row,
+      opportunities: row.opportunities
+        ? {
+            ...row.opportunities,
+            owner: row.opportunities.owner_id
+              ? {
+                  id: row.opportunities.owner_id,
+                  full_name: ownerNames.get(row.opportunities.owner_id) ?? null,
+                }
+              : null,
+          }
+        : null,
+    })) as TaskRow[];
   });
 
 export const createTask = createServerFn({ method: "POST" })

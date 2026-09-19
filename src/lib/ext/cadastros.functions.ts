@@ -495,7 +495,8 @@ export const sendSubmissionToFunnel = createServerFn({ method: "POST" })
 
     let ownerId: string | null = null;
     if (data.attendant_user_id) {
-      const { data: ownerLink, error: ownerError } = await context.supabase
+      const { extAdmin } = await import("./server");
+      const { data: ownerLink, error: ownerError } = await extAdmin()
         .from("user_funnels")
         .select("user_id")
         .eq("funnel_id", funnel.id)
