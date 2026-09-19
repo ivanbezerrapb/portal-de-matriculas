@@ -88,6 +88,9 @@ export const listSubmissions = createServerFn({ method: "GET" })
         .in("field_id", fieldIds);
       for (const v of vals ?? []) {
         valueMap.set(`${v.submission_id}:${v.field_id}`, v.value ?? "");
+        if (restrictionFieldIds.has(v.field_id) && norm(v.value ?? "") === "sim") {
+          restrictedIds.add(v.submission_id);
+        }
       }
     }
 
