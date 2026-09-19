@@ -2,8 +2,15 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { createUser, deleteUser, listUsers, setUserRole } from "@/lib/ext/usuarios.functions";
+import {
+  createUser,
+  deleteUser,
+  listUsers,
+  setUserFunnels,
+  setUserRole,
+} from "@/lib/ext/usuarios.functions";
 import { listSchools } from "@/lib/ext/escolas.functions";
+import { listFunnels } from "@/lib/ext/funis.functions";
 import { ROLE_LABELS } from "@/lib/ext/model";
 import { Badge, Button, Card, EmptyState, Input, Label, Select, Spinner } from "@/components/ui";
 
@@ -35,6 +42,11 @@ function UsersPage() {
     queryKey: ["schools"],
     queryFn: () => listSchools(),
   });
+  const { data: funnelsData } = useQuery({
+    queryKey: ["funnels"],
+    queryFn: () => listFunnels(),
+  });
+  const funnels = funnelsData?.funnels ?? [];
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -47,6 +59,9 @@ function UsersPage() {
   const [filterName, setFilterName] = useState("");
   const [filterRole, setFilterRole] = useState<Role | "all">("all");
   const [filterSchool, setFilterSchool] = useState("all");
+  const [funnelIds, setFunnelIds] = useState<string[]>([]);
+  const [editFunnelsFor, setEditFunnelsFor] = useState<string | null>(null);
+  const [editFunnelIds, setEditFunnelIds] = useState<string[]>([]);
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["users"] });
 
@@ -59,6 +74,7 @@ function UsersPage() {
           full_name: fullName,
           role,
           ...(NEEDS_SCHOOL.includes(role) && schoolId ? { school_id: schoolId } : {}),
+          ...(role === "info_center" ? { funnel_ids: funnelIds } : {}),
         },
       }),
     onSuccess: () => {
@@ -66,6 +82,7 @@ function UsersPage() {
       setEmail("");
       setPassword("");
       setFullName("");
+      setFunnelIds([]);
       invalidate();
     },
     onError: (e) => toast.error(e.message),
@@ -86,6 +103,16 @@ function UsersPage() {
     onError: (e) => toast.error(e.message),
   });
 
+  const funnelsMut = useMutation({
+    mutationFn: (vars: { user_id: string; funnel_ids: string[] }) => setUserFunnels({ data: vars }),
+    onSuccess: () => {
+      toast.success("Funis atualizados.");
+      setEditFunnelsFor(null);
+      invalidate();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
   const deleteMut = useMutation({
     mutationFn: (userId: string) => deleteUser({ data: { user_id: userId } }),
     onSuccess: () => {
@@ -96,6 +123,10 @@ function UsersPage() {
   });
 
   const schoolName = (id: string | null) => schools?.find((s) => s.id === id)?.name ?? "";
+
+  const funnelName = (id: string) => funnels.find((f) => f.id === id)?.name ?? "Funil removido";
+  const funnelsForSchool = (school: string) =>
+    school ? funnels.filter((f) => f.school_id === school) : funnels;
 
   const normalize = (v: string) =>
     v
@@ -132,6 +163,10 @@ function UsersPage() {
             e.preventDefault();
             if (NEEDS_SCHOOL.includes(role) && !schoolId) {
               toast.error("Selecione a escola para este perfil.");
+              return;
+            }
+            if (role === "info_center" && funnelIds.length === 0) {
+              toast.error("Selecione ao menos um funil para a Central de Informações.");
               return;
             }
             createMut.mutate();
@@ -176,6 +211,33 @@ function UsersPage() {
                   </option>
                 ))}
               </Select>
+            </div>
+          )}
+          {role === "info_center" && (
+            <div className="sm:col-span-2">
+              <Label>Funis que este usuário irá atender</Label>
+              <div className="mt-1 flex flex-wrap gap-3 rounded-md border border-border p-3">
+                {funnelsForSchool(schoolId).length === 0 ? (
+                  <span className="text-sm text-muted-foreground">
+                    Selecione a escola para ver os funis.
+                  </span>
+                ) : (
+                  funnelsForSchool(schoolId).map((f) => (
+                    <label key={f.id} className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={funnelIds.includes(f.id)}
+                        onChange={(e) =>
+                          setFunnelIds((prev) =>
+                            e.target.checked ? [...prev, f.id] : prev.filter((id) => id !== f.id),
+                          )
+                        }
+                      />
+                      {f.name}
+                    </label>
+                  ))
+                )}
+              </div>
             </div>
           )}
           <div className="flex items-end">
