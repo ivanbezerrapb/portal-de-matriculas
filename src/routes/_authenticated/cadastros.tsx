@@ -3,7 +3,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { PrintSheets, type PrintSheetsState } from "@/components/print/PrintSheets";
-import { listSubmissions, setEnrollment, setSubmissionPeople } from "@/lib/ext/cadastros.functions";
+import {
+  listSubmissions,
+  sendSubmissionToFunnel,
+  setEnrollment,
+  setSubmissionPeople,
+} from "@/lib/ext/cadastros.functions";
+import { listFunnelOwners, listFunnels } from "@/lib/ext/funis.functions";
 import { listPresenters, type PresenterKind } from "@/lib/ext/apresentacao.functions";
 import { listSchools } from "@/lib/ext/escolas.functions";
 import { listForms } from "@/lib/ext/formularios.functions";
