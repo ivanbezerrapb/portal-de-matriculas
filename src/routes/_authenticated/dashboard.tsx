@@ -592,9 +592,7 @@ function DashboardPage() {
     return (legacy ?? []).find((item) => item.year === year) ?? null;
   }
 
-  const peopleChartHeight = data
-    ? Math.max(208, data.attendants.length * 38)
-    : 208;
+  const peopleChartHeight = data ? Math.max(208, data.attendants.length * 38) : 208;
   const schoolLabel =
     selected.length === 0
       ? "Todas as escolas"
