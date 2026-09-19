@@ -61,8 +61,21 @@ export const listSubmissions = createServerFn({ method: "GET" })
       if (f.type === "short_text") fieldByForm.set(f.form_id, f.id);
     }
 
-    const fieldIds = [...new Set([...fieldByForm.values()])];
+    // Campos de "acompanhamento médico/psicológico/psicopedagógico" (alerta de restrição)
+    const restrictionFieldIds = new Set<string>();
+    for (const f of ff ?? []) {
+      const l = norm(f.label);
+      if (
+        l.includes("acompanhamento") &&
+        (l.includes("medico") || l.includes("psicolog") || l.includes("psicopedag"))
+      ) {
+        restrictionFieldIds.add(f.id);
+      }
+    }
+
+    const fieldIds = [...new Set([...fieldByForm.values(), ...restrictionFieldIds])];
     const valueMap = new Map<string, string>();
+    const restrictedIds = new Set<string>();
     if (fieldIds.length > 0) {
       const { data: vals } = await context.supabase
         .from("submission_values")
