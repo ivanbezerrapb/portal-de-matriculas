@@ -593,7 +593,7 @@ function DashboardPage() {
   }
 
   const peopleChartHeight = data
-    ? Math.max(208, ...[data.attendants, data.presenters].map((d) => d.length * 38))
+    ? Math.max(208, data.attendants.length * 38)
     : 208;
   const schoolLabel =
     selected.length === 0
@@ -712,15 +712,10 @@ function DashboardPage() {
             </div>
           </div>
 
-          <div className="mt-3 grid items-start gap-3 @min-[36rem]/dashboard:grid-cols-2 @min-[52rem]/dashboard:grid-cols-3">
+          <div className="mt-3 grid items-start gap-3 @min-[36rem]/dashboard:grid-cols-2">
             <SeriesChart
               data={data.attendants}
               title="Quem mais atendeu (Secretaria)"
-              chartHeight={peopleChartHeight}
-            />
-            <SeriesChart
-              data={data.presenters}
-              title="Quem mais apresentou (Coordenação)"
               chartHeight={peopleChartHeight}
             />
           </div>
