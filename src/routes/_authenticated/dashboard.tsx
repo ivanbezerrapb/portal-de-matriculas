@@ -713,7 +713,7 @@ function DashboardPage() {
           <div className="mt-3 grid items-start gap-3 @min-[36rem]/dashboard:grid-cols-2">
             <SeriesChart
               data={data.attendants}
-              title="Quem mais atendeu (Secretaria)"
+              title="Quem mais atendeu (Coordenação)"
               chartHeight={peopleChartHeight}
             />
           </div>
