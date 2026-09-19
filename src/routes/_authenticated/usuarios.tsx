@@ -351,6 +351,62 @@ function UsersPage() {
                 ))}
               </div>
 
+              {u.roles.some((r) => r.role === "info_center") && (
+                <div className="mt-3 rounded-md bg-muted p-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm font-medium text-foreground">Funis atendidos:</span>
+                    <span className="text-sm text-muted-foreground">
+                      {u.funnel_ids.length === 0
+                        ? "Nenhum funil atribuído"
+                        : u.funnel_ids.map((id) => funnelName(id)).join(", ")}
+                    </span>
+                    <button
+                      className="text-xs text-primary hover:underline"
+                      onClick={() => {
+                        setEditFunnelsFor(editFunnelsFor === u.id ? null : u.id);
+                        setEditFunnelIds(u.funnel_ids);
+                      }}
+                    >
+                      {editFunnelsFor === u.id ? "cancelar" : "alterar"}
+                    </button>
+                  </div>
+                  {editFunnelsFor === u.id && (
+                    <div className="mt-3 flex flex-wrap items-center gap-3">
+                      {funnels
+                        .filter((f) =>
+                          u.roles.some((r) => r.role === "info_center" && r.school_id === f.school_id),
+                        )
+                        .map((f) => (
+                          <label key={f.id} className="flex items-center gap-2 text-sm">
+                            <input
+                              type="checkbox"
+                              checked={editFunnelIds.includes(f.id)}
+                              onChange={(e) =>
+                                setEditFunnelIds((prev) =>
+                                  e.target.checked
+                                    ? [...prev, f.id]
+                                    : prev.filter((id) => id !== f.id),
+                                )
+                              }
+                            />
+                            {f.name}
+                          </label>
+                        ))}
+                      <Button
+                        variant="secondary"
+                        onClick={() =>
+                          funnelsMut.mutate({ user_id: u.id, funnel_ids: editFunnelIds })
+                        }
+                      >
+                        Salvar funis
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+
+
               {addRoleFor === u.id && (
                 <div className="mt-3 flex flex-wrap items-end gap-2 rounded-md bg-muted p-3">
                   <div>
