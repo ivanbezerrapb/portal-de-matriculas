@@ -718,6 +718,9 @@ function SubmissionsPage() {
         </div>
       )}
 
+      {viewId && <SubmissionViewDialog id={viewId} onClose={() => setViewId(null)} />}
+
+
       {funnelDialog && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-background/70 p-4">
           <div className="w-full max-w-md rounded-lg border border-border bg-card p-5 shadow-lg">
