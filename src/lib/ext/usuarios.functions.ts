@@ -23,10 +23,17 @@ export const listUsers = createServerFn({ method: "GET" })
     });
     if (error) throw new Error(error.message);
 
-    const [{ data: roles }, { data: profiles }] = await Promise.all([
+    const [{ data: roles }, { data: profiles }, { data: userFunnels }] = await Promise.all([
       admin.from("user_roles").select("user_id, role, school_id"),
       admin.from("profiles").select("id, full_name"),
+      admin.from("user_funnels").select("user_id, funnel_id"),
     ]);
+    const funnelMap = new Map<string, string[]>();
+    for (const uf of (userFunnels ?? []) as { user_id: string; funnel_id: string }[]) {
+      const list = funnelMap.get(uf.user_id) ?? [];
+      list.push(uf.funnel_id);
+      funnelMap.set(uf.user_id, list);
+    }
     const roleMap = new Map<string, { role: string; school_id: string | null }[]>();
     for (const r of roles ?? []) {
       const list = roleMap.get(r.user_id) ?? [];
@@ -41,6 +48,7 @@ export const listUsers = createServerFn({ method: "GET" })
       full_name: nameMap.get(u.id) ?? "",
       created_at: u.created_at,
       roles: roleMap.get(u.id) ?? [],
+      funnel_ids: funnelMap.get(u.id) ?? [],
     }));
   });
 
@@ -54,6 +62,7 @@ export const createUser = createServerFn({ method: "POST" })
         full_name: z.string().min(1),
         role: z.enum(["admin", "school_manager", "print_operator", "info_center", "direcao"]),
         school_id: z.string().uuid().optional().nullable(),
+        funnel_ids: z.array(z.string().uuid()).optional(),
       })
       .parse(data),
   )
@@ -81,6 +90,45 @@ export const createUser = createServerFn({ method: "POST" })
     });
     if (roleError) throw new Error(roleError.message);
 
+    // Central de Informações trabalha apenas nos funis atribuídos.
+    if (data.role === "info_center" && data.funnel_ids?.length) {
+      const { error: funnelError } = await admin
+        .from("user_funnels")
+        .insert(data.funnel_ids.map((id) => ({ user_id: created.user.id, funnel_id: id })));
+      if (funnelError) throw new Error(funnelError.message);
+    }
+
+    return { ok: true };
+  });
+
+// Define a lista completa de funis de um usuário Central de Informações.
+export const setUserFunnels = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((data) =>
+    z
+      .object({
+        user_id: z.string().uuid(),
+        funnel_ids: z.array(z.string().uuid()),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    await requireAdmin(context.supabase, context.userId);
+    const { extAdmin } = await import("./server");
+    const admin = extAdmin();
+
+    const { error: delError } = await admin
+      .from("user_funnels")
+      .delete()
+      .eq("user_id", data.user_id);
+    if (delError) throw new Error(delError.message);
+
+    if (data.funnel_ids.length) {
+      const { error } = await admin
+        .from("user_funnels")
+        .insert(data.funnel_ids.map((id) => ({ user_id: data.user_id, funnel_id: id })));
+      if (error) throw new Error(error.message);
+    }
     return { ok: true };
   });
 

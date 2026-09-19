@@ -124,15 +124,16 @@ export type Perms = {
   infoSchools: string[];
   managerSchools: string[];
   operatorSchools: string[];
+  funnelIds: string[];
   roles: { role: string; school_id: string | null }[];
 };
 
 // Lê os papéis do usuário usando o cliente dele (RLS permite ver os próprios papéis).
 export async function getPerms(supabase: SupabaseClient, userId: string): Promise<Perms> {
-  const { data } = await supabase
-    .from("user_roles")
-    .select("role, school_id")
-    .eq("user_id", userId);
+  const [{ data }, { data: funnelRows }] = await Promise.all([
+    supabase.from("user_roles").select("role, school_id").eq("user_id", userId),
+    supabase.from("user_funnels").select("funnel_id").eq("user_id", userId),
+  ]);
   const rows = (data ?? []) as { role: string; school_id: string | null }[];
   return {
     isAdmin: rows.some((r) => r.role === "admin"),
@@ -147,6 +148,7 @@ export async function getPerms(supabase: SupabaseClient, userId: string): Promis
     operatorSchools: rows
       .filter((r) => r.role === "print_operator" && r.school_id)
       .map((r) => r.school_id as string),
+    funnelIds: ((funnelRows ?? []) as { funnel_id: string }[]).map((r) => r.funnel_id),
     roles: rows,
   };
 }

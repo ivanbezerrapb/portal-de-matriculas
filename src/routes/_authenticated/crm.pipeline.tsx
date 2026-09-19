@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Plus, Trash2 } from "lucide-react";
-import { listFunnels } from "@/lib/ext/funis.functions";
+import { listFunnelOwners, listFunnels } from "@/lib/ext/funis.functions";
 import {
   closeOpportunity,
   createOpportunity,
@@ -80,8 +80,26 @@ function PipelinePage() {
   const canClose = (perms?.isAdmin ?? false) && canWrite;
 
   const funnelsQuery = useQuery({ queryKey: ["funnels"], queryFn: () => listFunnels() });
-  const funnels = funnelsQuery.data?.funnels ?? [];
+  const allFunnels = funnelsQuery.data?.funnels ?? [];
+
+  // Responsáveis (Central de Informações) vinculados a cada funil.
+  const ownersQuery = useQuery({ queryKey: ["funnel-owners"], queryFn: () => listFunnelOwners() });
+  const owners = ownersQuery.data ?? [];
+  const canFilterOwner =
+    (perms?.isAdmin || perms?.isDirecao || (perms?.managerSchools.length ?? 0) > 0) ?? false;
+  const [ownerFilter, setOwnerFilter] = useState("all");
+  const ownerOptions = Array.from(new Map(owners.map((o) => [o.user_id, o.name])).entries()).sort(
+    (a, b) => a[1].localeCompare(b[1]),
+  );
+
+  const funnels =
+    ownerFilter === "all"
+      ? allFunnels
+      : allFunnels.filter((f) =>
+          owners.some((o) => o.user_id === ownerFilter && o.funnel_id === f.id),
+        );
   const selected = funil ?? funnels.find((f) => f.is_default)?.id ?? funnels[0]?.id;
+  const selectedOwners = owners.filter((o) => o.funnel_id === selected).map((o) => o.name);
 
   const pipelineQuery = useQuery({
     queryKey: ["pipeline", selected, statusFilter],
@@ -173,6 +191,11 @@ function PipelinePage() {
           <p className="mt-1 text-sm text-muted-foreground">
             Arraste os cartões entre as etapas para atualizar o atendimento.
           </p>
+          {selectedOwners.length > 0 && (
+            <p className="mt-1 text-sm text-muted-foreground">
+              Responsável: <span className="text-foreground">{selectedOwners.join(", ")}</span>
+            </p>
+          )}
         </div>
         <div className="flex flex-wrap items-end gap-3">
           <div className="min-w-40">
@@ -186,6 +209,19 @@ function PipelinePage() {
               <option value="lost">Perdidas</option>
             </Select>
           </div>
+          {canFilterOwner && ownerOptions.length > 0 && (
+            <div className="min-w-48">
+              <Label>Responsável</Label>
+              <Select value={ownerFilter} onChange={(e) => setOwnerFilter(e.target.value)}>
+                <option value="all">Todos</option>
+                {ownerOptions.map(([id, name]) => (
+                  <option key={id} value={id}>
+                    {name}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          )}
           <div className="min-w-56">
             <Label>Funil</Label>
             <Select
@@ -215,7 +251,11 @@ function PipelinePage() {
       ) : funnels.length === 0 ? (
         <EmptyState
           title="Nenhum funil disponível"
-          description="Crie um funil em CRM › Funil para começar a acompanhar as oportunidades."
+          description={
+            (perms?.infoSchools.length ?? 0) > 0
+              ? "Nenhum funil foi atribuído ao seu usuário. Peça ao Administrador para liberar os funis que você irá atender."
+              : "Crie um funil em CRM › Funil para começar a acompanhar as oportunidades."
+          }
         />
       ) : !selected ? (
         <EmptyState

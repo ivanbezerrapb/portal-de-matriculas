@@ -241,3 +241,30 @@ export const deleteStage = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+// Responsáveis (Central de Informações) vinculados a cada funil.
+export const listFunnelOwners = createServerFn({ method: "GET" })
+  .middleware([requireAuth])
+  .handler(async ({ context }) => {
+    const { extAdmin } = await import("./server");
+    const admin = extAdmin();
+    const { data: links, error } = await admin.from("user_funnels").select("user_id, funnel_id");
+    if (error) throw new Error(error.message);
+    const rows = (links ?? []) as { user_id: string; funnel_id: string }[];
+    if (!rows.length) return [] as { funnel_id: string; user_id: string; name: string }[];
+    const { data: profiles } = await admin
+      .from("profiles")
+      .select("id, full_name")
+      .in("id", [...new Set(rows.map((r) => r.user_id))]);
+    const names = new Map(
+      ((profiles ?? []) as { id: string; full_name: string | null }[]).map((p) => [
+        p.id,
+        p.full_name ?? "",
+      ]),
+    );
+    return rows.map((r) => ({
+      funnel_id: r.funnel_id,
+      user_id: r.user_id,
+      name: names.get(r.user_id) || "Sem nome",
+    }));
+  });
