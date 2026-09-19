@@ -214,8 +214,7 @@ function SubmissionsPage() {
       funnel_id: string;
       attendant_user_id?: string;
       attendant_name?: string;
-    }) =>
-      sendSubmissionToFunnel({ data: d }),
+    }) => sendSubmissionToFunnel({ data: d }),
     onSuccess: () => {
       toast.success("Lead enviado para o funil. Tarefa de 1º contato criada.");
       queryClient.invalidateQueries({ queryKey: ["submissions"] });
