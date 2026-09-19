@@ -593,7 +593,7 @@ function DashboardPage() {
   }
 
   const peopleChartHeight = data
-    ? Math.max(208, ...[data.attendants, data.presenters, data.enrollers].map((d) => d.length * 38))
+    ? Math.max(208, ...[data.attendants, data.presenters].map((d) => d.length * 38))
     : 208;
   const schoolLabel =
     selected.length === 0
