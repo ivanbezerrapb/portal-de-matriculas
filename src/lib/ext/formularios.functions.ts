@@ -7,7 +7,7 @@ export const listForms = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { data, error } = await context.supabase
       .from("forms")
-      .select("*, schools(name)")
+      .select("*, schools(name), form_destinations(enabled)")
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
     return data;
