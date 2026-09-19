@@ -73,7 +73,15 @@ export const listSubmissions = createServerFn({ method: "GET" })
       }
     }
 
-    const fieldIds = [...new Set([...fieldByForm.values(), ...restrictionFieldIds])];
+    // Campo de crianças (JSON com série/turno) por formulário
+    const childrenFieldIds = new Set<string>();
+    for (const f of ff ?? []) {
+      if (f.type === "children") childrenFieldIds.add(f.id);
+    }
+
+    const fieldIds = [
+      ...new Set([...fieldByForm.values(), ...restrictionFieldIds, ...childrenFieldIds]),
+    ];
     const valueMap = new Map<string, string>();
     const restrictedIds = new Set<string>();
     if (fieldIds.length > 0) {
