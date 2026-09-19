@@ -170,7 +170,6 @@ function SubmissionsPage() {
       (perms?.operatorSchools.length ?? 0) > 0) ??
     false;
 
-
   const enrollM = useMutation({
     mutationFn: (d: { id: string; enrolled: boolean; enrollment_count?: number }) =>
       setEnrollment({ data: d }),
@@ -248,7 +247,6 @@ function SubmissionsPage() {
       owners,
     });
   }
-
 
   function toggle(id: string) {
     setSelected((prev) => {
@@ -747,7 +745,6 @@ function SubmissionsPage() {
           </div>
         </div>
       )}
-
 
       {printJob && (
         <>
