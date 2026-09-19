@@ -473,7 +473,7 @@ function SubmissionsPage() {
                             funnel: { funnel_id: string; funnel_name: string } | null;
                           }
                         ).funnel;
-                        const options = (funnelsData ?? []).filter(
+                        const options = (funnelsData?.funnels ?? []).filter(
                           (f) => f.school_id === s.school_id,
                         );
                         return (
