@@ -824,9 +824,13 @@ function SubmissionsPage() {
                     submission_id: funnelDialog.submissionId,
                     funnel_id: funnelDialog.funnelId,
                     attendant_user_id: funnelAttendant,
-                    attendant_name:
-                      funnelDialog.owners.find((owner) => owner.userId === funnelAttendant)?.name ??
-                      undefined,
+                    ...(funnelDialog.owners.find((owner) => owner.userId === funnelAttendant)?.name
+                      ? {
+                          attendant_name: funnelDialog.owners.find(
+                            (owner) => owner.userId === funnelAttendant,
+                          )?.name,
+                        }
+                      : {}),
                   })
                 }
               >
