@@ -759,7 +759,8 @@ function SubmissionsPage() {
                   Atenção — cadastro com restrição
                 </h2>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  O cadastro <span className="font-mono">{restrictedConfirm.submission.public_id}</span>{" "}
+                  O cadastro{" "}
+                  <span className="font-mono">{restrictedConfirm.submission.public_id}</span>{" "}
                   informou acompanhamento médico, psicológico ou psicopedagógico. Ele só deve ser
                   enviado ao funil <strong>{restrictedConfirm.funnelName}</strong> após avaliação.
                 </p>
