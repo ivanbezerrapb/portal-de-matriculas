@@ -819,20 +819,17 @@ function SubmissionsPage() {
               </Button>
               <Button
                 disabled={!funnelAttendant || funnelM.isPending}
-                onClick={() =>
+                onClick={() => {
+                  const attendantName = funnelDialog.owners.find(
+                    (owner) => owner.userId === funnelAttendant,
+                  )?.name;
                   funnelM.mutate({
                     submission_id: funnelDialog.submissionId,
                     funnel_id: funnelDialog.funnelId,
                     attendant_user_id: funnelAttendant,
-                    ...(funnelDialog.owners.find((owner) => owner.userId === funnelAttendant)?.name
-                      ? {
-                          attendant_name: funnelDialog.owners.find(
-                            (owner) => owner.userId === funnelAttendant,
-                          )?.name,
-                        }
-                      : {}),
-                  })
-                }
+                    ...(attendantName ? { attendant_name: attendantName } : {}),
+                  });
+                }}
               >
                 Enviar para o funil
               </Button>
