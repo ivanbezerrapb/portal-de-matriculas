@@ -70,6 +70,16 @@ export async function applyDestination(
 ): Promise<ApplyResult> {
   const { destination, rules } = await loadDestination(supabase, args.formId);
 
+  // Envio desligado na aba Destino: o cadastro não vira oportunidade.
+  if (destination && destination.enabled === false) {
+    const reason = "Envio para o CRM desativado neste formulário";
+    await supabase
+      .from("submissions")
+      .update({ crm_status: "none", crm_reason: reason })
+      .eq("id", args.submissionId);
+    return { status: "none", reason };
+  }
+
   let decision: CrmDecision = evaluateRules(args.values, rules, destination);
   if (!destination && rules.length === 0) {
     const fb = await fallbackStage(supabase, args.schoolId);
