@@ -431,13 +431,24 @@ function SubmissionsPage() {
                       />
                     </td>
                     <td className="px-4 py-2.5">
-                      <Link
-                        to="/cadastros/$submissionId"
-                        params={{ submissionId: s.id }}
-                        className="font-mono font-medium text-primary hover:underline"
-                      >
-                        {s.public_id}
-                      </Link>
+                      <div className="flex items-center gap-1.5">
+                        <Link
+                          to="/cadastros/$submissionId"
+                          params={{ submissionId: s.id }}
+                          className="font-mono font-medium text-primary hover:underline"
+                        >
+                          {s.public_id}
+                        </Link>
+                        {(s as unknown as { restricted?: boolean }).restricted && (
+                          <AlertTriangle
+                            size={16}
+                            strokeWidth={2}
+                            className="shrink-0 text-[oklch(0.72_0.18_60)]"
+                            aria-label="Cadastro com restrição"
+                            title="Atenção: cadastro com acompanhamento médico/psicológico informado"
+                          />
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-2.5 break-words text-foreground">
                       {responsible ?? "—"}
