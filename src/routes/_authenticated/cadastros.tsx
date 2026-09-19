@@ -706,6 +706,49 @@ function SubmissionsPage() {
         </div>
       )}
 
+      {funnelDialog && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-background/70 p-4">
+          <div className="w-full max-w-md rounded-lg border border-border bg-card p-5 shadow-lg">
+            <h2 className="text-base font-semibold text-foreground">Quem atendeu?</h2>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {funnelDialog.publicId} · funil {funnelDialog.funnelName}
+            </p>
+            <div className="mt-4">
+              <Label>Responsável</Label>
+              <select
+                className="mt-1 w-full rounded-md border border-border bg-background px-2 py-2 text-sm"
+                value={funnelAttendant}
+                onChange={(e) => setFunnelAttendant(e.target.value)}
+              >
+                {funnelDialog.owners.map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => setFunnelDialog(null)}>
+                Cancelar
+              </Button>
+              <Button
+                disabled={!funnelAttendant || funnelM.isPending}
+                onClick={() =>
+                  funnelM.mutate({
+                    submission_id: funnelDialog.submissionId,
+                    funnel_id: funnelDialog.funnelId,
+                    attendant_name: funnelAttendant,
+                  })
+                }
+              >
+                Enviar para o funil
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+
       {printJob && (
         <>
           <div className="no-print fixed inset-0 z-50 grid place-items-center bg-background/70">
