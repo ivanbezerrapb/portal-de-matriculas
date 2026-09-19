@@ -289,6 +289,7 @@ export type Opportunity = {
   stage_id: string;
   school_id: string;
   submission_id: string | null;
+  owner_id: string | null;
   name: string;
   phone: string | null;
   email: string | null;

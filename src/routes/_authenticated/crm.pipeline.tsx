@@ -11,6 +11,7 @@ import {
   listPipeline,
   moveOpportunity,
   reopenOpportunity,
+  setOpportunityOwner,
 } from "@/lib/ext/pipeline.functions";
 import { listCloseReasons } from "@/lib/ext/motivos.functions";
 import { createTask, deleteTask, listTasks, setTaskDone } from "@/lib/ext/tarefas.functions";
@@ -135,6 +136,7 @@ function PipelinePage() {
       phone: string;
       email: string;
       notes: string;
+      owner_id?: string | null;
     }) => createOpportunity({ data: d }),
     onSuccess: () => {
       toast.success("Oportunidade criada.");
@@ -178,6 +180,16 @@ function PipelinePage() {
       setOpenCard(null);
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       refresh();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const ownerM = useMutation({
+    mutationFn: (d: { id: string; owner_id: string | null }) => setOpportunityOwner({ data: d }),
+    onSuccess: () => {
+      toast.success("Responsável atualizado.");
+      refresh();
+      queryClient.invalidateQueries({ queryKey: ["crm-tasks"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -382,12 +394,23 @@ function PipelinePage() {
                           phone: String(fd.get("phone") ?? ""),
                           email: String(fd.get("email") ?? ""),
                           notes: String(fd.get("notes") ?? ""),
+                          owner_id: String(fd.get("owner_id") ?? "") || null,
                         });
                       }}
                     >
                       <Input name="name" placeholder="Nome" required />
                       <Input name="phone" placeholder="Telefone" />
                       <Input name="email" placeholder="E-mail" />
+                      <Select name="owner_id" defaultValue="">
+                        <option value="">Sem responsável</option>
+                        {owners
+                          .filter((owner) => owner.funnel_id === selected)
+                          .map((owner) => (
+                            <option key={owner.user_id} value={owner.user_id}>
+                              {owner.name}
+                            </option>
+                          ))}
+                      </Select>
                       <Textarea name="notes" rows={2} placeholder="Observação" />
                       <div className="flex gap-2">
                         <Button type="submit" disabled={createM.isPending}>
@@ -454,6 +477,27 @@ function PipelinePage() {
                   {stage.name}
                 </span>
               )}
+
+              <div className="mt-4">
+                <Label htmlFor="card-owner">Responsável</Label>
+                <Select
+                  id="card-owner"
+                  value={card.owner_id ?? ""}
+                  disabled={!canWrite || ownerM.isPending}
+                  onChange={(event) =>
+                    ownerM.mutate({ id: card.id, owner_id: event.target.value || null })
+                  }
+                >
+                  <option value="">Sem responsável</option>
+                  {owners
+                    .filter((owner) => owner.funnel_id === card.funnel_id)
+                    .map((owner) => (
+                      <option key={owner.user_id} value={owner.user_id}>
+                        {owner.name}
+                      </option>
+                    ))}
+                </Select>
+              </div>
 
               <dl className="mt-4 space-y-3 text-sm">
                 {card.phone && (

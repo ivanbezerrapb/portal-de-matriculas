@@ -459,6 +459,7 @@ export const sendSubmissionToFunnel = createServerFn({ method: "POST" })
       .object({
         submission_id: z.string().uuid(),
         funnel_id: z.string().uuid(),
+        attendant_user_id: z.string().uuid().optional(),
         attendant_name: z.string().trim().min(2).max(120).optional(),
       })
       .parse(data),
@@ -490,6 +491,20 @@ export const sendSubmissionToFunnel = createServerFn({ method: "POST" })
     if (!funnel) throw new Error("Funil não encontrado.");
     if (funnel.school_id !== submission.school_id) {
       throw new Error("Este funil é de outra unidade.");
+    }
+
+    let ownerId: string | null = null;
+    if (data.attendant_user_id) {
+      const { extAdmin } = await import("./server");
+      const { data: ownerLink, error: ownerError } = await extAdmin()
+        .from("user_funnels")
+        .select("user_id")
+        .eq("funnel_id", funnel.id)
+        .eq("user_id", data.attendant_user_id)
+        .maybeSingle();
+      if (ownerError) throw new Error(ownerError.message);
+      if (!ownerLink) throw new Error("Este responsável não está vinculado ao funil.");
+      ownerId = ownerLink.user_id;
     }
 
     const { data: stage } = await context.supabase
@@ -527,6 +542,7 @@ export const sendSubmissionToFunnel = createServerFn({ method: "POST" })
           close_reason_id: null,
           close_note: null,
           closed_at: null,
+          owner_id: ownerId,
           updated_at: new Date().toISOString(),
         })
         .eq("id", existing.id);
@@ -568,6 +584,7 @@ export const sendSubmissionToFunnel = createServerFn({ method: "POST" })
         name: cardName,
         phone: pick(destination?.phone_field_id),
         email: pick(destination?.email_field_id),
+        owner_id: ownerId,
         position,
       });
       if (insertError) throw new Error(insertError.message);
