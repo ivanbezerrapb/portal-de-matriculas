@@ -227,7 +227,7 @@ function SubmissionsPage() {
         (funnelOwners ?? []).filter((o) => o.funnel_id === funnelId).map((o) => o.name.trim()),
       ),
     ].filter(Boolean);
-    if (owners.length === 1) {
+    if (owners.length === 1 && owners[0]) {
       funnelM.mutate({
         submission_id: submission.id,
         funnel_id: funnelId,
