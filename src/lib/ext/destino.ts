@@ -47,6 +47,8 @@ export type Destination = {
   phone_field_id: string | null;
   email_field_id: string | null;
   extra_fields: ExtraField[];
+  // Chave geral: quando desligada, nenhum cadastro do formulário vai para o CRM.
+  enabled: boolean;
   default_send: boolean;
   default_funnel_id: string | null;
   default_stage_id: string | null;

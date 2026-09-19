@@ -634,6 +634,7 @@ function DestinationTab({ formId, schoolId }: { formId: string; schoolId: string
   const [phoneField, setPhoneField] = useState<string>("");
   const [emailField, setEmailField] = useState<string>("");
   const [extras, setExtras] = useState<{ field_id: string; label: string }[]>([]);
+  const [enabled, setEnabled] = useState(true);
   const [defaultSend, setDefaultSend] = useState(true);
   const [defaultFunnel, setDefaultFunnel] = useState<string>("");
   const [defaultStage, setDefaultStage] = useState<string>("");
@@ -646,6 +647,7 @@ function DestinationTab({ formId, schoolId }: { formId: string; schoolId: string
     setPhoneField(d?.phone_field_id ?? "");
     setEmailField(d?.email_field_id ?? "");
     setExtras((d?.extra_fields ?? []).map((e) => ({ field_id: e.field_id, label: e.label ?? "" })));
+    setEnabled(d?.enabled ?? true);
     setDefaultSend(d?.default_send ?? true);
     setDefaultFunnel(d?.default_funnel_id ?? "");
     setDefaultStage(d?.default_stage_id ?? "");
@@ -672,6 +674,7 @@ function DestinationTab({ formId, schoolId }: { formId: string; schoolId: string
           extra_fields: extras
             .filter((e) => e.field_id)
             .map((e) => ({ field_id: e.field_id, label: e.label || null })),
+          enabled,
           default_send: defaultSend,
           default_funnel_id: defaultFunnel || null,
           default_stage_id: defaultStage || null,
@@ -745,6 +748,28 @@ function DestinationTab({ formId, schoolId }: { formId: string; schoolId: string
 
   return (
     <div className="mt-6 flex flex-col gap-4">
+      <Card>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="font-semibold text-foreground">Envio para o CRM</h2>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {enabled
+                ? "Ativado: os cadastros deste formulário seguem as regras abaixo e viram cartões no Pipeline."
+                : "Desativado: nenhum cadastro deste formulário será enviado ao CRM."}
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <Badge color={enabled ? "green" : "muted"}>{enabled ? "Ativado" : "Desativado"}</Badge>
+            <Button
+              variant={enabled ? "secondary" : "primary"}
+              onClick={() => setEnabled((v) => !v)}
+            >
+              {enabled ? "Desativar envio" : "Ativar envio"}
+            </Button>
+          </div>
+        </div>
+      </Card>
+
       <Card>
         <h2 className="font-semibold text-foreground">Dados do cartão no CRM</h2>
         <p className="mt-1 text-xs text-muted-foreground">
