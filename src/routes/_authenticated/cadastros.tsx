@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
-import { Eye } from "lucide-react";
+import { AlertTriangle, Eye } from "lucide-react";
 import { PrintSheets, type PrintSheetsState } from "@/components/print/PrintSheets";
 import { formatAddress, parseAddress, parseChildren, type FormField } from "@/lib/ext/model";
 import {
@@ -70,6 +70,11 @@ function SubmissionsPage() {
     owners: string[];
   } | null>(null);
   const [funnelAttendant, setFunnelAttendant] = useState("");
+  const [restrictedConfirm, setRestrictedConfirm] = useState<{
+    submission: { id: string; public_id: string };
+    funnelId: string;
+    funnelName: string;
+  } | null>(null);
   const [viewId, setViewId] = useState<string | null>(null);
 
   const { data: perms } = useQuery({
@@ -221,10 +226,19 @@ function SubmissionsPage() {
 
   // Ao escolher um funil: responsáveis vinculados definem o Atendimento.
   function pickFunnel(
-    submission: { id: string; public_id: string },
+    submission: { id: string; public_id: string; restricted?: boolean },
     funnelId: string,
     funnelName: string,
+    confirmed = false,
   ) {
+    if (submission.restricted && !confirmed) {
+      setRestrictedConfirm({
+        submission: { id: submission.id, public_id: submission.public_id },
+        funnelId,
+        funnelName,
+      });
+      return;
+    }
     const owners = [
       ...new Set(
         (funnelOwners ?? []).filter((o) => o.funnel_id === funnelId).map((o) => o.name.trim()),
@@ -417,13 +431,24 @@ function SubmissionsPage() {
                       />
                     </td>
                     <td className="px-4 py-2.5">
-                      <Link
-                        to="/cadastros/$submissionId"
-                        params={{ submissionId: s.id }}
-                        className="font-mono font-medium text-primary hover:underline"
-                      >
-                        {s.public_id}
-                      </Link>
+                      <div className="flex items-center gap-1.5">
+                        <Link
+                          to="/cadastros/$submissionId"
+                          params={{ submissionId: s.id }}
+                          className="font-mono font-medium text-primary hover:underline"
+                        >
+                          {s.public_id}
+                        </Link>
+                        {(s as unknown as { restricted?: boolean }).restricted && (
+                          <span
+                            title="Atenção: cadastro com acompanhamento médico/psicológico informado"
+                            aria-label="Cadastro com restrição"
+                            className="inline-flex text-[oklch(0.72_0.18_60)]"
+                          >
+                            <AlertTriangle size={16} strokeWidth={2} className="shrink-0" />
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-2.5 break-words text-foreground">
                       {responsible ?? "—"}
@@ -719,6 +744,49 @@ function SubmissionsPage() {
       )}
 
       {viewId && <SubmissionViewDialog id={viewId} onClose={() => setViewId(null)} />}
+
+      {restrictedConfirm && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-background/70 p-4">
+          <div className="w-full max-w-md rounded-lg border border-border bg-card p-5 shadow-lg">
+            <div className="flex items-start gap-3">
+              <AlertTriangle
+                size={22}
+                strokeWidth={2}
+                className="mt-0.5 shrink-0 text-[oklch(0.72_0.18_60)]"
+              />
+              <div>
+                <h2 className="text-base font-semibold text-foreground">
+                  Atenção — cadastro com restrição
+                </h2>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  O cadastro{" "}
+                  <span className="font-mono">{restrictedConfirm.submission.public_id}</span>{" "}
+                  informou acompanhamento médico, psicológico ou psicopedagógico. Ele só deve ser
+                  enviado ao funil <strong>{restrictedConfirm.funnelName}</strong> após avaliação.
+                </p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Tem certeza que deseja incluir este cadastro no funil?
+                </p>
+              </div>
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => setRestrictedConfirm(null)}>
+                Cancelar
+              </Button>
+              <Button
+                disabled={funnelM.isPending}
+                onClick={() => {
+                  const c = restrictedConfirm;
+                  setRestrictedConfirm(null);
+                  pickFunnel(c.submission, c.funnelId, c.funnelName, true);
+                }}
+              >
+                Sim, incluir no funil
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {funnelDialog && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-background/70 p-4">

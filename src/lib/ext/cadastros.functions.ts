@@ -61,8 +61,21 @@ export const listSubmissions = createServerFn({ method: "GET" })
       if (f.type === "short_text") fieldByForm.set(f.form_id, f.id);
     }
 
-    const fieldIds = [...new Set([...fieldByForm.values()])];
+    // Campos de "acompanhamento médico/psicológico/psicopedagógico" (alerta de restrição)
+    const restrictionFieldIds = new Set<string>();
+    for (const f of ff ?? []) {
+      const l = norm(f.label);
+      if (
+        l.includes("acompanhamento") &&
+        (l.includes("medico") || l.includes("psicolog") || l.includes("psicopedag"))
+      ) {
+        restrictionFieldIds.add(f.id);
+      }
+    }
+
+    const fieldIds = [...new Set([...fieldByForm.values(), ...restrictionFieldIds])];
     const valueMap = new Map<string, string>();
+    const restrictedIds = new Set<string>();
     if (fieldIds.length > 0) {
       const { data: vals } = await context.supabase
         .from("submission_values")
@@ -75,6 +88,9 @@ export const listSubmissions = createServerFn({ method: "GET" })
         .in("field_id", fieldIds);
       for (const v of vals ?? []) {
         valueMap.set(`${v.submission_id}:${v.field_id}`, v.value ?? "");
+        if (restrictionFieldIds.has(v.field_id) && norm(v.value ?? "") === "sim") {
+          restrictedIds.add(v.submission_id);
+        }
       }
     }
 
@@ -103,7 +119,12 @@ export const listSubmissions = createServerFn({ method: "GET" })
       const fid = fieldByForm.get(r.form_id);
       const name = fid ? valueMap.get(`${r.id}:${fid}`) : "";
       const funnel = funnelBySubmission.get(r.id) ?? null;
-      return { ...r, responsible_name: name?.trim() || null, funnel };
+      return {
+        ...r,
+        responsible_name: name?.trim() || null,
+        funnel,
+        restricted: restrictedIds.has(r.id),
+      };
     });
   });
 
