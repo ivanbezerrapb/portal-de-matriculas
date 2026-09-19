@@ -544,16 +544,26 @@ function SubmissionsPage() {
                       </label>
                     </td>
                     <td className="px-2 py-2.5 text-right">
-                      {canPrint && (
+                      <div className="flex items-center justify-end gap-1">
                         <button
-                          title="Imprimir este cadastro"
-                          aria-label={`Imprimir ${s.public_id}`}
-                          onClick={() => printRow(s.id, s.form_id)}
+                          title="Visualizar dados preenchidos"
+                          aria-label={`Visualizar ${s.public_id}`}
+                          onClick={() => setViewId(s.id)}
                           className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
                         >
-                          <PrinterIcon />
+                          <Eye size={18} strokeWidth={1.8} />
                         </button>
-                      )}
+                        {canPrint && (
+                          <button
+                            title="Imprimir este cadastro"
+                            aria-label={`Imprimir ${s.public_id}`}
+                            onClick={() => printRow(s.id, s.form_id)}
+                            className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+                          >
+                            <PrinterIcon />
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
