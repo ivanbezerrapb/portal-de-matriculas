@@ -148,8 +148,10 @@ function FormsPage() {
         <div className="mt-6 flex flex-col gap-3">
           {forms.map((f) => {
             const school = f.schools as unknown as { name: string } | null;
-            const dest = f.form_destinations as unknown as { enabled: boolean }[] | null;
-            const destEnabled = dest && dest.length > 0 ? dest[0]?.enabled ?? null : null;
+            const destRaw = f.form_destinations as unknown as
+              { enabled: boolean } | { enabled: boolean }[] | null;
+            const destRow = Array.isArray(destRaw) ? (destRaw[0] ?? null) : destRaw;
+            const destEnabled = destRow ? destRow.enabled : null;
             return (
               <Card key={f.id} className="flex flex-wrap items-center gap-3">
                 <div className="min-w-0 flex-1">
