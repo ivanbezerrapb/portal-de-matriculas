@@ -263,7 +263,7 @@ function SubmissionsPage() {
       funnelM.mutate({ submission_id: submission.id, funnel_id: funnelId });
       return;
     }
-    setFunnelAttendant(owners[0]?.userId ?? "");
+    setFunnelAttendant("");
     setFunnelDialog({
       submissionId: submission.id,
       publicId: submission.public_id,
@@ -805,6 +805,7 @@ function SubmissionsPage() {
                 value={funnelAttendant}
                 onChange={(e) => setFunnelAttendant(e.target.value)}
               >
+                <option value="">Selecione o responsável…</option>
                 {funnelDialog.owners.map((owner) => (
                   <option key={owner.userId} value={owner.userId}>
                     {owner.name}
