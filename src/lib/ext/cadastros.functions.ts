@@ -739,17 +739,13 @@ export const getDashboardStats = createServerFn({ method: "GET" })
 
     const attendantCounts = new Map<string, number>();
     const presenterCounts = new Map<string, number>();
-    const enrollerCounts = new Map<string, number>();
     for (const row of rows) {
       const attendant = (row as unknown as { attendant: { name?: string } | null }).attendant;
       const presenter = (row as unknown as { presenter: { name?: string } | null }).presenter;
-      const enroller = (row as unknown as { enroller: { name?: string } | null }).enroller;
       const a = attendant?.name?.trim();
       const p = presenter?.name?.trim();
-      const e = enroller?.name?.trim();
       if (a) attendantCounts.set(a, (attendantCounts.get(a) ?? 0) + 1);
       if (p) presenterCounts.set(p, (presenterCounts.get(p) ?? 0) + 1);
-      if (e) enrollerCounts.set(e, (enrollerCounts.get(e) ?? 0) + 1);
     }
 
     const seriesCounts = new Map<string, number>();
