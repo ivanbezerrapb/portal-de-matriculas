@@ -70,6 +70,7 @@ function SubmissionsPage() {
     owners: string[];
   } | null>(null);
   const [funnelAttendant, setFunnelAttendant] = useState("");
+  const [viewId, setViewId] = useState<string | null>(null);
 
   const { data: perms } = useQuery({
     queryKey: ["my-permissions"],
