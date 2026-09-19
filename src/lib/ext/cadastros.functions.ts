@@ -497,8 +497,7 @@ export const sendSubmissionToFunnel = createServerFn({ method: "POST" })
     const { data: ownerLinks, error: ownersError } = await extAdmin()
       .from("user_funnels")
       .select("user_id")
-      .eq("funnel_id", funnel.id)
-      .limit(2);
+      .eq("funnel_id", funnel.id);
     if (ownersError) throw new Error(ownersError.message);
 
     let ownerId: string | null = null;
