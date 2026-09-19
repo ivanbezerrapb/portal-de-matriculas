@@ -200,6 +200,56 @@ function SubmissionsPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const funnelM = useMutation({
+    mutationFn: (d: { submission_id: string; funnel_id: string; attendant_name?: string }) =>
+      sendSubmissionToFunnel({ data: d }),
+    onSuccess: () => {
+      toast.success("Lead enviado para o funil. Tarefa de 1º contato criada.");
+      queryClient.invalidateQueries({ queryKey: ["submissions"] });
+      queryClient.invalidateQueries({ queryKey: ["presenters"] });
+      queryClient.invalidateQueries({ queryKey: ["pipeline"] });
+      queryClient.invalidateQueries({ queryKey: ["crm-tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+      setFunnelDialog(null);
+      setFunnelAttendant("");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  // Ao escolher um funil: responsáveis vinculados definem o Atendimento.
+  function pickFunnel(
+    submission: { id: string; public_id: string },
+    funnelId: string,
+    funnelName: string,
+  ) {
+    const owners = [
+      ...new Set(
+        (funnelOwners ?? []).filter((o) => o.funnel_id === funnelId).map((o) => o.name.trim()),
+      ),
+    ].filter(Boolean);
+    if (owners.length === 1) {
+      funnelM.mutate({
+        submission_id: submission.id,
+        funnel_id: funnelId,
+        attendant_name: owners[0],
+      });
+      return;
+    }
+    if (owners.length === 0) {
+      funnelM.mutate({ submission_id: submission.id, funnel_id: funnelId });
+      return;
+    }
+    setFunnelAttendant(owners[0] ?? "");
+    setFunnelDialog({
+      submissionId: submission.id,
+      publicId: submission.public_id,
+      funnelId,
+      funnelName,
+      owners,
+    });
+  }
+
+
   function toggle(id: string) {
     setSelected((prev) => {
       const next = new Set(prev);
