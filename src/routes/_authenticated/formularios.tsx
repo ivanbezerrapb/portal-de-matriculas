@@ -149,9 +149,7 @@ function FormsPage() {
           {forms.map((f) => {
             const school = f.schools as unknown as { name: string } | null;
             const destRaw = f.form_destinations as unknown as
-              | { enabled: boolean }
-              | { enabled: boolean }[]
-              | null;
+              { enabled: boolean } | { enabled: boolean }[] | null;
             const destRow = Array.isArray(destRaw) ? (destRaw[0] ?? null) : destRaw;
             const destEnabled = destRow ? destRow.enabled : null;
             return (
