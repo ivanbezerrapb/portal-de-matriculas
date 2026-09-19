@@ -723,11 +723,6 @@ function DashboardPage() {
               title="Quem mais apresentou (Coordenação)"
               chartHeight={peopleChartHeight}
             />
-            <SeriesChart
-              data={data.enrollers}
-              title="Quem mais efetivou (Efetivação)"
-              chartHeight={peopleChartHeight}
-            />
           </div>
         </>
       )}
