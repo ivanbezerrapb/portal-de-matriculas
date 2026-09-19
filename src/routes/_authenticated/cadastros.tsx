@@ -805,7 +805,7 @@ function SubmissionsPage() {
                 value={funnelAttendant}
                 onChange={(e) => setFunnelAttendant(e.target.value)}
               >
-                 <option value="">Selecione o responsável…</option>
+                <option value="">Selecione o responsável…</option>
                 {funnelDialog.owners.map((owner) => (
                   <option key={owner.userId} value={owner.userId}>
                     {owner.name}
