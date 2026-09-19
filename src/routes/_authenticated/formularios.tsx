@@ -148,14 +148,23 @@ function FormsPage() {
         <div className="mt-6 flex flex-col gap-3">
           {forms.map((f) => {
             const school = f.schools as unknown as { name: string } | null;
+            const dest = f.form_destinations as unknown as { enabled: boolean }[] | null;
+            const destEnabled = dest && dest.length > 0 ? dest[0]?.enabled ?? null : null;
             return (
               <Card key={f.id} className="flex flex-wrap items-center gap-3">
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <p className="font-medium text-foreground">{f.title}</p>
                     <Badge color={STATUS_COLOR[f.status] ?? "muted"}>
                       {STATUS_LABEL[f.status] ?? f.status}
                     </Badge>
+                    {destEnabled === null ? (
+                      <Badge color="muted">Sem destino</Badge>
+                    ) : destEnabled ? (
+                      <Badge color="green">Envio ativado</Badge>
+                    ) : (
+                      <Badge color="muted">Envio desativado</Badge>
+                    )}
                   </div>
                   <p className="text-xs text-muted-foreground">{school?.name ?? "—"}</p>
                 </div>
