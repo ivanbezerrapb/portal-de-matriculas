@@ -467,20 +467,37 @@ function SubmissionsPage() {
                       />
                     </td>
                     <td className="px-4 py-2.5">
-                      <PersonCell
-                        kind="efetivacao"
-                        current={
-                          (s as unknown as { enroller: { name?: string } | null }).enroller?.name ??
-                          null
-                        }
-                        options={(presenters ?? []).filter(
-                          (p) => p.school_id === s.school_id && p.kind === "efetivacao",
-                        )}
-                        disabled={!canEnroll || peopleM.isPending}
-                        onPick={(value) =>
-                          peopleM.mutate({ submission_id: s.id, kind: "efetivacao", ...value })
-                        }
-                      />
+                      {(() => {
+                        const current = (
+                          s as unknown as {
+                            funnel: { funnel_id: string; funnel_name: string } | null;
+                          }
+                        ).funnel;
+                        const options = (funnelsData ?? []).filter(
+                          (f) => f.school_id === s.school_id,
+                        );
+                        return (
+                          <select
+                            className="w-full min-w-32 rounded-md border border-border bg-background px-2 py-1 text-xs"
+                            value={current?.funnel_id ?? ""}
+                            disabled={!canEnroll || funnelM.isPending}
+                            onChange={(e) => {
+                              const id = e.target.value;
+                              if (!id || id === current?.funnel_id) return;
+                              const funnel = options.find((f) => f.id === id);
+                              pickFunnel(s, id, funnel?.name ?? "");
+                            }}
+                            aria-label={`Funil de ${s.public_id}`}
+                          >
+                            <option value="">—</option>
+                            {options.map((f) => (
+                              <option key={f.id} value={f.id}>
+                                {f.name}
+                              </option>
+                            ))}
+                          </select>
+                        );
+                      })()}
                     </td>
                     <td className="px-4 py-2.5">
                       <label className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -498,9 +515,6 @@ function SubmissionsPage() {
                               const pre = (
                                 s as unknown as { presenter: { id?: string; name?: string } | null }
                               ).presenter;
-                              const enr = (
-                                s as unknown as { enroller: { id?: string; name?: string } | null }
-                              ).enroller;
                               setDialogAttendant(
                                 att?.id && att.name
                                   ? { presenter_id: att.id, label: att.name }
@@ -511,11 +525,7 @@ function SubmissionsPage() {
                                   ? { presenter_id: pre.id, label: pre.name }
                                   : null,
                               );
-                              setDialogEnroller(
-                                enr?.id && enr.name
-                                  ? { presenter_id: enr.id, label: enr.name }
-                                  : null,
-                              );
+
                               setEnrollmentDialog({
                                 id: s.id,
                                 publicId: s.public_id,
