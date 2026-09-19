@@ -398,7 +398,7 @@ function SubmissionsPage() {
                 <th className="px-4 py-3">Escola</th>
                 <th className="px-4 py-3">Crianças</th>
                 <th className="px-4 py-3">Data</th>
-                <th className="px-4 py-3">Apresentação</th>
+                <th className="px-4 py-3">Série</th>
                 <th className="px-4 py-3">Atendimento</th>
                 <th className="px-4 py-3">Funil</th>
                 <th className="px-4 py-3">Matrícula</th>
@@ -461,21 +461,18 @@ function SubmissionsPage() {
                         timeStyle: "short",
                       })}
                     </td>
-                    <td className="px-4 py-2.5">
-                      <PersonCell
-                        kind="coordenacao"
-                        current={
-                          (s as unknown as { presenter: { name?: string } | null }).presenter
-                            ?.name ?? null
-                        }
-                        options={(presenters ?? []).filter(
-                          (p) => p.school_id === s.school_id && p.kind === "coordenacao",
-                        )}
-                        disabled={!canEnroll || peopleM.isPending}
-                        onPick={(value) =>
-                          peopleM.mutate({ submission_id: s.id, kind: "coordenacao", ...value })
-                        }
-                      />
+                    <td className="px-4 py-2.5 text-muted-foreground">
+                      {(() => {
+                        const series =
+                          (s as unknown as { series?: string[] }).series ?? [];
+                        const filled = series.filter((x) => x);
+                        if (filled.length === 0) return "—";
+                        return filled.map((serie, i) => (
+                          <div key={i} className="whitespace-nowrap">
+                            {serie}
+                          </div>
+                        ));
+                      })()}
                     </td>
                     <td className="px-4 py-2.5">
                       <PersonCell
