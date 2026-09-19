@@ -73,7 +73,15 @@ export const listSubmissions = createServerFn({ method: "GET" })
       }
     }
 
-    const fieldIds = [...new Set([...fieldByForm.values(), ...restrictionFieldIds])];
+    // Campo de crianças (JSON com série/turno) por formulário
+    const childrenFieldIds = new Set<string>();
+    for (const f of ff ?? []) {
+      if (f.type === "children") childrenFieldIds.add(f.id);
+    }
+
+    const fieldIds = [
+      ...new Set([...fieldByForm.values(), ...restrictionFieldIds, ...childrenFieldIds]),
+    ];
     const valueMap = new Map<string, string>();
     const restrictedIds = new Set<string>();
     if (fieldIds.length > 0) {
@@ -119,11 +127,27 @@ export const listSubmissions = createServerFn({ method: "GET" })
       const fid = fieldByForm.get(r.form_id);
       const name = fid ? valueMap.get(`${r.id}:${fid}`) : "";
       const funnel = funnelBySubmission.get(r.id) ?? null;
+      // Séries dos alunos: lê o JSON do campo "children" deste cadastro
+      let series: string[] = [];
+      for (const cfid of childrenFieldIds) {
+        const raw = valueMap.get(`${r.id}:${cfid}`);
+        if (!raw) continue;
+        try {
+          const arr = JSON.parse(raw);
+          if (Array.isArray(arr)) {
+            series = arr.map((c) => String(c?.serie ?? "").trim());
+          }
+        } catch {
+          /* valor inesperado: ignora */
+        }
+        break;
+      }
       return {
         ...r,
         responsible_name: name?.trim() || null,
         funnel,
         restricted: restrictedIds.has(r.id),
+        series,
       };
     });
   });
