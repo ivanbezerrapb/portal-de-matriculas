@@ -7,7 +7,25 @@ import type { FunnelStage, Opportunity } from "./model";
 type OpportunityRow = Opportunity & {
   submissions: { public_id: string; children_count: number | null } | null;
   crm_close_reasons: { label: string; kind: "won" | "lost" } | null;
+  owner: { id: string; full_name: string | null } | null;
 };
+
+async function validateOwner(
+  supabase: SupabaseClient,
+  funnelId: string,
+  ownerId: string | null | undefined,
+) {
+  if (!ownerId) return null;
+  const { data, error } = await supabase
+    .from("user_funnels")
+    .select("user_id")
+    .eq("funnel_id", funnelId)
+    .eq("user_id", ownerId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error("Este responsável não está vinculado ao funil.");
+  return ownerId;
+}
 
 async function stageContext(supabase: SupabaseClient, stageId: string) {
   const { data, error } = await supabase
@@ -41,7 +59,9 @@ export const listPipeline = createServerFn({ method: "GET" })
     const status = data.status ?? "open";
     const { data: opportunities, error: oppError } = await context.supabase
       .from("opportunities")
-      .select("*, submissions(public_id, children_count), crm_close_reasons(label, kind)")
+      .select(
+        "*, submissions(public_id, children_count), crm_close_reasons(label, kind), owner:profiles!opportunities_owner_id_fkey(id, full_name)",
+      )
       .eq("funnel_id", data.funnel_id)
       .eq("status", status)
       .order(status === "open" ? "position" : "closed_at");
@@ -81,6 +101,7 @@ const opportunityFields = z.object({
   phone: z.string().optional().nullable(),
   email: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
+  owner_id: z.string().uuid().optional().nullable(),
 });
 
 export const createOpportunity = createServerFn({ method: "POST" })
@@ -90,6 +111,7 @@ export const createOpportunity = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const ctx = await stageContext(context.supabase, data.stage_id);
+    const ownerId = await validateOwner(context.supabase, ctx.funnel_id, data.owner_id);
     const { data: last } = await context.supabase
       .from("opportunities")
       .select("position")
@@ -105,6 +127,7 @@ export const createOpportunity = createServerFn({ method: "POST" })
       phone: data.phone || null,
       email: data.email || null,
       notes: data.notes || null,
+      owner_id: ownerId,
       position: (last?.position ?? -1) + 1,
     });
     if (error) throw new Error(error.message);
@@ -117,6 +140,13 @@ export const updateOpportunity = createServerFn({ method: "POST" })
     z.object({ id: z.string().uuid() }).merge(opportunityFields).parse(data),
   )
   .handler(async ({ data, context }) => {
+    const { data: current, error: currentError } = await context.supabase
+      .from("opportunities")
+      .select("funnel_id")
+      .eq("id", data.id)
+      .single();
+    if (currentError) throw new Error(currentError.message);
+    const ownerId = await validateOwner(context.supabase, current.funnel_id, data.owner_id);
     const { error } = await context.supabase
       .from("opportunities")
       .update({
@@ -124,8 +154,30 @@ export const updateOpportunity = createServerFn({ method: "POST" })
         phone: data.phone || null,
         email: data.email || null,
         notes: data.notes || null,
+        owner_id: ownerId,
         updated_at: new Date().toISOString(),
       })
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const setOpportunityOwner = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((data) =>
+    z.object({ id: z.string().uuid(), owner_id: z.string().uuid().nullable() }).parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    const { data: current, error: currentError } = await context.supabase
+      .from("opportunities")
+      .select("funnel_id")
+      .eq("id", data.id)
+      .single();
+    if (currentError) throw new Error(currentError.message);
+    const ownerId = await validateOwner(context.supabase, current.funnel_id, data.owner_id);
+    const { error } = await context.supabase
+      .from("opportunities")
+      .update({ owner_id: ownerId, updated_at: new Date().toISOString() })
       .eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };

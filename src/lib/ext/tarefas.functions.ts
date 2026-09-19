@@ -4,7 +4,16 @@ import { requireAuth } from "./auth";
 import type { CrmTask } from "./model";
 
 export type TaskRow = CrmTask & {
-  opportunities: { id: string; name: string; school_id: string } | null;
+  opportunities: {
+    id: string;
+    name: string;
+    school_id: string;
+    funnel_id: string;
+    owner_id: string | null;
+    funnels: { name: string } | null;
+    schools: { name: string } | null;
+    owner: { id: string; full_name: string | null } | null;
+  } | null;
 };
 
 // Lista tarefas; sem filtro de oportunidade devolve as de todas as
@@ -16,18 +25,28 @@ export const listTasks = createServerFn({ method: "GET" })
       .object({
         opportunity_id: z.string().uuid().optional(),
         done: z.boolean().optional(),
+        school_id: z.string().uuid().optional(),
+        funnel_id: z.string().uuid().optional(),
+        owner_id: z.string().uuid().optional(),
+        unassigned: z.boolean().optional(),
       })
       .parse(data),
   )
   .handler(async ({ data, context }) => {
     let q = context.supabase
       .from("crm_tasks")
-      .select("*, opportunities(id, name, school_id)")
+      .select(
+        "*, opportunities!inner(id, name, school_id, funnel_id, owner_id, funnels(name), schools(name), owner:profiles!opportunities_owner_id_fkey(id, full_name))",
+      )
       .order("done")
       .order("due_date", { nullsFirst: false })
       .order("created_at");
     if (data.opportunity_id) q = q.eq("opportunity_id", data.opportunity_id);
     if (data.done !== undefined) q = q.eq("done", data.done);
+    if (data.school_id) q = q.eq("opportunities.school_id", data.school_id);
+    if (data.funnel_id) q = q.eq("opportunities.funnel_id", data.funnel_id);
+    if (data.owner_id) q = q.eq("opportunities.owner_id", data.owner_id);
+    if (data.unassigned) q = q.is("opportunities.owner_id", null);
     const { data: rows, error } = await q;
     if (error) throw new Error(error.message);
     return (rows ?? []) as TaskRow[];

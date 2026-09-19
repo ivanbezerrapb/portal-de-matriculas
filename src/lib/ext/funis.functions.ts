@@ -246,9 +246,20 @@ export const deleteStage = createServerFn({ method: "POST" })
 export const listFunnelOwners = createServerFn({ method: "GET" })
   .middleware([requireAuth])
   .handler(async ({ context }) => {
+    const { data: visibleFunnels, error: visibleError } = await context.supabase
+      .from("funnels")
+      .select("id");
+    if (visibleError) throw new Error(visibleError.message);
+    const visibleIds = (visibleFunnels ?? []).map((f: { id: string }) => f.id);
+    if (!visibleIds.length) {
+      return [] as { funnel_id: string; user_id: string; name: string }[];
+    }
     const { extAdmin } = await import("./server");
     const admin = extAdmin();
-    const { data: links, error } = await admin.from("user_funnels").select("user_id, funnel_id");
+    const { data: links, error } = await admin
+      .from("user_funnels")
+      .select("user_id, funnel_id")
+      .in("funnel_id", visibleIds);
     if (error) throw new Error(error.message);
     const rows = (links ?? []) as { user_id: string; funnel_id: string }[];
     if (!rows.length) return [] as { funnel_id: string; user_id: string; name: string }[];
