@@ -602,6 +602,9 @@ function PipelinePage() {
 
               <OpportunityTasks opportunityId={card.id} canWrite={canWrite} />
 
+              <OpportunityNotes opportunityId={card.id} canWrite={canWrite} />
+
+
               {card.status === "open"
                 ? canClose && (
                     <div className="mt-6 flex gap-2 border-t border-border pt-4">
