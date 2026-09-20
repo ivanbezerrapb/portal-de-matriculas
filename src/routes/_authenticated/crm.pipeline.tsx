@@ -28,7 +28,6 @@ function whatsappHref(phone: string | null | undefined): string | null {
   return `https://wa.me/55${digits}`;
 }
 
-
 export const Route = createFileRoute("/_authenticated/crm/pipeline")({
   validateSearch: (search: Record<string, unknown>) => ({
     funil: typeof search["funil"] === "string" ? (search["funil"] as string) : undefined,
@@ -604,7 +603,6 @@ function PipelinePage() {
 
               <OpportunityNotes opportunityId={card.id} canWrite={canWrite} />
 
-
               {card.status === "open"
                 ? canClose && (
                     <div className="mt-6 flex gap-2 border-t border-border pt-4">
@@ -884,5 +882,103 @@ function CloseDialog(props: {
         </div>
       </div>
     </div>
+  );
+}
+
+// Histórico de informações do cartão: cada registro guarda nome, data e hora.
+function OpportunityNotes({
+  opportunityId,
+  canWrite,
+}: {
+  opportunityId: string;
+  canWrite: boolean;
+}) {
+  const queryClient = useQueryClient();
+  const [body, setBody] = useState("");
+
+  const { data: notes } = useQuery({
+    queryKey: ["crm-notes", opportunityId],
+    queryFn: () => listNotes({ data: { opportunity_id: opportunityId } }),
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
+  });
+
+  function refresh() {
+    void queryClient.invalidateQueries({ queryKey: ["crm-notes", opportunityId] });
+  }
+
+  const createM = useMutation({
+    mutationFn: () => createNote({ data: { opportunity_id: opportunityId, body } }),
+    onSuccess: () => {
+      setBody("");
+      refresh();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const deleteM = useMutation({
+    mutationFn: (d: { id: string }) => deleteNote({ data: d }),
+    onSuccess: refresh,
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <section className="mt-6 border-t border-border pt-4">
+      <h3 className="text-sm font-semibold text-foreground">Histórico</h3>
+
+      {canWrite && (
+        <form
+          className="mt-2 flex flex-col gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!body.trim()) return;
+            createM.mutate();
+          }}
+        >
+          <Textarea
+            rows={3}
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            placeholder="Escreva aqui a informação a registrar…"
+          />
+          <Button type="submit" disabled={createM.isPending || !body.trim()} className="self-start">
+            Registrar
+          </Button>
+        </form>
+      )}
+
+      <ul className="mt-3 space-y-3">
+        {(notes ?? []).map((n) => (
+          <li key={n.id} className="rounded-md border border-border p-3 text-sm">
+            <div className="flex items-start justify-between gap-2">
+              <p className="text-xs text-muted-foreground">
+                {n.author_name ?? "Usuário"} ·{" "}
+                {new Date(n.created_at).toLocaleString("pt-BR", {
+                  day: "2-digit",
+                  month: "2-digit",
+                  year: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </p>
+              {canWrite && n.can_delete && (
+                <button
+                  type="button"
+                  aria-label="Excluir registro"
+                  className="rounded p-1 text-muted-foreground hover:text-destructive"
+                  onClick={() => deleteM.mutate({ id: n.id })}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+            <p className="mt-1 whitespace-pre-line text-foreground">{n.body}</p>
+          </li>
+        ))}
+        {(notes ?? []).length === 0 && (
+          <li className="text-xs text-muted-foreground">Nenhum registro ainda.</li>
+        )}
+      </ul>
+    </section>
   );
 }

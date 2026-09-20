@@ -61,7 +61,6 @@ export const createNote = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-
 export const deleteNote = createServerFn({ method: "POST" })
   .middleware([requireAuth])
   .inputValidator((data) => z.object({ id: z.string().uuid() }).parse(data))
