@@ -15,8 +15,19 @@ import {
 } from "@/lib/ext/pipeline.functions";
 import { listCloseReasons } from "@/lib/ext/motivos.functions";
 import { createTask, deleteTask, listTasks, setTaskDone } from "@/lib/ext/tarefas.functions";
+import { createNote, deleteNote, listNotes } from "@/lib/ext/notas.functions";
 import { getMyPermissions } from "@/lib/ext/cadastros.functions";
 import { Button, Card, EmptyState, Input, Label, Select, Spinner, Textarea } from "@/components/ui";
+
+// Monta o link do WhatsApp: DDI 55 + DDD e número do cadastro.
+function whatsappHref(phone: string | null | undefined): string | null {
+  let digits = (phone ?? "").replace(/\D/g, "");
+  if (digits.startsWith("55") && digits.length > 11) digits = digits.slice(2);
+  if (digits.startsWith("0")) digits = digits.replace(/^0+/, "");
+  if (digits.length < 10 || digits.length > 11) return null;
+  return `https://wa.me/55${digits}`;
+}
+
 
 export const Route = createFileRoute("/_authenticated/crm/pipeline")({
   validateSearch: (search: Record<string, unknown>) => ({
