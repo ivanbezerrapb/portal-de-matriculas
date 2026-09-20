@@ -503,9 +503,24 @@ function PipelinePage() {
                 {card.phone && (
                   <div>
                     <dt className="text-xs text-muted-foreground">Telefone</dt>
-                    <dd className="text-foreground">{card.phone}</dd>
+                    <dd className="flex items-center gap-2 text-foreground">
+                      {card.phone}
+                      {whatsappHref(card.phone) && (
+                        <a
+                          href={whatsappHref(card.phone)!}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="Abrir conversa no WhatsApp"
+                          aria-label="Abrir conversa no WhatsApp"
+                          className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20"
+                        >
+                          <MessageCircle className="h-4 w-4" />
+                        </a>
+                      )}
+                    </dd>
                   </div>
                 )}
+
                 {card.email && (
                   <div>
                     <dt className="text-xs text-muted-foreground">E-mail</dt>
