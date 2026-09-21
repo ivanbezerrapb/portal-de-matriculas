@@ -291,7 +291,7 @@ export function SubmissionsList({
             <Label htmlFor="f-form">Formulário</Label>
             <Select id="f-form" value={formId} onChange={(e) => setFormId(e.target.value)}>
               <option value="">Todos</option>
-              {(forms ?? []).map((f) => (
+              {listForms_.map((f) => (
                 <option key={f.id} value={f.id}>
                   {f.title}
                 </option>
