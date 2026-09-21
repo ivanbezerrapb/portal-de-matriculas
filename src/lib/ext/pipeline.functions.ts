@@ -5,10 +5,40 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { FunnelStage, Opportunity } from "./model";
 
 type OpportunityRow = Opportunity & {
-  submissions: { public_id: string; children_count: number | null } | null;
+  submissions: { public_id: string; children_count: number | null; form_id: string } | null;
   crm_close_reasons: { label: string; kind: "won" | "lost" } | null;
   owner: { id: string; full_name: string | null } | null;
+  display_name: string;
+  series: string[];
 };
+
+function normalizeLabel(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+function parseSeriesValue(value: string, childrenField: boolean): string[] {
+  if (childrenField) {
+    try {
+      const children = JSON.parse(value) as { serie?: unknown }[];
+      if (!Array.isArray(children)) return [];
+      return children.map((child) => String(child?.serie ?? "").trim()).filter(Boolean);
+    } catch {
+      return [];
+    }
+  }
+
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    if (Array.isArray(parsed)) return parsed.map((item) => String(item).trim()).filter(Boolean);
+  } catch {
+    // Respostas simples não são JSON.
+  }
+  return value.trim() ? [value.trim()] : [];
+}
 
 async function validateOwner(
   supabase: SupabaseClient,
@@ -60,11 +90,75 @@ export const listPipeline = createServerFn({ method: "GET" })
     const status = data.status ?? "open";
     const { data: opportunities, error: oppError } = await context.supabase
       .from("opportunities")
-      .select("*, submissions(public_id, children_count), crm_close_reasons(label, kind)")
+      .select("*, submissions(public_id, children_count, form_id), crm_close_reasons(label, kind)")
       .eq("funnel_id", data.funnel_id)
       .eq("status", status)
       .order(status === "open" ? "position" : "closed_at");
     if (oppError) throw new Error(oppError.message);
+
+    const linkedOpportunities = (opportunities ?? []).filter(
+      (opportunity: any) => opportunity.submission_id && opportunity.submissions?.form_id,
+    );
+    const submissionIds = linkedOpportunities.map((opportunity: any) => opportunity.submission_id);
+    const formIds = [
+      ...new Set(linkedOpportunities.map((opportunity: any) => opportunity.submissions.form_id)),
+    ] as string[];
+    const displayNames = new Map<string, string>();
+    const seriesBySubmission = new Map<string, string[]>();
+
+    if (submissionIds.length > 0 && formIds.length > 0) {
+      const [{ data: destinations }, { data: fields }] = await Promise.all([
+        context.supabase
+          .from("form_destinations")
+          .select("form_id, name_field_id")
+          .in("form_id", formIds),
+        context.supabase.from("form_fields").select("id, form_id, label, type").in("form_id", formIds),
+      ]);
+      const nameFieldByForm = new Map(
+        (destinations ?? []).map((destination) => [destination.form_id, destination.name_field_id]),
+      );
+      const relevantFields = (fields ?? []).filter((field) => {
+        const label = normalizeLabel(field.label);
+        return (
+          field.type === "children" ||
+          label === "serie" ||
+          label === "series" ||
+          label.includes("serie de interesse") ||
+          nameFieldByForm.get(field.form_id) === field.id
+        );
+      });
+      const relevantFieldIds = relevantFields.map((field) => field.id);
+      const fieldById = new Map(relevantFields.map((field) => [field.id, field]));
+
+      if (relevantFieldIds.length > 0) {
+        const { data: values } = await context.supabase
+          .from("submission_values")
+          .select("submission_id, field_id, value")
+          .in("submission_id", submissionIds)
+          .in("field_id", relevantFieldIds)
+          .eq("part", "");
+
+        for (const answer of values ?? []) {
+          const field = fieldById.get(answer.field_id);
+          if (!field) continue;
+          const nameFieldId = nameFieldByForm.get(field.form_id);
+          if (field.id === nameFieldId && answer.value?.trim()) {
+            displayNames.set(answer.submission_id, answer.value.trim());
+          }
+          const label = normalizeLabel(field.label);
+          const isSeriesField =
+            field.type === "children" ||
+            label === "serie" ||
+            label === "series" ||
+            label.includes("serie de interesse");
+          if (isSeriesField && answer.value) {
+            const current = seriesBySubmission.get(answer.submission_id) ?? [];
+            current.push(...parseSeriesValue(answer.value, field.type === "children"));
+            seriesBySubmission.set(answer.submission_id, [...new Set(current.filter(Boolean))]);
+          }
+        }
+      }
+    }
 
     const ownerIds = [
       ...new Set(
@@ -111,6 +205,12 @@ export const listPipeline = createServerFn({ method: "GET" })
       stages: (stages ?? []) as FunnelStage[],
       opportunities: (opportunities ?? []).map((opportunity: any) => ({
         ...opportunity,
+        display_name: opportunity.submissions?.public_id
+          ? displayNames.get(opportunity.submission_id)
+            ? `${opportunity.submissions.public_id} · ${displayNames.get(opportunity.submission_id)}`
+            : opportunity.name
+          : opportunity.name,
+        series: seriesBySubmission.get(opportunity.submission_id) ?? [],
         owner: opportunity.owner_id
           ? { id: opportunity.owner_id, full_name: ownerNames.get(opportunity.owner_id) ?? null }
           : null,

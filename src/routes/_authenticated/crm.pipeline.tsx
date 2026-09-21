@@ -319,7 +319,15 @@ function PipelinePage() {
                     const activity = nextTasks[card.id];
                     const body = (
                       <>
-                        <p className="text-sm font-semibold text-foreground">{card.name}</p>
+                        <p className="break-words text-sm font-semibold text-foreground">
+                          {card.display_name}
+                        </p>
+                        {card.series.length > 0 && (
+                          <p className="mt-1 break-words text-xs text-muted-foreground">
+                            <span className="font-medium text-foreground">Série:</span>{" "}
+                            {card.series.join(" · ")}
+                          </p>
+                        )}
                         {card.phone && (
                           <p className="text-xs text-muted-foreground">{card.phone}</p>
                         )}
@@ -469,7 +477,17 @@ function PipelinePage() {
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-start justify-between gap-3">
-                <h2 className="font-display text-xl font-bold text-foreground">{card.name}</h2>
+                <div className="min-w-0">
+                  <h2 className="break-words font-display text-xl font-bold text-foreground">
+                    {card.display_name}
+                  </h2>
+                  {card.series.length > 0 && (
+                    <p className="mt-1 break-words text-sm text-muted-foreground">
+                      <span className="font-medium text-foreground">Série:</span>{" "}
+                      {card.series.join(" · ")}
+                    </p>
+                  )}
+                </div>
                 <Button variant="ghost" onClick={() => setOpenCard(null)}>
                   Fechar
                 </Button>
