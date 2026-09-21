@@ -177,13 +177,74 @@ export const setFormStatus = createServerFn({ method: "POST" })
       .parse(data),
   )
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase
-      .from("forms")
-      .update({ status: data.status })
-      .eq("id", data.id);
+    const update: Record<string, unknown> = { status: data.status };
+
+    if (data.status === "published") {
+      const { data: form } = await context.supabase
+        .from("forms")
+        .select("title, public_slug")
+        .eq("id", data.id)
+        .single();
+      if (form?.title) {
+        const slug = await uniqueSlug(context.supabase, slugify(form.title), data.id);
+        if (slug && slug !== form.public_slug) update.public_slug = slug;
+      }
+    }
+
+    const { error } = await context.supabase.from("forms").update(update).eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+const RESERVED_SLUGS = new Set([
+  "auth",
+  "api",
+  "f",
+  "apresentacao",
+  "arquivos",
+  "bancos-anteriores",
+  "cadastros",
+  "crm",
+  "dashboard",
+  "escolas",
+  "formularios",
+  "imprimir",
+  "leads",
+  "templates",
+  "usuarios",
+  "assets",
+  "public",
+]);
+
+function slugify(title: string) {
+  return title
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60);
+}
+
+async function uniqueSlug(
+  supabase: { from: (t: string) => any },
+  base: string,
+  formId: string,
+): Promise<string | null> {
+  if (!base) return null;
+  for (let i = 1; i < 50; i++) {
+    const candidate = i === 1 ? base : `${base}-${i}`;
+    if (RESERVED_SLUGS.has(candidate)) continue;
+    const { data: taken } = await supabase
+      .from("forms")
+      .select("id")
+      .eq("public_slug", candidate)
+      .neq("id", formId)
+      .maybeSingle();
+    if (!taken) return candidate;
+  }
+  return null;
+}
 
 export const deleteForm = createServerFn({ method: "POST" })
   .middleware([requireAuth])
