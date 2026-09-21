@@ -143,7 +143,10 @@ function AuthenticatedLayout() {
             key: "cadastros",
             label: "Cadastros",
             icon: ClipboardList,
-            children: [{ to: "/cadastros", label: "Lista de Visitantes", icon: ClipboardList }],
+            children: [
+              { to: "/cadastros", label: "Lista de Visitantes", icon: ClipboardList },
+              { to: "/leads", label: "Lista de LEADS", icon: ClipboardList },
+            ],
           } as NavGroup,
         ]
       : []),

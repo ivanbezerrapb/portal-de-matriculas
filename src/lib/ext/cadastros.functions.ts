@@ -14,6 +14,7 @@ export const listSubmissions = createServerFn({ method: "GET" })
         form_id: z.string().uuid().optional(),
         from: z.string().optional(),
         to: z.string().optional(),
+        list_type: z.enum(["visitantes", "leads"]).optional(),
       })
       .parse(data),
   )
@@ -23,6 +24,7 @@ export const listSubmissions = createServerFn({ method: "GET" })
       .select(
         "*, forms(title), schools(name), attendant:presenters!submissions_attendant_id_fkey(id, name), presenter:presenters!submissions_presenter_id_fkey(id, name), enroller:presenters!submissions_enroller_id_fkey(id, name)",
       )
+      .eq("list_type", data.list_type ?? "visitantes")
       .order("created_at", { ascending: false })
       .limit(500);
     if (data.search) {
@@ -763,6 +765,7 @@ export const getDashboardStats = createServerFn({ method: "GET" })
       .select(
         "id, form_id, school_id, created_at, enrolled, enrollment_count, schools(name), attendant:presenters!submissions_attendant_id_fkey(name), presenter:presenters!submissions_presenter_id_fkey(name), enroller:presenters!submissions_enroller_id_fkey(name)",
       )
+      .eq("list_type", "visitantes")
       .gte("created_at", start)
       .lt("created_at", end)
       .order("created_at", { ascending: false });

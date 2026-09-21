@@ -49,7 +49,7 @@ export const submitPublicForm = createServerFn({ method: "POST" })
 
     const { data: form } = await supabase
       .from("forms")
-      .select("id, school_id, status")
+      .select("id, school_id, status, list_type")
       .eq("public_slug", data.slug)
       .eq("status", "published")
       .maybeSingle();
@@ -93,9 +93,11 @@ export const submitPublicForm = createServerFn({ method: "POST" })
       }
     }
 
-    const { data: publicId, error: idError } = await supabase.rpc("next_school_public_id", {
-      p_school_id: form.school_id,
-    });
+    const listType = form.list_type === "leads" ? "leads" : "visitantes";
+    const { data: publicId, error: idError } = await supabase.rpc(
+      listType === "leads" ? "next_school_lead_id" : "next_school_public_id",
+      { p_school_id: form.school_id },
+    );
     if (idError || !publicId) {
       throw new Error(idError?.message ?? "Falha ao gerar o ID do cadastro.");
     }
@@ -106,6 +108,7 @@ export const submitPublicForm = createServerFn({ method: "POST" })
         form_id: form.id,
         school_id: form.school_id,
         public_id: publicId,
+        list_type: listType,
         children_count: childrenCount,
       })
       .select("id")

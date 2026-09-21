@@ -38,6 +38,7 @@ export const createForm = createServerFn({ method: "POST" })
         school_id: z.string().uuid(),
         title: z.string().min(2),
         description: z.string().optional(),
+        list_type: z.enum(["visitantes", "leads"]).optional(),
       })
       .parse(data),
   )
@@ -48,6 +49,7 @@ export const createForm = createServerFn({ method: "POST" })
         school_id: data.school_id,
         title: data.title,
         description: data.description || null,
+        list_type: data.list_type ?? "visitantes",
         created_by: context.userId,
       })
       .select()
@@ -81,6 +83,7 @@ export const duplicateForm = createServerFn({ method: "POST" })
         school_id: data.school_id,
         title: data.title,
         description: source.description ?? null,
+        list_type: source.list_type ?? "visitantes",
         status: "draft",
         created_by: context.userId,
       })
