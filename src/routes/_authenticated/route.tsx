@@ -55,12 +55,16 @@ function SessionExpired() {
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const supabase = await getSupabase();
-      const { data } = await supabase.auth.getUser();
-      if (cancelled) return;
-      if (!data.user) {
-        navigate({ to: "/auth", replace: true });
-        return;
+      try {
+        const supabase = await getSupabase();
+        const { data } = await supabase.auth.getUser();
+        if (cancelled) return;
+        if (!data.user) {
+          navigate({ to: "/auth", replace: true });
+          return;
+        }
+      } catch {
+        if (cancelled) return;
       }
       setSessionState("active");
     })();
