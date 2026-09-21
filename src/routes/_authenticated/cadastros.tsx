@@ -85,7 +85,6 @@ function SubmissionsPage() {
     queryFn: () => listForms(),
   });
 
-
   const { data: funnelsData } = useQuery({
     queryKey: ["funnels"],
     queryFn: () => listFunnels(),
@@ -183,7 +182,6 @@ function SubmissionsPage() {
     },
     onError: (e: Error) => toast.error(e.message),
   });
-
 
   const funnelM = useMutation({
     mutationFn: (d: {
