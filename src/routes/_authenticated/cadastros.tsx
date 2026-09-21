@@ -10,10 +10,8 @@ import {
   listSubmissions,
   sendSubmissionToFunnel,
   setEnrollment,
-  setSubmissionPeople,
 } from "@/lib/ext/cadastros.functions";
 import { listFunnelOwners, listFunnels } from "@/lib/ext/funis.functions";
-import { listPresenters, type PresenterKind } from "@/lib/ext/apresentacao.functions";
 import { listSchools } from "@/lib/ext/escolas.functions";
 import { listForms } from "@/lib/ext/formularios.functions";
 import { listPrintTemplates } from "@/lib/ext/impressao.functions";
@@ -87,10 +85,6 @@ function SubmissionsPage() {
     queryFn: () => listForms(),
   });
 
-  const { data: presenters } = useQuery({
-    queryKey: ["presenters"],
-    queryFn: () => listPresenters({ data: { only_active: true } }),
-  });
 
   const { data: funnelsData } = useQuery({
     queryKey: ["funnels"],
@@ -190,20 +184,6 @@ function SubmissionsPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const peopleM = useMutation({
-    mutationFn: (d: {
-      submission_id: string;
-      kind: PresenterKind;
-      presenter_id?: string | null;
-      new_name?: string;
-    }) => setSubmissionPeople({ data: d }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["submissions"] });
-      queryClient.invalidateQueries({ queryKey: ["presenters"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
 
   const funnelM = useMutation({
     mutationFn: (d: {
