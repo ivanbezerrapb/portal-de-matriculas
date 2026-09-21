@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
@@ -18,21 +18,15 @@ import { listPrintTemplates } from "@/lib/ext/impressao.functions";
 import { getMyPermissions } from "@/lib/ext/cadastros.functions";
 import { Button, Card, EmptyState, Input, Label, Select, Spinner } from "@/components/ui";
 
-export const Route = createFileRoute("/_authenticated/cadastros")({
-  head: () => ({
-    meta: [
-      { title: "Lista de Visitantes — Grupo Inter" },
-      { name: "description", content: "Consulte e gerencie as visitas escolares." },
-      { property: "og:title", content: "Lista de Visitantes — Grupo Inter" },
-      { property: "og:description", content: "Consulte e gerencie as visitas escolares." },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
-    ],
-  }),
-  component: SubmissionsPage,
-});
+export type SubmissionsListType = "visitantes" | "leads";
 
-function SubmissionsPage() {
+export function SubmissionsList({
+  listType = "visitantes",
+  title = "Lista de Visitantes",
+}: {
+  listType?: SubmissionsListType;
+  title?: string;
+}) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
