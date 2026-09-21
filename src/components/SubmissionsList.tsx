@@ -90,12 +90,17 @@ export function SubmissionsList({
   });
 
   const filters = {
+    list_type: listType,
     ...(search.trim() ? { search: search.trim() } : {}),
     ...(schoolId ? { school_id: schoolId } : {}),
     ...(formId ? { form_id: formId } : {}),
     ...(from ? { from } : {}),
     ...(to ? { to } : {}),
   };
+
+  const listForms_ = (forms ?? []).filter(
+    (f) => ((f as { list_type?: string }).list_type ?? "visitantes") === listType,
+  );
 
   const { data: submissions, isLoading } = useQuery({
     queryKey: ["submissions", filters],
@@ -253,7 +258,7 @@ export function SubmissionsList({
 
   return (
     <div className="w-full">
-      <h1 className="font-display text-2xl font-bold text-foreground">Lista de Visitantes</h1>
+      <h1 className="font-display text-2xl font-bold text-foreground">{title}</h1>
 
       <Card className="mt-6">
         <div
