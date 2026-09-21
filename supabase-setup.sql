@@ -13,6 +13,7 @@ create table public.schools (
   logo_url text,
   id_prefix text not null unique,
   id_next_number integer not null default 1,
+  lead_next_number integer not null default 1001,
   id_digits integer not null default 4,
   created_at timestamptz not null default now()
 );
@@ -175,6 +176,24 @@ begin
     raise exception 'Escola não encontrada';
   end if;
   return lpad(v_number::text, v_digits, '0') || '/' || v_prefix;
+end;
+$$;
+
+-- Gera o próximo ID da Lista de LEADS, usando contador próprio e o prefixo da escola
+create or replace function public.next_school_lead_id(p_school_id uuid)
+returns text language plpgsql security definer set search_path = public as $$
+declare
+  v_prefix text;
+  v_number integer;
+begin
+  update public.schools
+     set lead_next_number = lead_next_number + 1
+   where id = p_school_id
+  returning id_prefix, lead_next_number - 1 into v_prefix, v_number;
+  if v_prefix is null then
+    raise exception 'Escola não encontrada';
+  end if;
+  return v_number::text || '/' || v_prefix;
 end;
 $$;
 
