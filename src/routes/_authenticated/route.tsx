@@ -32,8 +32,7 @@ import { useEffect, useState } from "react";
 import { getSupabase } from "@/lib/ext/browser";
 import { getMyPermissions } from "@/lib/ext/cadastros.functions";
 import { getFileAccess } from "@/lib/ext/arquivos.functions";
-import { Spinner } from "@/components/ui";
-import { Button } from "@/components/ui";
+import { Button, Card, Spinner } from "@/components/ui";
 import whiteLogoAsset from "@/assets/grupo-inter-logo-branca.png.asset.json";
 import symbolAsset from "@/assets/grupo-inter-simbolo.png.asset.json";
 
