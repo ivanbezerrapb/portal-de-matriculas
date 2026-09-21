@@ -194,7 +194,7 @@ function FormsPage() {
                     title="Copiar link do formulário"
                     aria-label="Copiar link do formulário"
                     onClick={async () => {
-                      const url = `${window.location.origin}/f/${f.public_slug}`;
+                      const url = publicFormUrl(window.location.origin, f.public_slug);
                       try {
                         await navigator.clipboard.writeText(url);
                         toast.success("Link copiado.");

@@ -510,7 +510,7 @@ function PublishTab({
   const [title, setTitle] = useState(form.title);
   const [description, setDescription] = useState(form.description ?? "");
 
-  const publicUrl = `${window.location.origin}/f/${form.public_slug}`;
+  const publicUrl = publicFormUrl(window.location.origin, form.public_slug);
 
   const infoMut = useMutation({
     mutationFn: () => updateFormInfo({ data: { id: formId, title, description } }),
