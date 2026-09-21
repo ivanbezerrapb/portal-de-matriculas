@@ -13,6 +13,7 @@ create table public.schools (
   logo_url text,
   id_prefix text not null unique,
   id_next_number integer not null default 1,
+  lead_next_number integer not null default 1001,
   id_digits integer not null default 4,
   created_at timestamptz not null default now()
 );
