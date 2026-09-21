@@ -51,9 +51,41 @@ export const Route = createFileRoute("/_authenticated")({
 
 function SessionExpired() {
   const navigate = useNavigate();
+  const [sessionState, setSessionState] = useState<"checking" | "active">("checking");
+
   useEffect(() => {
-    navigate({ to: "/auth", replace: true });
+    let cancelled = false;
+    void (async () => {
+      const supabase = await getSupabase();
+      const { data } = await supabase.auth.getUser();
+      if (cancelled) return;
+      if (!data.user) {
+        navigate({ to: "/auth", replace: true });
+        return;
+      }
+      setSessionState("active");
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [navigate]);
+
+  if (sessionState === "active") {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background px-4">
+        <Card className="w-full max-w-md text-center">
+          <h1 className="font-display text-xl font-bold text-foreground">Não foi possível abrir esta tela</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Sua sessão continua ativa. Atualize a página para tentar novamente.
+          </p>
+          <Button className="mt-5" onClick={() => window.location.reload()}>
+            Atualizar página
+          </Button>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-screen items-center justify-center">
       <Spinner />

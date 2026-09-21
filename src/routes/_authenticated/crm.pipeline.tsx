@@ -317,15 +317,16 @@ function PipelinePage() {
                 <div className="flex-1 space-y-2">
                   {cards.map((card) => {
                     const activity = nextTasks[card.id];
+                     const cardSeries = card.series ?? [];
                     const body = (
                       <>
                         <p className="break-words text-sm font-semibold text-foreground">
                           {card.display_name}
                         </p>
-                        {card.series.length > 0 && (
+                        {cardSeries.length > 0 && (
                           <p className="mt-1 break-words text-xs text-muted-foreground">
                             <span className="font-medium text-foreground">Série:</span>{" "}
-                            {card.series.join(" · ")}
+                            {cardSeries.join(" · ")}
                           </p>
                         )}
                         {card.phone && (
@@ -466,6 +467,7 @@ function PipelinePage() {
         const card = opportunities.find((o) => o.id === openCard);
         if (!card) return null;
         const stage = stages.find((s) => s.id === card.stage_id);
+        const cardSeries = card.series ?? [];
         const details = (card.details ?? []) as { label: string; value: string }[];
         return (
           <div
@@ -481,10 +483,10 @@ function PipelinePage() {
                   <h2 className="break-words font-display text-xl font-bold text-foreground">
                     {card.display_name}
                   </h2>
-                  {card.series.length > 0 && (
+                  {cardSeries.length > 0 && (
                     <p className="mt-1 break-words text-sm text-muted-foreground">
                       <span className="font-medium text-foreground">Série:</span>{" "}
-                      {card.series.join(" · ")}
+                      {cardSeries.join(" · ")}
                     </p>
                   )}
                 </div>
