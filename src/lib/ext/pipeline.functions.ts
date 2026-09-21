@@ -112,7 +112,10 @@ export const listPipeline = createServerFn({ method: "GET" })
           .from("form_destinations")
           .select("form_id, name_field_id")
           .in("form_id", formIds),
-        context.supabase.from("form_fields").select("id, form_id, label, type").in("form_id", formIds),
+        context.supabase
+          .from("form_fields")
+          .select("id, form_id, label, type")
+          .in("form_id", formIds),
       ]);
       const nameFieldByForm = new Map(
         (destinations ?? []).map((destination) => [destination.form_id, destination.name_field_id]),
