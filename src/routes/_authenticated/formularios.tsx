@@ -51,12 +51,13 @@ function FormsPage() {
 
   const [title, setTitle] = useState("");
   const [schoolId, setSchoolId] = useState("");
+  const [listType, setListType] = useState<"visitantes" | "leads">("visitantes");
   const [dup, setDup] = useState<{ id: string; title: string; schoolId: string } | null>(null);
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["admin-forms"] });
 
   const createMut = useMutation({
-    mutationFn: () => createForm({ data: { title, school_id: schoolId } }),
+    mutationFn: () => createForm({ data: { title, school_id: schoolId, list_type: listType } }),
     onSuccess: () => {
       toast.success("Formulário criado. Agora adicione os campos.");
       setTitle("");
