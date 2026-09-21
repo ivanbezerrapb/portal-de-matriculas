@@ -10,10 +10,8 @@ import {
   listSubmissions,
   sendSubmissionToFunnel,
   setEnrollment,
-  setSubmissionPeople,
 } from "@/lib/ext/cadastros.functions";
 import { listFunnelOwners, listFunnels } from "@/lib/ext/funis.functions";
-import { listPresenters, type PresenterKind } from "@/lib/ext/apresentacao.functions";
 import { listSchools } from "@/lib/ext/escolas.functions";
 import { listForms } from "@/lib/ext/formularios.functions";
 import { listPrintTemplates } from "@/lib/ext/impressao.functions";
@@ -59,9 +57,6 @@ function SubmissionsPage() {
     schoolId: string;
   } | null>(null);
   const [enrollmentCount, setEnrollmentCount] = useState("1");
-  const [dialogAttendant, setDialogAttendant] = useState<PersonChoice | null>(null);
-  const [dialogPresenter, setDialogPresenter] = useState<PersonChoice | null>(null);
-  const [savingEnrollment, setSavingEnrollment] = useState(false);
   const [funnelDialog, setFunnelDialog] = useState<{
     submissionId: string;
     publicId: string;
@@ -88,11 +83,6 @@ function SubmissionsPage() {
   const { data: forms } = useQuery({
     queryKey: ["admin-forms"],
     queryFn: () => listForms(),
-  });
-
-  const { data: presenters } = useQuery({
-    queryKey: ["presenters"],
-    queryFn: () => listPresenters({ data: { only_active: true } }),
   });
 
   const { data: funnelsData } = useQuery({
@@ -189,21 +179,6 @@ function SubmissionsPage() {
       queryClient.invalidateQueries({ queryKey: ["crm-tasks"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       setEnrollmentDialog(null);
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const peopleM = useMutation({
-    mutationFn: (d: {
-      submission_id: string;
-      kind: PresenterKind;
-      presenter_id?: string | null;
-      new_name?: string;
-    }) => setSubmissionPeople({ data: d }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["submissions"] });
-      queryClient.invalidateQueries({ queryKey: ["presenters"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -481,20 +456,10 @@ function SubmissionsPage() {
                       })()}
                     </td>
                     <td className="px-4 py-2.5">
-                      <PersonCell
-                        kind="secretaria"
-                        current={
-                          (s as unknown as { attendant: { name?: string } | null }).attendant
-                            ?.name ?? null
-                        }
-                        options={(presenters ?? []).filter(
-                          (p) => p.school_id === s.school_id && p.kind === "secretaria",
-                        )}
-                        disabled={!canEnroll || peopleM.isPending}
-                        onPick={(value) =>
-                          peopleM.mutate({ submission_id: s.id, kind: "secretaria", ...value })
-                        }
-                      />
+                      <span className="break-words text-muted-foreground">
+                        {(s as unknown as { attendant: { name?: string } | null }).attendant
+                          ?.name ?? "—"}
+                      </span>
                     </td>
                     <td className="px-4 py-2.5">
                       {(() => {
@@ -539,23 +504,6 @@ function SubmissionsPage() {
                           onChange={(e) => {
                             if (e.target.checked) {
                               setEnrollmentCount(String(Math.max(childrenCount ?? 1, 1)));
-                              const att = (
-                                s as unknown as { attendant: { id?: string; name?: string } | null }
-                              ).attendant;
-                              const pre = (
-                                s as unknown as { presenter: { id?: string; name?: string } | null }
-                              ).presenter;
-                              setDialogAttendant(
-                                att?.id && att.name
-                                  ? { presenter_id: att.id, label: att.name }
-                                  : null,
-                              );
-                              setDialogPresenter(
-                                pre?.id && pre.name
-                                  ? { presenter_id: pre.id, label: pre.name }
-                                  : null,
-                              );
-
                               setEnrollmentDialog({
                                 id: s.id,
                                 publicId: s.public_id,
@@ -668,28 +616,6 @@ function SubmissionsPage() {
                 autoFocus
               />
             </div>
-            <div className="mt-4">
-              <Label>Quem atendeu (Secretaria)</Label>
-              <PersonPicker
-                kind="secretaria"
-                value={dialogAttendant}
-                options={(presenters ?? []).filter(
-                  (p) => p.school_id === enrollmentDialog.schoolId && p.kind === "secretaria",
-                )}
-                onChange={setDialogAttendant}
-              />
-            </div>
-            <div className="mt-4">
-              <Label>Quem apresentou (Coordenação)</Label>
-              <PersonPicker
-                kind="coordenacao"
-                value={dialogPresenter}
-                options={(presenters ?? []).filter(
-                  (p) => p.school_id === enrollmentDialog.schoolId && p.kind === "coordenacao",
-                )}
-                onChange={setDialogPresenter}
-              />
-            </div>
             <div className="mt-5 flex justify-end gap-2">
               <Button variant="ghost" onClick={() => setEnrollmentDialog(null)}>
                 Cancelar
@@ -697,46 +623,15 @@ function SubmissionsPage() {
               <Button
                 disabled={
                   enrollM.isPending ||
-                  savingEnrollment ||
-                  !dialogAttendant ||
-                  !dialogPresenter ||
                   !Number.isInteger(Number(enrollmentCount)) ||
                   Number(enrollmentCount) < 1
                 }
-                onClick={async () => {
-                  if (!dialogAttendant || !dialogPresenter) return;
-                  setSavingEnrollment(true);
-                  try {
-                    await setSubmissionPeople({
-                      data: {
-                        submission_id: enrollmentDialog.id,
-                        kind: "secretaria",
-                        ...(dialogAttendant.presenter_id
-                          ? { presenter_id: dialogAttendant.presenter_id }
-                          : { new_name: dialogAttendant.label }),
-                      },
-                    });
-                    await setSubmissionPeople({
-                      data: {
-                        submission_id: enrollmentDialog.id,
-                        kind: "coordenacao",
-                        ...(dialogPresenter.presenter_id
-                          ? { presenter_id: dialogPresenter.presenter_id }
-                          : { new_name: dialogPresenter.label }),
-                      },
-                    });
-
-                    queryClient.invalidateQueries({ queryKey: ["presenters"] });
-                    enrollM.mutate({
-                      id: enrollmentDialog.id,
-                      enrolled: true,
-                      enrollment_count: Number(enrollmentCount),
-                    });
-                  } catch (err) {
-                    toast.error((err as Error).message);
-                  } finally {
-                    setSavingEnrollment(false);
-                  }
+                onClick={() => {
+                  enrollM.mutate({
+                    id: enrollmentDialog.id,
+                    enrolled: true,
+                    enrollment_count: Number(enrollmentCount),
+                  });
                 }}
               >
                 Confirmar
@@ -856,169 +751,6 @@ function SubmissionsPage() {
           />
         </>
       )}
-    </div>
-  );
-}
-
-type PersonChoice = { presenter_id?: string; label: string };
-
-const PLACEHOLDERS: Record<PresenterKind, string> = {
-  secretaria: "Quem atendeu",
-  coordenacao: "Quem apresentou",
-  efetivacao: "Quem efetivou",
-};
-
-function PersonPicker({
-  kind,
-  value,
-  options,
-  onChange,
-}: {
-  kind: PresenterKind;
-  value: PersonChoice | null;
-  options: { id: string; name: string }[];
-  onChange: (value: PersonChoice | null) => void;
-}) {
-  const [text, setText] = useState(value?.label ?? "");
-  const [open, setOpen] = useState(false);
-
-  const query = text.trim().toLowerCase();
-  const matches = options.filter((o) => o.name.toLowerCase().includes(query));
-  const exact = options.find((o) => o.name.toLowerCase() === query);
-
-  return (
-    <div className="relative">
-      <Input
-        value={text}
-        placeholder={PLACEHOLDERS[kind]}
-        onFocus={() => setOpen(true)}
-        onChange={(e) => {
-          setText(e.target.value);
-          setOpen(true);
-          onChange(null);
-        }}
-        onBlur={() => window.setTimeout(() => setOpen(false), 150)}
-      />
-      {open && (
-        <div className="absolute z-30 mt-1 max-h-48 w-full overflow-auto rounded-md border border-border bg-card shadow-lg">
-          {matches.map((o) => (
-            <button
-              key={o.id}
-              className="block w-full px-3 py-1.5 text-left text-sm hover:bg-accent"
-              onMouseDown={(e) => {
-                e.preventDefault();
-                onChange({ presenter_id: o.id, label: o.name });
-                setText(o.name);
-                setOpen(false);
-              }}
-            >
-              {o.name}
-            </button>
-          ))}
-          {query.length >= 2 && !exact && (
-            <button
-              className="block w-full px-3 py-1.5 text-left text-sm font-medium text-primary hover:bg-accent"
-              onMouseDown={(e) => {
-                e.preventDefault();
-                onChange({ label: text.trim() });
-                setOpen(false);
-              }}
-            >
-              Cadastrar «{text.trim()}»
-            </button>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function PersonCell({
-  kind,
-  current,
-  options,
-  disabled,
-  onPick,
-}: {
-  kind: PresenterKind;
-  current: string | null;
-  options: { id: string; name: string }[];
-  disabled: boolean;
-  onPick: (value: { presenter_id?: string | null; new_name?: string }) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const [text, setText] = useState("");
-
-  if (disabled) {
-    return <span className="break-words text-muted-foreground">{current ?? "—"}</span>;
-  }
-
-  if (!open) {
-    return (
-      <button
-        onClick={() => {
-          setText(current ?? "");
-          setOpen(true);
-        }}
-        className="w-full break-words rounded-md px-2 py-1 text-left text-sm text-foreground hover:bg-accent"
-      >
-        {current ?? <span className="text-muted-foreground">—</span>}
-      </button>
-    );
-  }
-
-  const query = text.trim().toLowerCase();
-  const matches = options.filter((o) => o.name.toLowerCase().includes(query));
-  const exact = options.find((o) => o.name.toLowerCase() === query);
-
-  return (
-    <div className="relative w-full min-w-32">
-      <Input
-        autoFocus
-        value={text}
-        placeholder={PLACEHOLDERS[kind]}
-        onChange={(e) => setText(e.target.value)}
-        onBlur={() => window.setTimeout(() => setOpen(false), 150)}
-      />
-      <div className="absolute z-20 mt-1 max-h-56 w-full overflow-auto rounded-md border border-border bg-card shadow-lg">
-        {matches.map((o) => (
-          <button
-            key={o.id}
-            className="block w-full px-3 py-1.5 text-left text-sm hover:bg-accent"
-            onMouseDown={(e) => {
-              e.preventDefault();
-              onPick({ presenter_id: o.id });
-              setOpen(false);
-            }}
-          >
-            {o.name}
-          </button>
-        ))}
-        {query.length >= 2 && !exact && (
-          <button
-            className="block w-full px-3 py-1.5 text-left text-sm font-medium text-primary hover:bg-accent"
-            onMouseDown={(e) => {
-              e.preventDefault();
-              onPick({ new_name: text.trim() });
-              setOpen(false);
-            }}
-          >
-            Cadastrar «{text.trim()}»
-          </button>
-        )}
-        {current && (
-          <button
-            className="block w-full px-3 py-1.5 text-left text-sm text-muted-foreground hover:bg-accent"
-            onMouseDown={(e) => {
-              e.preventDefault();
-              onPick({ presenter_id: null });
-              setOpen(false);
-            }}
-          >
-            Limpar
-          </button>
-        )}
-      </div>
     </div>
   );
 }
