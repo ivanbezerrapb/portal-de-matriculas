@@ -130,6 +130,17 @@ function FormsPage() {
               ))}
             </Select>
           </div>
+          <div className="min-w-48 flex-1">
+            <Label htmlFor="form-list">Enviar para</Label>
+            <Select
+              id="form-list"
+              value={listType}
+              onChange={(e) => setListType(e.target.value as "visitantes" | "leads")}
+            >
+              <option value="visitantes">Lista de Visitantes</option>
+              <option value="leads">Lista de LEADS</option>
+            </Select>
+          </div>
           <Button type="submit" disabled={createMut.isPending}>
             Criar
           </Button>
@@ -168,6 +179,11 @@ function FormsPage() {
                     ) : (
                       <Badge color="muted">Envio desativado</Badge>
                     )}
+                    <Badge color="muted">
+                      {(f as { list_type?: string }).list_type === "leads"
+                        ? "Lista de LEADS"
+                        : "Lista de Visitantes"}
+                    </Badge>
                   </div>
                   <p className="text-xs text-muted-foreground">{school?.name ?? "—"}</p>
                 </div>
