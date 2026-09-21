@@ -526,23 +526,6 @@ function SubmissionsPage() {
                           onChange={(e) => {
                             if (e.target.checked) {
                               setEnrollmentCount(String(Math.max(childrenCount ?? 1, 1)));
-                              const att = (
-                                s as unknown as { attendant: { id?: string; name?: string } | null }
-                              ).attendant;
-                              const pre = (
-                                s as unknown as { presenter: { id?: string; name?: string } | null }
-                              ).presenter;
-                              setDialogAttendant(
-                                att?.id && att.name
-                                  ? { presenter_id: att.id, label: att.name }
-                                  : null,
-                              );
-                              setDialogPresenter(
-                                pre?.id && pre.name
-                                  ? { presenter_id: pre.id, label: pre.name }
-                                  : null,
-                              );
-
                               setEnrollmentDialog({
                                 id: s.id,
                                 publicId: s.public_id,
