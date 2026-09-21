@@ -12,3 +12,4 @@
 - [x] Exigir responsável ao enviar para funil com várias pessoas e corrigir cartão 0003/CE2027
 
 - [x] Lista de LEADS (menu, numeração 1001/CE2027, 2001/CR2027, 3001/BE2027 e 4001/EX2027, formulários com escolha de lista)
+- [x] Check-in definitivo na Lista de LEADS, com data/hora, ganho automático no CRM e conclusão das tarefas
