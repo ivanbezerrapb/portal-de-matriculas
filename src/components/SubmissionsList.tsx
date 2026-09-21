@@ -52,9 +52,7 @@ export function SubmissionsList({
     schoolId: string;
   } | null>(null);
   const [enrollmentCount, setEnrollmentCount] = useState("1");
-  const [checkInDialog, setCheckInDialog] = useState<{ id: string; publicId: string } | null>(
-    null,
-  );
+  const [checkInDialog, setCheckInDialog] = useState<{ id: string; publicId: string } | null>(null);
   const [funnelDialog, setFunnelDialog] = useState<{
     submissionId: string;
     publicId: string;
@@ -418,9 +416,8 @@ export function SubmissionsList({
                 const enrolledCount = Number(
                   (s as unknown as { enrollment_count?: number }).enrollment_count ?? 0,
                 );
-                const checkIn = (
-                  s as unknown as { check_in?: { checked_in_at: string } | null }
-                ).check_in;
+                const checkIn = (s as unknown as { check_in?: { checked_in_at: string } | null })
+                  .check_in;
                 return (
                   <tr
                     key={s.id}
@@ -460,9 +457,7 @@ export function SubmissionsList({
                     </td>
                     <td className="px-4 py-2.5 text-muted-foreground">{school?.name ?? "—"}</td>
                     {listType === "visitantes" && (
-                      <td className="px-4 py-2.5 text-muted-foreground">
-                        {childrenCount ?? "—"}
-                      </td>
+                      <td className="px-4 py-2.5 text-muted-foreground">{childrenCount ?? "—"}</td>
                     )}
                     <td className="px-4 py-2.5 text-muted-foreground">
                       {new Date(s.created_at).toLocaleString("pt-BR", {
@@ -536,7 +531,9 @@ export function SubmissionsList({
                             }}
                             aria-label={`Check-in de ${s.public_id}`}
                           />
-                          {checkIn ? <span className="font-medium text-emerald-600">Confirmado</span> : null}
+                          {checkIn ? (
+                            <span className="font-medium text-emerald-600">Confirmado</span>
+                          ) : null}
                         </label>
                       ) : (
                         <label className="flex items-center gap-2 text-xs text-muted-foreground">
