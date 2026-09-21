@@ -75,14 +75,27 @@ export const listSubmissions = createServerFn({ method: "GET" })
       }
     }
 
-    // Campo de crianças (JSON com série/turno) por formulário
+    // Campos de crianças e de série por formulário
     const childrenFieldIds = new Set<string>();
+    const seriesFieldIds = new Set<string>();
     for (const f of ff ?? []) {
       if (f.type === "children") childrenFieldIds.add(f.id);
+      const label = norm(f.label);
+      if (
+        f.type !== "children" &&
+        (label === "serie" || label === "series" || label.includes("serie de interesse"))
+      ) {
+        seriesFieldIds.add(f.id);
+      }
     }
 
     const fieldIds = [
-      ...new Set([...fieldByForm.values(), ...restrictionFieldIds, ...childrenFieldIds]),
+      ...new Set([
+        ...fieldByForm.values(),
+        ...restrictionFieldIds,
+        ...childrenFieldIds,
+        ...seriesFieldIds,
+      ]),
     ];
     const valueMap = new Map<string, string>();
     const restrictedIds = new Set<string>();
@@ -125,6 +138,28 @@ export const listSubmissions = createServerFn({ method: "GET" })
       });
     }
 
+    const { data: checkIns } = await context.supabase
+      .from("audit_log")
+      .select("submission_id, actor_id, actor_email, created_at")
+      .in(
+        "submission_id",
+        rows.map((r) => r.id),
+      )
+      .eq("action", "check_in")
+      .order("created_at", { ascending: false });
+    const checkInBySubmission = new Map<
+      string,
+      { checked_in_at: string; checked_in_by: string | null; checked_in_by_email: string | null }
+    >();
+    for (const entry of checkIns ?? []) {
+      if (checkInBySubmission.has(entry.submission_id)) continue;
+      checkInBySubmission.set(entry.submission_id, {
+        checked_in_at: entry.created_at,
+        checked_in_by: entry.actor_id,
+        checked_in_by_email: entry.actor_email,
+      });
+    }
+
     return rows.map((r) => {
       const fid = fieldByForm.get(r.form_id);
       const name = fid ? valueMap.get(`${r.id}:${fid}`) : "";
@@ -144,12 +179,28 @@ export const listSubmissions = createServerFn({ method: "GET" })
         }
         break;
       }
+      for (const sfid of seriesFieldIds) {
+        const raw = valueMap.get(`${r.id}:${sfid}`)?.trim();
+        if (!raw) continue;
+        try {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) {
+            series.push(...parsed.map((value) => String(value).trim()).filter(Boolean));
+          } else {
+            series.push(raw);
+          }
+        } catch {
+          series.push(raw);
+        }
+      }
+      series = [...new Set(series.filter(Boolean))];
       return {
         ...r,
         responsible_name: name?.trim() || null,
         funnel,
         restricted: restrictedIds.has(r.id),
         series,
+        check_in: checkInBySubmission.get(r.id) ?? null,
       };
     });
   });
@@ -450,6 +501,101 @@ export const setEnrollment = createServerFn({ method: "POST" })
     });
 
     return { ok: true };
+  });
+
+// ---------- Check-in definitivo da Lista de LEADS ----------
+
+export const setLeadCheckIn = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((data) => z.object({ id: z.string().uuid() }).parse(data))
+  .handler(async ({ data, context }) => {
+    const { getPerms } = await import("./server");
+    const perms = await getPerms(context.supabase, context.userId);
+
+    const { data: submission, error } = await context.supabase
+      .from("submissions")
+      .select("id, school_id, list_type, public_id")
+      .eq("id", data.id)
+      .single();
+    if (error) throw new Error(error.message);
+    if (submission.list_type !== "leads") {
+      throw new Error("O check-in está disponível somente para a Lista de LEADS.");
+    }
+
+    const allowed =
+      perms.isAdmin ||
+      perms.managerSchools.includes(submission.school_id) ||
+      perms.operatorSchools.includes(submission.school_id);
+    if (!allowed) throw new Error("Você não tem permissão para confirmar este check-in.");
+
+    const { data: existingCheckIn } = await context.supabase
+      .from("audit_log")
+      .select("id, created_at")
+      .eq("submission_id", data.id)
+      .eq("action", "check_in")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (existingCheckIn) {
+      throw new Error("O check-in deste LEAD já foi confirmado e não pode ser desfeito.");
+    }
+
+    const now = new Date().toISOString();
+    const { data: opportunity } = await context.supabase
+      .from("opportunities")
+      .select("id")
+      .eq("submission_id", data.id)
+      .maybeSingle();
+
+    if (opportunity) {
+      const { error: tasksError } = await context.supabase
+        .from("crm_tasks")
+        .update({ done: true, done_at: now })
+        .eq("opportunity_id", opportunity.id)
+        .eq("done", false);
+      if (tasksError) throw new Error(tasksError.message);
+
+      const { error: opportunityError } = await context.supabase
+        .from("opportunities")
+        .update({
+          status: "won",
+          close_reason_id: null,
+          close_note: "Check-in confirmado na Lista de LEADS.",
+          closed_at: now,
+          updated_at: now,
+        })
+        .eq("id", opportunity.id);
+      if (opportunityError) throw new Error(opportunityError.message);
+    }
+
+    const { error: auditError } = await context.supabase.from("audit_log").insert({
+      submission_id: data.id,
+      actor_id: context.userId,
+      actor_email: context.userEmail,
+      action: "check_in",
+      changes: [
+        {
+          field_id: "check_in",
+          label: "Check-in",
+          before: "Não",
+          after: "Sim",
+        },
+        {
+          field_id: "checked_in_at",
+          label: "Data do check-in",
+          before: "",
+          after: now,
+        },
+      ],
+    });
+    if (auditError) throw new Error(auditError.message);
+
+    await context.supabase
+      .from("submissions")
+      .update({ updated_at: now, updated_by: context.userId })
+      .eq("id", data.id);
+
+    return { ok: true, checked_in_at: now, opportunity_closed: Boolean(opportunity) };
   });
 
 // ---------- Envio manual do lead para um funil ----------

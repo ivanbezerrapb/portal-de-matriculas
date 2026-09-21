@@ -10,6 +10,7 @@ import {
   listSubmissions,
   sendSubmissionToFunnel,
   setEnrollment,
+  setLeadCheckIn,
 } from "@/lib/ext/cadastros.functions";
 import { listFunnelOwners, listFunnels } from "@/lib/ext/funis.functions";
 import { listSchools } from "@/lib/ext/escolas.functions";
@@ -51,6 +52,7 @@ export function SubmissionsList({
     schoolId: string;
   } | null>(null);
   const [enrollmentCount, setEnrollmentCount] = useState("1");
+  const [checkInDialog, setCheckInDialog] = useState<{ id: string; publicId: string } | null>(null);
   const [funnelDialog, setFunnelDialog] = useState<{
     submissionId: string;
     publicId: string;
@@ -178,6 +180,22 @@ export function SubmissionsList({
       queryClient.invalidateQueries({ queryKey: ["crm-tasks"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       setEnrollmentDialog(null);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const checkInM = useMutation({
+    mutationFn: (id: string) => setLeadCheckIn({ data: { id } }),
+    onSuccess: (result) => {
+      toast.success(
+        result.opportunity_closed
+          ? "Check-in confirmado. O cartão foi ganho e as tarefas foram concluídas."
+          : "Check-in confirmado. Este LEAD ainda não possui cartão no CRM.",
+      );
+      queryClient.invalidateQueries({ queryKey: ["submissions"] });
+      queryClient.invalidateQueries({ queryKey: ["pipeline"] });
+      queryClient.invalidateQueries({ queryKey: ["crm-tasks"] });
+      setCheckInDialog(null);
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -377,12 +395,13 @@ export function SubmissionsList({
                 <th className="px-4 py-3">ID</th>
                 <th className="px-4 py-3">Responsável</th>
                 <th className="px-4 py-3">Escola</th>
-                <th className="px-4 py-3">Crianças</th>
+                {listType === "visitantes" && <th className="px-4 py-3">Crianças</th>}
                 <th className="px-4 py-3">Data</th>
                 <th className="px-4 py-3">Série</th>
                 <th className="px-4 py-3">Atendimento</th>
                 <th className="px-4 py-3">Funil</th>
-                <th className="px-4 py-3">Matrícula</th>
+                <th className="px-4 py-3">{listType === "leads" ? "Check-in" : "Matrícula"}</th>
+                {listType === "leads" && <th className="px-4 py-3">Data do check-in</th>}
                 <th className="px-4 py-3"></th>
               </tr>
             </thead>
@@ -397,6 +416,8 @@ export function SubmissionsList({
                 const enrolledCount = Number(
                   (s as unknown as { enrollment_count?: number }).enrollment_count ?? 0,
                 );
+                const checkIn = (s as unknown as { check_in?: { checked_in_at: string } | null })
+                  .check_in;
                 return (
                   <tr
                     key={s.id}
@@ -435,7 +456,9 @@ export function SubmissionsList({
                       {responsible ?? "—"}
                     </td>
                     <td className="px-4 py-2.5 text-muted-foreground">{school?.name ?? "—"}</td>
-                    <td className="px-4 py-2.5 text-muted-foreground">{childrenCount ?? "—"}</td>
+                    {listType === "visitantes" && (
+                      <td className="px-4 py-2.5 text-muted-foreground">{childrenCount ?? "—"}</td>
+                    )}
                     <td className="px-4 py-2.5 text-muted-foreground">
                       {new Date(s.created_at).toLocaleString("pt-BR", {
                         dateStyle: "short",
@@ -494,34 +517,64 @@ export function SubmissionsList({
                       })()}
                     </td>
                     <td className="px-4 py-2.5">
-                      <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <input
-                          type="checkbox"
-                          className="accent-[var(--color-primary)]"
-                          checked={enrolled}
-                          disabled={!canEnroll || enrollM.isPending}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setEnrollmentCount(String(Math.max(childrenCount ?? 1, 1)));
-                              setEnrollmentDialog({
-                                id: s.id,
-                                publicId: s.public_id,
-                                childrenCount,
-                                schoolId: s.school_id,
-                              });
-                            } else {
-                              enrollM.mutate({ id: s.id, enrolled: false });
-                            }
-                          }}
-                          aria-label={`Matrícula de ${s.public_id}`}
-                        />
-                        {enrolled ? (
-                          <span className="font-medium text-emerald-600">
-                            Ativo · {enrolledCount}
-                          </span>
-                        ) : null}
-                      </label>
+                      {listType === "leads" ? (
+                        <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <input
+                            type="checkbox"
+                            className="accent-[var(--color-primary)]"
+                            checked={Boolean(checkIn)}
+                            disabled={!canEnroll || checkInM.isPending || Boolean(checkIn)}
+                            onChange={(event) => {
+                              if (event.target.checked) {
+                                setCheckInDialog({ id: s.id, publicId: s.public_id });
+                              }
+                            }}
+                            aria-label={`Check-in de ${s.public_id}`}
+                          />
+                          {checkIn ? (
+                            <span className="font-medium text-emerald-600">Confirmado</span>
+                          ) : null}
+                        </label>
+                      ) : (
+                        <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <input
+                            type="checkbox"
+                            className="accent-[var(--color-primary)]"
+                            checked={enrolled}
+                            disabled={!canEnroll || enrollM.isPending}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setEnrollmentCount(String(Math.max(childrenCount ?? 1, 1)));
+                                setEnrollmentDialog({
+                                  id: s.id,
+                                  publicId: s.public_id,
+                                  childrenCount,
+                                  schoolId: s.school_id,
+                                });
+                              } else {
+                                enrollM.mutate({ id: s.id, enrolled: false });
+                              }
+                            }}
+                            aria-label={`Matrícula de ${s.public_id}`}
+                          />
+                          {enrolled ? (
+                            <span className="font-medium text-emerald-600">
+                              Ativo · {enrolledCount}
+                            </span>
+                          ) : null}
+                        </label>
+                      )}
                     </td>
+                    {listType === "leads" && (
+                      <td className="px-4 py-2.5 whitespace-nowrap text-muted-foreground">
+                        {checkIn
+                          ? new Date(checkIn.checked_in_at).toLocaleString("pt-BR", {
+                              dateStyle: "short",
+                              timeStyle: "short",
+                            })
+                          : "—"}
+                      </td>
+                    )}
                     <td className="px-2 py-2.5 text-right">
                       <div className="flex items-center justify-end gap-1">
                         <button
@@ -634,6 +687,37 @@ export function SubmissionsList({
                 }}
               >
                 Confirmar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {checkInDialog && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 p-4"
+          onClick={() => setCheckInDialog(null)}
+        >
+          <div
+            className="w-full max-w-sm rounded-lg border border-border bg-card p-5 shadow-lg"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h2 className="font-display text-lg font-semibold text-foreground">
+              Confirmar check-in?
+            </h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              LEAD {checkInDialog.publicId}. Esta ação registrará a data e hora atual, dará o cartão
+              como ganho e concluirá todas as tarefas pendentes. O check-in não poderá ser desfeito.
+            </p>
+            <div className="mt-5 flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => setCheckInDialog(null)}>
+                Cancelar
+              </Button>
+              <Button
+                disabled={checkInM.isPending}
+                onClick={() => checkInM.mutate(checkInDialog.id)}
+              >
+                {checkInM.isPending ? "Confirmando..." : "Confirmar check-in"}
               </Button>
             </div>
           </div>
