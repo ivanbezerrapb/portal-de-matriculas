@@ -21,6 +21,7 @@ import {
   type PrintTemplate,
 } from "@/lib/ext/model";
 import { Badge, Button, Card, Input, Label, Select, Spinner, Textarea } from "@/components/ui";
+import { publicFormUrl } from "@/lib/publicFormUrl";
 import {
   getDestination,
   reprocessSubmissions,
