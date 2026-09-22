@@ -41,7 +41,7 @@ create table public.forms (
   title text not null,
   description text,
   status text not null default 'draft' check (status in ('draft','published','closed')),
-  public_slug uuid not null default gen_random_uuid() unique,
+  public_slug text not null default gen_random_uuid()::text unique,
   created_by uuid references auth.users(id),
   created_at timestamptz not null default now()
 );
