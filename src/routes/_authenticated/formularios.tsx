@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Copy, Link2, Settings, Trash2 } from "lucide-react";
 import { createForm, deleteForm, duplicateForm, listForms } from "@/lib/ext/formularios.functions";
 import { listSchools } from "@/lib/ext/escolas.functions";
+import { publicFormUrl } from "@/lib/publicFormUrl";
 import { Badge, Button, Card, EmptyState, Input, Label, Select, Spinner } from "@/components/ui";
 
 const ICON_BTN =
