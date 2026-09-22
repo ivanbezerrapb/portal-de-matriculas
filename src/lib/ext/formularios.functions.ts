@@ -187,7 +187,7 @@ export const setFormStatus = createServerFn({ method: "POST" })
         .single();
       if (form?.title) {
         const slug = await uniqueSlug(context.supabase, slugify(form.title), data.id);
-        if (slug && slug !== form["public_slug"]) update.public_slug = slug;
+        if (slug && slug !== form["public_slug"]) update["public_slug"] = slug;
       }
     }
 
