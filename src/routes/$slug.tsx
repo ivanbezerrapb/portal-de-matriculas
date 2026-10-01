@@ -17,7 +17,7 @@ export const Route = createFileRoute("/$slug")({
   component: ShortPublicFormRoute,
   errorComponent: ({ error }) => (
     <div className="flex min-h-screen items-center justify-center px-4">
-      <p className="text-sm text-destructive">Erro ao carregar: {error.message}</p>
+      <p className="text-sm text-destructive">Erro ao carregar: {(error as Error).message}</p>
     </div>
   ),
   notFoundComponent: () => (
