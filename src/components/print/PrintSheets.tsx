@@ -151,11 +151,13 @@ export function PrintSheets({
 
   const printCss = `
     @media print {
-      body * { visibility: hidden; }
-      #print-area, #print-area * { visibility: visible; }
-      .print-shell { position: static !important; left: auto !important; top: auto !important; width: auto !important; height: auto !important; overflow: visible !important; }
-      #print-area { position: absolute; inset: 0; width: 100%; }
-      .print-page { page-break-after: always; box-shadow: none !important; border: none !important; margin: 0 !important; }
+      html, body { height: auto !important; min-height: 0 !important; overflow: visible !important; margin: 0 !important; padding: 0 !important; }
+      body *:not(:has(#print-area)):not(#print-area):not(#print-area *) { display: none !important; }
+      body *:has(#print-area) { display: block !important; position: static !important; margin: 0 !important; padding: 0 !important; min-height: 0 !important; height: auto !important; width: auto !important; max-width: none !important; overflow: visible !important; transform: none !important; border: none !important; box-shadow: none !important; background: none !important; }
+      #print-area { position: static !important; width: auto !important; margin: 0 !important; padding: 0 !important; gap: 0 !important; display: block !important; }
+      .print-page { break-after: page; page-break-after: always; break-inside: avoid; box-shadow: none !important; border: none !important; margin: 0 !important; }
+      .print-page:last-child { break-after: auto; page-break-after: auto; }
+      ${hasLayout ? `.print-page { height: ${size.h - 0.5}mm !important; overflow: hidden !important; }` : ""}
       .no-print { display: none !important; }
     }
     @page { size: ${layout?.pageSize ?? template.page_size}; margin: ${hasLayout ? "0" : "12mm"}; }
