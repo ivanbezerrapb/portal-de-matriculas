@@ -322,6 +322,7 @@ const MONTH_LABELS = [
 ];
 
 type MonthlyDatum = { month: number; visits: number; children: number };
+type DailyDatum = { month: number; day: number; visits: number; children: number };
 
 function cumulative(data: MonthlyDatum[] | null | undefined, metric: "visits" | "children") {
   const byMonth = new Map((data ?? []).map((item) => [item.month, item]));
@@ -330,6 +331,44 @@ function cumulative(data: MonthlyDatum[] | null | undefined, metric: "visits" | 
     total += byMonth.get(month)?.[metric] ?? 0;
     return total;
   });
+}
+
+// Calendário real de um mês do ano letivo (0 = agosto ... 11 = julho).
+function calendarOfMonth(schoolYear: number, monthIndex: number) {
+  const month = (7 + monthIndex) % 12;
+  const year = monthIndex <= 4 ? schoolYear - 1 : schoolYear;
+  const days = new Date(year, month + 1, 0).getDate();
+  return { year, month, days };
+}
+
+// Acumulado do ano letivo até o dia `day` do mês `monthIndex`.
+// `limit` restringe a série do ano corrente até a data de hoje.
+function dailyCumulativeAt(
+  monthly: MonthlyDatum[] | null | undefined,
+  daily: DailyDatum[] | null | undefined,
+  metric: "visits" | "children",
+  monthIndex: number,
+  day: number,
+  limit?: { monthIndex: number; day: number },
+): number | null {
+  if (
+    limit &&
+    (monthIndex > limit.monthIndex ||
+      (monthIndex === limit.monthIndex && day > limit.day))
+  ) {
+    return null;
+  }
+  const byMonth = new Map((monthly ?? []).map((item) => [item.month, item[metric] ?? 0]));
+  let total = 0;
+  for (let m = 0; m < monthIndex; m++) total += byMonth.get(m) ?? 0;
+  const deltas = new Map<number, number>();
+  for (const item of daily ?? []) {
+    if (item.month === monthIndex) {
+      deltas.set(item.day, (deltas.get(item.day) ?? 0) + (item[metric] ?? 0));
+    }
+  }
+  for (let d = 1; d <= day; d++) total += deltas.get(d) ?? 0;
+  return total;
 }
 
 function CumulativeChart({
