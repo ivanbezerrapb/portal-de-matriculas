@@ -166,16 +166,19 @@ export type LegacyYearStats = {
   children: number;
   bySchool: { name: string; visits: number; children: number }[];
   monthly: { month: number; visits: number; children: number }[];
+  daily: { month: number; day: number; visits: number; children: number }[];
 };
 
-// "dd/mm/aaaa hh:mm:ss" -> índice do mês no ano letivo (0 = agosto ... 11 = julho)
-function schoolMonthIndex(raw: unknown): number | null {
+// "dd/mm/aaaa hh:mm:ss" -> posição no ano letivo (0 = agosto ... 11 = julho) + dia
+function schoolDate(raw: unknown): { month: number; day: number } | null {
   const text = String(raw ?? "").trim();
   const match = /^(\d{2})\/(\d{2})\/(\d{4})/.exec(text);
   if (!match) return null;
+  const day = Number(match[1]);
   const month = Number(match[2]);
+  if (!Number.isFinite(day) || day < 1 || day > 31) return null;
   if (!Number.isFinite(month) || month < 1 || month > 12) return null;
-  return (month - 8 + 12) % 12;
+  return { month: (month - 8 + 12) % 12, day };
 }
 
 export const getLegacyYearStats = createServerFn({ method: "GET" })
@@ -210,9 +213,11 @@ export const getLegacyYearStats = createServerFn({ method: "GET" })
         children: 0,
         bySchool: [],
         monthly: Array.from({ length: 12 }, (_, month) => ({ month, visits: 0, children: 0 })),
+        daily: [],
       });
     }
     const schoolsByYear = new Map<number, Map<string, { visits: number; children: number }>>();
+    const dailyByYear = new Map<number, Map<string, { month: number; day: number; visits: number; children: number }>>();
 
     const pageSize = 1000;
     for (const dataset of datasets) {
