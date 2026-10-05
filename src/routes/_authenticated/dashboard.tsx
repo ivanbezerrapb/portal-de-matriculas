@@ -392,12 +392,7 @@ function CumulativeChart({
   const [granularity, setGranularity] = useState<"month" | "day">("month");
   const now = new Date();
   const currentIndex = (now.getMonth() - 7 + 12) % 12;
-  const [dayMonth, setDayMonthRaw] = useState(currentIndex);
-  const [selectedDay, setSelectedDay] = useState<number | null>(null);
-  const setDayMonth = (value: number) => {
-    setDayMonthRaw(value);
-    setSelectedDay(null);
-  };
+  const [dayMonth, setDayMonth] = useState(currentIndex);
   const todayLabel = `${String(now.getDate()).padStart(2, "0")}/${String(now.getMonth() + 1).padStart(2, "0")}`;
 
   const years = [
@@ -462,24 +457,6 @@ function CumulativeChart({
     available.map((item) => [`y${item.year}`, { label: String(item.year), color: item.color }]),
   );
 
-  const defaultDay =
-    dayMonth === currentIndex ? now.getDate() : calendarOfMonth(currentYear, dayMonth).days;
-  const effectiveDay = Math.min(selectedDay ?? defaultDay, Math.max(maxDays, 1));
-  const selectedMonthNumber = ((7 + dayMonth) % 12) + 1;
-  const selectedLabel = `${String(effectiveDay).padStart(2, "0")}/${String(selectedMonthNumber).padStart(2, "0")}`;
-
-  const legendValue = (item: (typeof years)[number]) => {
-    if (granularity === "month") return item.values[currentIndex] ?? 0;
-    const isCurrent = item.year === currentYear;
-    let m = dayMonth;
-    let d = Math.min(effectiveDay, calendarOfMonth(item.year, dayMonth).days);
-    if (isCurrent && (m > currentIndex || (m === currentIndex && d > now.getDate()))) {
-      m = currentIndex;
-      d = now.getDate();
-    }
-    return dailyCumulativeAt(item.monthly, item.daily, metric, m, d) ?? 0;
-  };
-
   return (
     <Card className="flex h-full min-w-0 flex-col p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -537,28 +514,18 @@ function CumulativeChart({
         </div>
       </div>
 
-      <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-muted-foreground">
+      <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted-foreground">
         {available.map((item) => (
           <span key={item.year} className="flex items-center gap-1.5">
             <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color }} />
             {item.year}
-            <span className="font-semibold text-foreground">{legendValue(item)}</span>
+            <span className="font-semibold text-foreground">{item.values[currentIndex] ?? 0}</span>
           </span>
         ))}
-        {granularity === "day" && <span>até {selectedLabel}</span>}
       </div>
 
       <ChartContainer config={config} className="mt-2 h-64 w-full flex-1 aspect-auto">
-        <LineChart
-          data={chartData}
-          margin={{ top: 12, right: 12, bottom: 4, left: 0 }}
-          onClick={(state: { activeLabel?: string | number } | null) => {
-            if (granularity !== "day" || state?.activeLabel == null) return;
-            const d = Number(state.activeLabel);
-            if (d >= 1) setSelectedDay(d);
-          }}
-          style={granularity === "day" ? { cursor: "pointer" } : undefined}
-        >
+        <LineChart data={chartData} margin={{ top: 12, right: 12, bottom: 4, left: 0 }}>
           <CartesianGrid vertical={false} />
           <XAxis
             dataKey="label"
@@ -573,32 +540,19 @@ function CumulativeChart({
           <YAxis allowDecimals={false} tickLine={false} axisLine={false} width={40} />
           <ChartTooltip content={<ChartTooltipContent />} />
           {granularity === "day" ? (
-            <>
-              {dayMonth === currentIndex && effectiveDay !== now.getDate() && (
-                <ReferenceLine
-                  x={String(now.getDate())}
-                  stroke="var(--muted-foreground)"
-                  strokeDasharray="2 4"
-                  label={{
-                    value: `Hoje ${todayLabel}`,
-                    position: "insideTopLeft",
-                    fill: "var(--muted-foreground)",
-                    fontSize: 11,
-                  }}
-                />
-              )}
+            dayMonth === currentIndex && (
               <ReferenceLine
-                x={String(effectiveDay)}
-                stroke="var(--foreground)"
+                x={String(now.getDate())}
+                stroke="var(--muted-foreground)"
                 strokeDasharray="4 4"
                 label={{
-                  value: `até ${selectedLabel}`,
-                  position: "insideTopRight",
-                  fill: "var(--foreground)",
+                  value: `Hoje ${todayLabel}`,
+                  position: "insideTopLeft",
+                  fill: "var(--muted-foreground)",
                   fontSize: 11,
                 }}
               />
-            </>
+            )
           ) : (
             <ReferenceLine
               x={MONTH_LABELS[currentIndex] ?? "Ago"}
