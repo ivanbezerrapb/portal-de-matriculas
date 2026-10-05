@@ -250,13 +250,18 @@ export const getLegacyYearStats = createServerFn({ method: "GET" })
           entry.visits += 1;
           entry.children += childCount;
           schoolMap.set(schoolName, entry);
-          const monthIndex = schoolMonthIndex(raw[DATE_COLUMN]);
-          if (monthIndex !== null) {
-            const bucket = stats.monthly[monthIndex];
+          const date = schoolDate(raw[DATE_COLUMN]);
+          if (date) {
+            const bucket = stats.monthly[date.month];
             if (bucket) {
               bucket.visits += 1;
               bucket.children += childCount;
             }
+            const key = `${date.month}-${date.day}`;
+            const dailyEntry = dailyMap.get(key) ?? { month: date.month, day: date.day, visits: 0, children: 0 };
+            dailyEntry.visits += 1;
+            dailyEntry.children += childCount;
+            dailyMap.set(key, dailyEntry);
           }
         }
         if (list.length < pageSize) break;
@@ -270,6 +275,9 @@ export const getLegacyYearStats = createServerFn({ method: "GET" })
       stats.bySchool = [...schoolMap.entries()]
         .map(([name, v]) => ({ name, ...v }))
         .sort((a, b) => b.visits - a.visits || a.name.localeCompare(b.name, "pt-BR"));
+      stats.daily = [...(dailyByYear.get(stats.year)?.values() ?? [])].sort(
+        (a, b) => a.month - b.month || a.day - b.day,
+      );
       result.push(stats);
     }
     return result;
