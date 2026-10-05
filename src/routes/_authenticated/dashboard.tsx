@@ -533,11 +533,9 @@ function CumulativeChart({
             axisLine={false}
             interval={0}
             fontSize={11}
-            ticks={
-              granularity === "day"
-                ? [1, 5, 10, 15, 20, 25, 30, 31].filter((t) => t <= maxDays)
-                : undefined
-            }
+            {...(granularity === "day"
+              ? { ticks: [1, 5, 10, 15, 20, 25, 30, 31].filter((t) => t <= maxDays) }
+              : {})}
           />
           <YAxis allowDecimals={false} tickLine={false} axisLine={false} width={40} />
           <ChartTooltip content={<ChartTooltipContent />} />
