@@ -938,7 +938,9 @@ export const getDashboardStats = createServerFn({ method: "GET" })
     // Série mensal do ano letivo (índice 0 = agosto ... 11 = julho).
     const monthlyVisits = Array.from({ length: 12 }, () => 0);
     const monthlyChildren = Array.from({ length: 12 }, () => 0);
-    const submissionMonth = new Map<string, number>();
+    // Série diária do ano letivo (esparso): mês (0 = agosto) + dia do mês.
+    const dailyBuckets = new Map<string, { month: number; day: number; visits: number; children: number }>();
+    const submissionDate = new Map<string, { month: number; day: number }>();
     for (const row of rows) {
       const name = (row.schools as { name?: string } | null)?.name ?? "—";
       const entry = bySchool.get(row.school_id) ?? { name, visits: 0, children: 0 };
@@ -947,8 +949,13 @@ export const getDashboardStats = createServerFn({ method: "GET" })
       const created = new Date(row.created_at as string);
       if (!Number.isNaN(created.getTime())) {
         const index = (created.getMonth() - 7 + 12) % 12;
+        const day = created.getDate();
         monthlyVisits[index] = (monthlyVisits[index] ?? 0) + 1;
-        submissionMonth.set(row.id as string, index);
+        const key = `${index}-${day}`;
+        const bucket = dailyBuckets.get(key) ?? { month: index, day, visits: 0, children: 0 };
+        bucket.visits += 1;
+        dailyBuckets.set(key, bucket);
+        submissionDate.set(row.id as string, { month: index, day });
       }
     }
 
@@ -1024,9 +1031,13 @@ export const getDashboardStats = createServerFn({ method: "GET" })
             const schoolId = submissionSchools.get(v.submission_id as string);
             const schoolEntry = schoolId ? bySchool.get(schoolId) : undefined;
             if (schoolEntry) schoolEntry.children += childCount;
-            const month = submissionMonth.get(v.submission_id as string);
-            if (month !== undefined) {
-              monthlyChildren[month] = (monthlyChildren[month] ?? 0) + childCount;
+            const date = submissionDate.get(v.submission_id as string);
+            if (date) {
+              monthlyChildren[date.month] = (monthlyChildren[date.month] ?? 0) + childCount;
+              const key = `${date.month}-${date.day}`;
+              const bucket = dailyBuckets.get(key) ?? { month: date.month, day: date.day, visits: 0, children: 0 };
+              bucket.children += childCount;
+              dailyBuckets.set(key, bucket);
             }
           }
           if (childrenIds.has(v.field_id as string)) {
@@ -1155,6 +1166,7 @@ export const getDashboardStats = createServerFn({ method: "GET" })
         visits,
         children: monthlyChildren[month] ?? 0,
       })),
+      daily: [...dailyBuckets.values()].sort((a, b) => a.month - b.month || a.day - b.day),
       neighborhoods,
       bySchool: [...bySchool.values()].sort(
         (a, b) => b.visits - a.visits || a.name.localeCompare(b.name, "pt-BR"),

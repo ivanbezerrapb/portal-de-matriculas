@@ -322,6 +322,7 @@ const MONTH_LABELS = [
 ];
 
 type MonthlyDatum = { month: number; visits: number; children: number };
+type DailyDatum = { month: number; day: number; visits: number; children: number };
 
 function cumulative(data: MonthlyDatum[] | null | undefined, metric: "visits" | "children") {
   const byMonth = new Map((data ?? []).map((item) => [item.month, item]));
@@ -332,37 +333,125 @@ function cumulative(data: MonthlyDatum[] | null | undefined, metric: "visits" | 
   });
 }
 
+// Calendário real de um mês do ano letivo (0 = agosto ... 11 = julho).
+function calendarOfMonth(schoolYear: number, monthIndex: number) {
+  const month = (7 + monthIndex) % 12;
+  const year = monthIndex <= 4 ? schoolYear - 1 : schoolYear;
+  const days = new Date(year, month + 1, 0).getDate();
+  return { year, month, days };
+}
+
+// Acumulado do ano letivo até o dia `day` do mês `monthIndex`.
+// `limit` restringe a série do ano corrente até a data de hoje.
+function dailyCumulativeAt(
+  monthly: MonthlyDatum[] | null | undefined,
+  daily: DailyDatum[] | null | undefined,
+  metric: "visits" | "children",
+  monthIndex: number,
+  day: number,
+  limit?: { monthIndex: number; day: number },
+): number | null {
+  if (
+    limit &&
+    (monthIndex > limit.monthIndex ||
+      (monthIndex === limit.monthIndex && day > limit.day))
+  ) {
+    return null;
+  }
+  const byMonth = new Map((monthly ?? []).map((item) => [item.month, item[metric] ?? 0]));
+  let total = 0;
+  for (let m = 0; m < monthIndex; m++) total += byMonth.get(m) ?? 0;
+  const deltas = new Map<number, number>();
+  for (const item of daily ?? []) {
+    if (item.month === monthIndex) {
+      deltas.set(item.day, (deltas.get(item.day) ?? 0) + (item[metric] ?? 0));
+    }
+  }
+  for (let d = 1; d <= day; d++) total += deltas.get(d) ?? 0;
+  return total;
+}
+
 function CumulativeChart({
   currentYear,
   current,
+  currentDaily,
   previous,
+  previousDaily,
   previous2,
+  previous2Daily,
 }: {
   currentYear: number;
   current: MonthlyDatum[];
+  currentDaily: DailyDatum[];
   previous: MonthlyDatum[] | null;
+  previousDaily: DailyDatum[] | null;
   previous2: MonthlyDatum[] | null;
+  previous2Daily: DailyDatum[] | null;
 }) {
   const [metric, setMetric] = useState<"visits" | "children">("visits");
+  const [granularity, setGranularity] = useState<"month" | "day">("month");
   const now = new Date();
   const currentIndex = (now.getMonth() - 7 + 12) % 12;
+  const [dayMonth, setDayMonth] = useState(currentIndex);
   const todayLabel = `${String(now.getDate()).padStart(2, "0")}/${String(now.getMonth() + 1).padStart(2, "0")}`;
 
   const years = [
-    { year: currentYear - 2, values: cumulative(previous2, metric), color: "var(--chart-1)" },
-    { year: currentYear - 1, values: cumulative(previous, metric), color: "var(--chart-2)" },
-    { year: currentYear, values: cumulative(current, metric), color: "var(--chart-3)" },
+    {
+      year: currentYear - 2,
+      values: cumulative(previous2, metric),
+      monthly: previous2,
+      daily: previous2Daily,
+      color: "var(--chart-1)",
+    },
+    {
+      year: currentYear - 1,
+      values: cumulative(previous, metric),
+      monthly: previous,
+      daily: previousDaily,
+      color: "var(--chart-2)",
+    },
+    {
+      year: currentYear,
+      values: cumulative(current, metric),
+      monthly: current,
+      daily: currentDaily,
+      color: "var(--chart-3)",
+    },
   ];
   const available = years.filter((item) => item.year === currentYear || (item.values[11] ?? 0) > 0);
 
-  const chartData = MONTH_LABELS.map((label, index) => {
-    const point: Record<string, string | number | null> = { label };
-    for (const item of available) {
-      const isCurrent = item.year === currentYear;
-      point[`y${item.year}`] = isCurrent && index > currentIndex ? null : (item.values[index] ?? 0);
-    }
-    return point;
-  });
+  const maxDays =
+    granularity === "day"
+      ? available.reduce((max, item) => Math.max(max, calendarOfMonth(item.year, dayMonth).days), 28)
+      : 0;
+
+  const chartData =
+    granularity === "month"
+      ? MONTH_LABELS.map((label, index) => {
+          const point: Record<string, string | number | null> = { label };
+          for (const item of available) {
+            const isCurrent = item.year === currentYear;
+            point[`y${item.year}`] = isCurrent && index > currentIndex ? null : (item.values[index] ?? 0);
+          }
+          return point;
+        })
+      : Array.from({ length: maxDays }, (_, i) => {
+          const day = i + 1;
+          const point: Record<string, string | number | null> = { label: String(day) };
+          for (const item of available) {
+            point[`y${item.year}`] = dailyCumulativeAt(
+              item.monthly,
+              item.daily,
+              metric,
+              dayMonth,
+              day,
+              item.year === currentYear
+                ? { monthIndex: currentIndex, day: now.getDate() }
+                : undefined,
+            );
+          }
+          return point;
+        });
 
   const config = Object.fromEntries(
     available.map((item) => [`y${item.year}`, { label: String(item.year), color: item.color }]),
@@ -375,21 +464,53 @@ function CumulativeChart({
           Evolução acumulada{" "}
           <span className="font-normal text-muted-foreground">(até a mesma data)</span>
         </h2>
-        <div className="flex items-center gap-1">
-          <Button
-            variant={metric === "visits" ? "primary" : "outline"}
-            className="h-7 px-2 text-xs"
-            onClick={() => setMetric("visits")}
-          >
-            Visitas
-          </Button>
-          <Button
-            variant={metric === "children" ? "primary" : "outline"}
-            className="h-7 px-2 text-xs"
-            onClick={() => setMetric("children")}
-          >
-            Crianças
-          </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          {granularity === "day" && (
+            <select
+              value={dayMonth}
+              onChange={(event) => setDayMonth(Number(event.target.value))}
+              className="h-7 rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none"
+              aria-label="Mês do modo Dia"
+            >
+              {MONTH_LABELS.map((label, index) => (
+                <option key={label} value={index}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          )}
+          <div className="flex items-center gap-1">
+            <Button
+              variant={granularity === "month" ? "primary" : "outline"}
+              className="h-7 px-2 text-xs"
+              onClick={() => setGranularity("month")}
+            >
+              Mês
+            </Button>
+            <Button
+              variant={granularity === "day" ? "primary" : "outline"}
+              className="h-7 px-2 text-xs"
+              onClick={() => setGranularity("day")}
+            >
+              Dia
+            </Button>
+          </div>
+          <div className="flex items-center gap-1">
+            <Button
+              variant={metric === "visits" ? "primary" : "outline"}
+              className="h-7 px-2 text-xs"
+              onClick={() => setMetric("visits")}
+            >
+              Visitas
+            </Button>
+            <Button
+              variant={metric === "children" ? "primary" : "outline"}
+              className="h-7 px-2 text-xs"
+              onClick={() => setMetric("children")}
+            >
+              Crianças
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -406,20 +527,45 @@ function CumulativeChart({
       <ChartContainer config={config} className="mt-2 h-64 w-full flex-1 aspect-auto">
         <LineChart data={chartData} margin={{ top: 12, right: 12, bottom: 4, left: 0 }}>
           <CartesianGrid vertical={false} />
-          <XAxis dataKey="label" tickLine={false} axisLine={false} interval={0} fontSize={11} />
+          <XAxis
+            dataKey="label"
+            tickLine={false}
+            axisLine={false}
+            interval={0}
+            fontSize={11}
+            {...(granularity === "day"
+              ? { ticks: [1, 5, 10, 15, 20, 25, 30, 31].filter((t) => t <= maxDays) }
+              : {})}
+          />
           <YAxis allowDecimals={false} tickLine={false} axisLine={false} width={40} />
           <ChartTooltip content={<ChartTooltipContent />} />
-          <ReferenceLine
-            x={MONTH_LABELS[currentIndex] ?? "Ago"}
-            stroke="var(--muted-foreground)"
-            strokeDasharray="4 4"
-            label={{
-              value: `Hoje ${todayLabel}`,
-              position: "insideTopLeft",
-              fill: "var(--muted-foreground)",
-              fontSize: 11,
-            }}
-          />
+          {granularity === "day" ? (
+            dayMonth === currentIndex && (
+              <ReferenceLine
+                x={String(now.getDate())}
+                stroke="var(--muted-foreground)"
+                strokeDasharray="4 4"
+                label={{
+                  value: `Hoje ${todayLabel}`,
+                  position: "insideTopLeft",
+                  fill: "var(--muted-foreground)",
+                  fontSize: 11,
+                }}
+              />
+            )
+          ) : (
+            <ReferenceLine
+              x={MONTH_LABELS[currentIndex] ?? "Ago"}
+              stroke="var(--muted-foreground)"
+              strokeDasharray="4 4"
+              label={{
+                value: `Hoje ${todayLabel}`,
+                position: "insideTopLeft",
+                fill: "var(--muted-foreground)",
+                fontSize: 11,
+              }}
+            />
+          )}
           {available.map((item) => (
             <Line
               key={item.year}
@@ -661,8 +807,11 @@ function DashboardPage() {
               <CumulativeChart
                 currentYear={currentYear}
                 current={data.monthly}
+                currentDaily={data.daily ?? []}
                 previous={legacyFor(currentYear - 1)?.monthly ?? null}
+                previousDaily={legacyFor(currentYear - 1)?.daily ?? null}
                 previous2={legacyFor(currentYear - 2)?.monthly ?? null}
+                previous2Daily={legacyFor(currentYear - 2)?.daily ?? null}
               />
             </div>
             <div className="@min-[36rem]/dashboard:col-span-2 @min-[52rem]/dashboard:col-span-1">
