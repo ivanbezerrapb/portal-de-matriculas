@@ -226,6 +226,8 @@ export const getLegacyYearStats = createServerFn({ method: "GET" })
       if (!stats) continue;
       const schoolMap = schoolsByYear.get(year) ?? new Map();
       schoolsByYear.set(year, schoolMap);
+      const dailyMap = dailyByYear.get(year) ?? new Map();
+      dailyByYear.set(year, dailyMap);
 
       for (let page = 0; ; page++) {
         const { data: rows, error: rowsError } = await context.supabase
