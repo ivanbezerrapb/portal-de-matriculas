@@ -7,7 +7,7 @@ import { z } from "zod";
 // Usa o cliente anônimo: o RLS só expõe formulários com status "published",
 // e aqui projetamos apenas campos não-internos.
 export const getPublicForm = createServerFn({ method: "GET" })
-  .inputValidator((data) => z.object({ slug: z.string().uuid() }).parse(data))
+  .inputValidator((data) => z.object({ slug: z.string() }).parse(data))
   .handler(async ({ data }) => {
     const { extAnon } = await import("./server");
     const supabase = extAnon();
@@ -38,7 +38,7 @@ export const submitPublicForm = createServerFn({ method: "POST" })
   .inputValidator((data) =>
     z
       .object({
-        slug: z.string().uuid(),
+        slug: z.string().min(1).max(120).regex(/^[a-z0-9-]+$/i),
         values: z.record(z.string(), z.union([z.string(), z.array(z.string())])),
       })
       .parse(data),
