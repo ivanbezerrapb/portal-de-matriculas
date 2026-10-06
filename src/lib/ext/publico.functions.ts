@@ -9,6 +9,7 @@ import { z } from "zod";
 export const getPublicForm = createServerFn({ method: "GET" })
   .inputValidator((data) => z.object({ slug: z.string() }).parse(data))
   .handler(async ({ data }) => {
+    if (!/^[a-z0-9-]{1,120}$/i.test(data.slug)) return null;
     const { extAnon } = await import("./server");
     const supabase = extAnon();
 
