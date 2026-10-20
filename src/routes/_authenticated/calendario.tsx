@@ -29,6 +29,8 @@ export const Route = createFileRoute("/_authenticated/calendario")({
 type View = "month" | "week" | "day";
 type Status = CalendarEvent["status"];
 const STATUS_LABEL: Record<Status, string> = { scheduled: "Agendada", done: "Realizada", missed: "Não realizada" };
+type Kind = CalendarEvent["kind"];
+const KIND_LABEL: Record<Kind, string> = { visita: "Visita", matricula: "Matrícula" };
 const STATUS_CLASS: Record<Status, string> = {
   scheduled: "bg-orange-100 text-orange-900 border-orange-300 dark:bg-orange-950 dark:text-orange-100",
   done: "bg-emerald-100 text-emerald-900 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-100",
@@ -45,6 +47,7 @@ function CalendarPage() {
   const [cursor, setCursor] = useState(() => new Date());
   const [schoolFilter, setSchoolFilter] = useState<string | null>(null);
   const [statuses, setStatuses] = useState<Status[]>(["scheduled", "done", "missed"]);
+  const [kinds, setKinds] = useState<Kind[]>(["visita", "matricula"]);
   const [confirming, setConfirming] = useState(false);
   const queryClient = useQueryClient();
   const checkInM = useMutation({
@@ -73,7 +76,7 @@ function CalendarPage() {
   });
 
   const events = (q.data?.events ?? []).filter(
-    (e) => statuses.includes(e.status) && (!schoolFilter || e.school_id === schoolFilter),
+    (e) => statuses.includes(e.status) && kinds.includes(e.kind ?? "visita") && (!schoolFilter || e.school_id === schoolFilter),
   );
   const eventsOn = (day: Date) => events.filter((e) => isSameDay(new Date(e.at), day));
 
@@ -94,8 +97,8 @@ function CalendarPage() {
       onClick={() => setSelected(e)}
       className={`w-full rounded border px-1.5 py-0.5 text-left text-[11px] leading-tight ${STATUS_CLASS[e.status]}`}
     >
-      <span className="font-semibold">{format(new Date(e.at), "HH:mm")}</span>{" "}
-      <span className={full ? "break-words" : "line-clamp-2 break-words"}>{e.title}</span>
+      <span className="block font-semibold">{format(new Date(e.at), "HH:mm")} - {KIND_LABEL[e.kind ?? "visita"]}</span>
+      <span className={full ? "block break-words" : "line-clamp-2 break-words"}>{e.title}</span>
       {full && <span className="block opacity-80">{STATUS_LABEL[e.status]} · {e.school_name}</span>}
     </button>
   );
@@ -139,6 +142,18 @@ function CalendarPage() {
               className={`rounded-full border px-3 py-1 ${schoolFilter === s.id ? "border-primary bg-primary text-primary-foreground" : "border-border text-muted-foreground"}`}
             >
               {s.name}
+            </button>
+          ))}
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="font-medium text-foreground">Tipo:</span>
+          {(["visita", "matricula"] as const).map((k) => (
+            <button
+              key={k}
+              onClick={() => setKinds((l) => toggle(l, k))}
+              className={`rounded-full border px-3 py-1 ${kinds.includes(k) ? "border-primary bg-primary text-primary-foreground" : "border-border text-muted-foreground"}`}
+            >
+              {KIND_LABEL[k]}
             </button>
           ))}
         </div>
