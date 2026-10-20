@@ -4,20 +4,23 @@ import { requireAuth } from "./auth";
 
 export type CalendarEvent = {
   id: string;
-  type: "visita" | "matricula";
   at: string;
   title: string;
   school_id: string;
   school_name: string;
   phone: string | null;
-  funnel_id: string | null;
-  detail: string | null;
+  funnel_id: string;
+  submission_id: string;
+  checked_in_at: string | null;
+  status: "scheduled" | "done" | "missed";
+  can_check_in: boolean;
 };
 
 function norm(v: string) {
   return v.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
 }
 
+// Visitas agendadas nos cartões de LEADS, com situação do check-in.
 export const listCalendarEvents = createServerFn({ method: "GET" })
   .middleware([requireAuth])
   .inputValidator((data) =>
@@ -38,48 +41,38 @@ export const listCalendarEvents = createServerFn({ method: "GET" })
     const schoolName = new Map(schoolList.map((s) => [s.id, s.name]));
     if (schoolIds.length === 0) return { schools: [], events: [] as CalendarEvent[] };
 
-    // Visitas: respeita o acesso do usuário aos cartões.
-    const { data: opps } = await context.supabase
+    const { data: opps } = await admin
       .from("opportunities")
-      .select("id, name, phone, visit_at, school_id, funnel_id, submission_id, submissions(public_id)")
+      .select("id, name, phone, visit_at, school_id, funnel_id, submission_id, submissions!inner(public_id, form_id, list_type)")
       .not("visit_at", "is", null)
+      .eq("submissions.list_type", "leads")
+      .in("school_id", schoolIds)
       .gte("visit_at", data.from)
       .lt("visit_at", data.to);
     type Opp = {
       id: string; name: string; phone: string | null; visit_at: string; school_id: string;
-      funnel_id: string; submission_id: string | null; submissions: { public_id: string } | null;
+      funnel_id: string; submission_id: string; submissions: { public_id: string; form_id: string };
     };
-    const oppRows = ((opps ?? []) as unknown as Opp[]).filter((o) => schoolIds.includes(o.school_id));
+    const fullSchools = new Set([...perms.managerSchools, ...perms.operatorSchools]);
+    const rows = ((opps ?? []) as unknown as Opp[]).filter((o) => {
+      if (all || fullSchools.has(o.school_id)) return true;
+      // Central de Informações: apenas os funis atribuídos.
+      return perms.infoSchools.includes(o.school_id) && perms.funnelIds.includes(o.funnel_id);
+    });
+    const subIds = rows.map((o) => o.submission_id);
 
-    // Matrículas (visitantes) e check-ins (LEADS).
-    const { data: enrolled } = await admin
-      .from("submissions")
-      .select("id, public_id, school_id, form_id, enrolled_at, enrollment_count")
-      .eq("enrolled", true)
-      .eq("list_type", "visitantes")
-      .in("school_id", schoolIds)
-      .gte("enrolled_at", data.from)
-      .lt("enrolled_at", data.to);
-    const { data: checks } = await admin
-      .from("audit_log")
-      .select("submission_id, created_at")
-      .eq("action", "check_in")
-      .gte("created_at", data.from)
-      .lt("created_at", data.to);
-    const checkIds = [...new Set(((checks ?? []) as { submission_id: string }[]).map((c) => c.submission_id))];
-    const { data: checkSubs } = checkIds.length
-      ? await admin.from("submissions").select("id, public_id, school_id, form_id").in("id", checkIds).in("school_id", schoolIds)
-      : { data: [] };
-    type Sub = { id: string; public_id: string; school_id: string; form_id: string; enrolled_at?: string; enrollment_count?: number | null };
-    const subs = [...((enrolled ?? []) as Sub[]), ...((checkSubs ?? []) as Sub[])];
-
-    // Nomes dos clientes.
-    const allSubIds = [...new Set([...subs.map((s) => s.id), ...oppRows.map((o) => o.submission_id).filter(Boolean) as string[]])];
+    const checkIns = new Map<string, string>();
     const names = new Map<string, string>();
     const phones = new Map<string, string>();
-    if (allSubIds.length) {
-      const { data: subForms } = await admin.from("submissions").select("id, form_id").in("id", allSubIds);
-      const formBySub = new Map(((subForms ?? []) as { id: string; form_id: string }[]).map((s) => [s.id, s.form_id]));
+    if (subIds.length) {
+      const { data: checks } = await admin
+        .from("audit_log")
+        .select("submission_id, created_at")
+        .eq("action", "check_in")
+        .in("submission_id", subIds);
+      for (const c of (checks ?? []) as { submission_id: string; created_at: string }[]) checkIns.set(c.submission_id, c.created_at);
+
+      const formBySub = new Map(rows.map((o) => [o.submission_id, o.submissions.form_id]));
       const formIds = [...new Set(formBySub.values())];
       const [{ data: dests }, { data: fields }] = await Promise.all([
         admin.from("form_destinations").select("form_id, name_field_id, phone_field_id").in("form_id", formIds),
@@ -101,7 +94,7 @@ export const listCalendarEvents = createServerFn({ method: "GET" })
         const { data: vals } = await admin
           .from("submission_values")
           .select("submission_id, field_id, value")
-          .in("submission_id", allSubIds)
+          .in("submission_id", subIds)
           .in("field_id", wanted)
           .eq("part", "");
         for (const v of (vals ?? []) as { submission_id: string; field_id: string; value: string | null }[]) {
@@ -112,43 +105,31 @@ export const listCalendarEvents = createServerFn({ method: "GET" })
         }
       }
     }
-    const label = (publicId: string, subId: string, fallback?: string) => {
-      const n = names.get(subId) ?? fallback;
-      return n ? `${publicId} · ${n}` : publicId;
-    };
 
-    const events: CalendarEvent[] = [];
-    for (const o of oppRows) {
-      events.push({
-        id: `v-${o.id}`,
-        type: "visita",
+    const now = Date.now();
+    const events: CalendarEvent[] = rows.map((o) => {
+      const checked = checkIns.get(o.submission_id) ?? null;
+      const name = names.get(o.submission_id) ?? o.name;
+      const status: CalendarEvent["status"] = checked
+        ? "done"
+        : new Date(o.visit_at).getTime() < new Date(new Date(now).toDateString()).getTime()
+          ? "missed"
+          : "scheduled";
+      return {
+        id: o.id,
         at: o.visit_at,
-        title: o.submissions?.public_id && o.submission_id ? label(o.submissions.public_id, o.submission_id, o.name) : o.name,
+        title: name && name !== o.submissions.public_id ? `${o.submissions.public_id} · ${name}` : o.submissions.public_id,
         school_id: o.school_id,
         school_name: schoolName.get(o.school_id) ?? "",
-        phone: o.phone ?? (o.submission_id ? phones.get(o.submission_id) ?? null : null),
+        phone: o.phone ?? phones.get(o.submission_id) ?? null,
         funnel_id: o.funnel_id,
-        detail: null,
-      });
-    }
-    for (const s of (enrolled ?? []) as Sub[]) {
-      events.push({
-        id: `m-${s.id}`, type: "matricula", at: s.enrolled_at!, title: label(s.public_id, s.id),
-        school_id: s.school_id, school_name: schoolName.get(s.school_id) ?? "",
-        phone: phones.get(s.id) ?? null, funnel_id: null,
-        detail: `Matrícula efetivada${s.enrollment_count ? ` (${s.enrollment_count})` : ""}`,
-      });
-    }
-    const checkSubMap = new Map(((checkSubs ?? []) as Sub[]).map((s) => [s.id, s]));
-    for (const c of (checks ?? []) as { submission_id: string; created_at: string }[]) {
-      const s = checkSubMap.get(c.submission_id);
-      if (!s) continue;
-      events.push({
-        id: `c-${s.id}`, type: "matricula", at: c.created_at, title: label(s.public_id, s.id),
-        school_id: s.school_id, school_name: schoolName.get(s.school_id) ?? "",
-        phone: phones.get(s.id) ?? null, funnel_id: null, detail: "Check-in (LEADS)",
-      });
-    }
+        submission_id: o.submission_id,
+        checked_in_at: checked,
+        status,
+        can_check_in:
+          !checked && (perms.isAdmin || perms.managerSchools.includes(o.school_id) || perms.operatorSchools.includes(o.school_id)),
+      };
+    });
     events.sort((a, b) => a.at.localeCompare(b.at));
     return { schools: schoolList, events };
   });
