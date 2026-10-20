@@ -176,10 +176,17 @@ function PipelinePage() {
     void queryClient.invalidateQueries({ queryKey: ["pipeline", selected] });
   }
 
+  const [pendingMove, setPendingMove] = useState<
+    { id: string; stage_id: string; position: number } | null
+  >(null);
+  const [pendingOwner, setPendingOwner] = useState("");
   const moveM = useMutation({
-    mutationFn: (d: { id: string; stage_id: string; position: number }) =>
+    mutationFn: (d: { id: string; stage_id: string; position: number; owner_id?: string }) =>
       moveOpportunity({ data: d }),
-    onSuccess: refresh,
+    onSuccess: () => {
+      setPendingMove(null);
+      refresh();
+    },
     onError: (e: Error) => {
       toast.error(e.message);
       refresh();
@@ -349,7 +356,16 @@ function PipelinePage() {
                 onDrop={(e) => {
                   e.preventDefault();
                   if (!dragging || statusFilter !== "open" || !canWrite) return;
-                  moveM.mutate({ id: dragging, stage_id: stage.id, position: cards.length });
+                  const moving = opportunities.find((o) => o.id === dragging) as
+                    | (typeof opportunities)[number] & { owner_confirmed_at?: string | null }
+                    | undefined;
+                  const move = { id: dragging, stage_id: stage.id, position: cards.length };
+                  if (moving && moving.stage_id !== stage.id && !moving.owner_confirmed_at) {
+                    setPendingMove(move);
+                    setPendingOwner(moving.owner_id ?? "");
+                  } else {
+                    moveM.mutate(move);
+                  }
                   setDragging(null);
                 }}
               >
@@ -708,6 +724,49 @@ function PipelinePage() {
           </div>
         );
       })()}
+
+      {pendingMove && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 p-4">
+          <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-lg">
+            <h2 className="text-lg font-semibold text-foreground">Confirmar responsável</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Antes do primeiro movimento, confirme quem é o responsável por este cartão.
+            </p>
+            {(() => {
+              const list = owners.filter((o) => o.funnel_id === selected);
+              return list.length === 0 ? (
+                <p className="mt-4 text-sm text-destructive">
+                  Este funil não tem responsáveis vinculados. Vincule um usuário ao funil em Usuários.
+                </p>
+              ) : (
+                <select
+                  className="mt-4 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  value={pendingOwner}
+                  onChange={(e) => setPendingOwner(e.target.value)}
+                >
+                  <option value="">Selecione o responsável…</option>
+                  {list.map((o) => (
+                    <option key={o.user_id} value={o.user_id}>
+                      {o.name}
+                    </option>
+                  ))}
+                </select>
+              );
+            })()}
+            <div className="mt-6 flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => setPendingMove(null)} disabled={moveM.isPending}>
+                Cancelar
+              </Button>
+              <Button
+                disabled={!pendingOwner || moveM.isPending}
+                onClick={() => moveM.mutate({ ...pendingMove, owner_id: pendingOwner })}
+              >
+                Confirmar e mover
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {closing && (
         <CloseDialog
