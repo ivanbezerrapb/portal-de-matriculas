@@ -9,7 +9,7 @@ import {
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { ChevronLeft, ChevronRight, Maximize, MessageCircle, Minimize } from "lucide-react";
-import { listCalendarEvents, type CalendarEvent } from "@/lib/ext/calendario.functions";
+import { listCalendarEvents, markVisitNoShow, type CalendarEvent } from "@/lib/ext/calendario.functions";
 import { Button, Card, Spinner } from "@/components/ui";
 
 export const Route = createFileRoute("/_authenticated/calendario")({
@@ -81,6 +81,17 @@ function CalendarPage() {
     onError: (e: Error) => toast.error(e.message),
   });
   const [selected, setSelected] = useState<CalendarEvent | null>(null);
+  const [noShow, setNoShow] = useState(false);
+  const noShowM = useMutation({
+    mutationFn: (id: string) => markVisitNoShow({ data: { opportunity_id: id } }),
+    onSuccess: () => {
+      toast.success("Falta registrada. O cartão foi para Reagendar visita.");
+      setNoShow(false);
+      setSelected(null);
+      for (const k of ["calendar", "pipeline", "crm-notes", "notes"]) queryClient.invalidateQueries({ queryKey: [k] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const range = useMemo(() => {
     if (view === "month")
@@ -286,16 +297,33 @@ function CalendarPage() {
                 </div>
               </div>
             )}
+            {noShow && (
+              <div className="mt-4 rounded-lg border border-border bg-muted/40 p-3 text-sm">
+                <p className="font-semibold text-foreground">Confirmar que o cliente faltou?</p>
+                <p className="mt-1 text-muted-foreground">
+                  A falta à visita de {format(new Date(selected.at), "dd/MM/yyyy 'às' HH:mm")} ficará no histórico do cartão, a data será apagada e o cartão irá para Reagendar visita.
+                </p>
+                <div className="mt-3 flex justify-end gap-2">
+                  <Button variant="ghost" onClick={() => setNoShow(false)}>Cancelar</Button>
+                  <Button variant="danger" disabled={noShowM.isPending} onClick={() => noShowM.mutate(selected.id)}>
+                    Sim, faltou
+                  </Button>
+                </div>
+              </div>
+            )}
             <div className="mt-4 flex flex-wrap justify-end gap-2">
               {selected.funnel_id && (
                 <Link to="/crm/pipeline" search={{ funil: selected.funnel_id } as never} className="text-sm font-medium text-primary hover:underline self-center">
                   Abrir no Pipeline
                 </Link>
               )}
-              {selected.can_check_in && !confirming && (
+              {selected.can_check_in && !confirming && !noShow && (
                 <Button onClick={() => setConfirming(true)}>Dar check-in</Button>
               )}
-              <Button variant="outline" onClick={() => { setSelected(null); setConfirming(false); }}>Fechar</Button>
+              {selected.can_check_in && !confirming && !noShow && (
+                <Button variant="danger" onClick={() => setNoShow(true)}>Faltou</Button>
+              )}
+              <Button variant="outline" onClick={() => { setSelected(null); setConfirming(false); setNoShow(false); }}>Fechar</Button>
             </div>
           </div>
         </div>
