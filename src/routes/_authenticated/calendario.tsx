@@ -59,7 +59,15 @@ function CalendarPage() {
     if (document.fullscreenElement) void document.exitFullscreen();
     else void rootRef.current?.requestFullscreen().catch(() => toast.error("Não foi possível abrir em tela cheia."));
   };
-  const maxPerDay = isFullscreen ? 6 : 3;
+  const gridRef = useRef<HTMLDivElement>(null);
+  const [gridH, setGridH] = useState(0);
+  useEffect(() => {
+    const el = gridRef.current;
+    if (!el || !isFullscreen) return;
+    const ro = new ResizeObserver(() => setGridH(el.clientHeight));
+    ro.observe(el);
+    return () => ro.disconnect();
+  });
   const [confirming, setConfirming] = useState(false);
   const queryClient = useQueryClient();
   const checkInM = useMutation({
@@ -118,9 +126,16 @@ function CalendarPage() {
 
   const days: Date[] = [];
   for (let d = range.from; d < range.to; d = addDays(d, 1)) days.push(d);
+  const weeks = Math.max(1, Math.ceil(days.length / 7));
+  const cellH = gridH > 0 ? (gridH - 26) / weeks : 0;
+  // 28px número do dia + 18px "+N mais"; cada item ~40px (2 linhas + espaço).
+  const maxPerDay = Math.max(1, Math.floor((cellH - 46) / 40));
 
   return (
-    <div ref={rootRef} className={`space-y-4 p-4 md:p-6 ${isFullscreen ? "h-screen overflow-auto bg-background" : ""}`}>
+    <div
+      ref={rootRef}
+      className={isFullscreen ? "flex h-screen flex-col gap-2 overflow-hidden bg-background p-3" : "space-y-4 p-4 md:p-6"}
+    >
       <div>
         <p className="text-sm font-medium text-primary">Agenda</p>
         <h1 className="font-display text-3xl font-bold text-foreground">Calendário</h1>
@@ -188,24 +203,29 @@ function CalendarPage() {
         </div>
       </div>
 
-      <Card className="overflow-hidden p-0">
+      <Card className={`overflow-hidden p-0 ${isFullscreen ? "min-h-0 flex-1" : ""}`}>
         {view === "day" ? (
-          <div className="space-y-2 p-4">
+          <div className={`space-y-2 p-4 ${isFullscreen ? "h-full overflow-auto" : ""}`}>
             {eventsOn(cursor).length === 0 && <p className="text-sm text-muted-foreground">Nenhum evento neste dia.</p>}
             {eventsOn(cursor).map((e) => chip(e, true))}
           </div>
         ) : (
-          <div className="grid grid-cols-7">
+          <div
+            ref={gridRef}
+            className={`grid grid-cols-7 ${isFullscreen ? "h-full" : ""}`}
+            style={isFullscreen ? { gridTemplateRows: `auto repeat(${weeks}, minmax(0, 1fr))` } : undefined}
+          >
             {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((d) => (
               <div key={d} className="border-b border-border bg-muted/40 px-2 py-1 text-center text-xs font-semibold text-muted-foreground">{d}</div>
             ))}
             {days.map((d) => {
               const list = eventsOn(d);
               const today = isSameDay(d, new Date());
+              const limit = isFullscreen ? maxPerDay : view === "month" ? 3 : Infinity;
               return (
                 <div
                   key={d.toISOString()}
-                  className={`border-b border-r border-border p-1 ${view === "week" ? "min-h-64" : isFullscreen ? "min-h-40" : "min-h-28"} ${view === "month" && !isSameMonth(d, cursor) ? "bg-muted/30" : ""}`}
+                  className={`border-b border-r border-border p-1 ${isFullscreen ? "min-h-0 overflow-hidden" : view === "week" ? "min-h-64" : "min-h-28"} ${view === "month" && !isSameMonth(d, cursor) ? "bg-muted/30" : ""}`}
                 >
                   <button
                     onClick={() => { setCursor(d); setView("day"); }}
@@ -214,10 +234,10 @@ function CalendarPage() {
                     {format(d, "d")}
                   </button>
                   <div className="space-y-1">
-                    {(view === "month" ? list.slice(0, maxPerDay) : list).map((e) => chip(e, view === "week"))}
-                    {view === "month" && list.length > maxPerDay && (
+                    {list.slice(0, limit).map((e) => chip(e, view === "week" && !isFullscreen))}
+                    {list.length > limit && (
                       <button onClick={() => { setCursor(d); setView("day"); }} className="text-[11px] text-primary">
-                        +{list.length - maxPerDay} mais
+                        +{list.length - limit} mais
                       </button>
                     )}
                   </div>
