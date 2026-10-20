@@ -1250,7 +1250,7 @@ export const updateSubmissionChildren = createServerFn({ method: "POST" })
       .eq("field_id", field.id)
       .eq("part", "")
       .maybeSingle();
-    let list: Record<string, string>[] = [];
+    let list: { nome?: string; nascimento?: string; turno?: string; serie?: string }[] = [];
     try {
       const parsed = JSON.parse((cur?.value as string | null) ?? "[]");
       if (Array.isArray(parsed)) list = parsed;
