@@ -34,6 +34,8 @@ import { getSupabase } from "@/lib/ext/browser";
 import { getMyPermissions } from "@/lib/ext/cadastros.functions";
 import { getFileAccess } from "@/lib/ext/arquivos.functions";
 import { recordAccess } from "@/lib/ext/logs.functions";
+import { getMyPasswordStatus } from "@/lib/ext/usuarios.functions";
+import { ForcePasswordChange } from "@/components/ForcePasswordChange";
 import { History, KeyRound } from "lucide-react";
 import { Button, Card, Spinner } from "@/components/ui";
 import whiteLogoAsset from "@/assets/grupo-inter-logo-branca.png.asset.json";
@@ -109,6 +111,13 @@ function AuthenticatedLayout() {
   const { data: perms, error: permsError } = useQuery({
     queryKey: ["my-permissions"],
     queryFn: () => getMyPermissions(),
+    staleTime: 60_000,
+    retry: false,
+  });
+
+  const { data: pwStatus, refetch: refetchPw } = useQuery({
+    queryKey: ["my-password-status"],
+    queryFn: () => getMyPasswordStatus(),
     staleTime: 60_000,
     retry: false,
   });
@@ -303,6 +312,10 @@ function AuthenticatedLayout() {
         ? "bg-sidebar-primary text-sidebar-primary-foreground"
         : "text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
     }`;
+
+  if (pwStatus?.must_change_password) {
+    return <ForcePasswordChange onDone={() => void refetchPw()} onSignOut={handleSignOut} />;
+  }
 
   return (
     <div className="flex min-h-screen w-full bg-background">
