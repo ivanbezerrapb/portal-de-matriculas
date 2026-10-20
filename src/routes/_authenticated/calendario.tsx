@@ -1,0 +1,216 @@
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
+import {
+  addDays, addMonths, addWeeks, endOfMonth, endOfWeek, format, isSameDay, isSameMonth,
+  startOfDay, startOfMonth, startOfWeek,
+} from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { ChevronLeft, ChevronRight, MessageCircle } from "lucide-react";
+import { listCalendarEvents, type CalendarEvent } from "@/lib/ext/calendario.functions";
+import { Button, Card, Spinner } from "@/components/ui";
+
+export const Route = createFileRoute("/_authenticated/calendario")({
+  head: () => ({
+    meta: [
+      { title: "Calendário · Portal de Matrículas" },
+      { name: "description", content: "Agenda de visitas e matrículas por unidade." },
+      { property: "og:title", content: "Calendário · Portal de Matrículas" },
+      { property: "og:description", content: "Agenda de visitas e matrículas por unidade." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
+  component: CalendarPage,
+});
+
+type View = "month" | "week" | "day";
+const TYPE_LABEL = { visita: "Visita", matricula: "Matrícula" } as const;
+const TYPE_CLASS = {
+  visita: "bg-orange-100 text-orange-900 border-orange-300 dark:bg-orange-950 dark:text-orange-100",
+  matricula: "bg-emerald-100 text-emerald-900 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-100",
+} as const;
+
+function whatsapp(phone: string | null) {
+  const d = (phone ?? "").replace(/\D/g, "").replace(/^55(?=\d{10,11}$)/, "");
+  return d.length >= 10 ? `https://wa.me/55${d}` : null;
+}
+
+function CalendarPage() {
+  const [view, setView] = useState<View>("month");
+  const [cursor, setCursor] = useState(() => new Date());
+  const [schoolFilter, setSchoolFilter] = useState<string[]>([]);
+  const [types, setTypes] = useState<CalendarEvent["type"][]>(["visita", "matricula"]);
+  const [selected, setSelected] = useState<CalendarEvent | null>(null);
+
+  const range = useMemo(() => {
+    if (view === "month")
+      return { from: startOfWeek(startOfMonth(cursor), { weekStartsOn: 0 }), to: addDays(endOfWeek(endOfMonth(cursor)), 1) };
+    if (view === "week") return { from: startOfWeek(cursor), to: addDays(endOfWeek(cursor), 1) };
+    return { from: startOfDay(cursor), to: addDays(startOfDay(cursor), 1) };
+  }, [view, cursor]);
+
+  const q = useQuery({
+    queryKey: ["calendar", range.from.toISOString(), range.to.toISOString()],
+    queryFn: () => listCalendarEvents({ data: { from: range.from.toISOString(), to: range.to.toISOString() } }),
+    refetchInterval: 30000,
+  });
+
+  const events = (q.data?.events ?? []).filter(
+    (e) => types.includes(e.type) && (schoolFilter.length === 0 || schoolFilter.includes(e.school_id)),
+  );
+  const eventsOn = (day: Date) => events.filter((e) => isSameDay(new Date(e.at), day));
+
+  const move = (dir: 1 | -1) =>
+    setCursor((c) => (view === "month" ? addMonths(c, dir) : view === "week" ? addWeeks(c, dir) : addDays(c, dir)));
+  const title =
+    view === "month"
+      ? format(cursor, "MMMM 'de' yyyy", { locale: ptBR })
+      : view === "week"
+        ? `${format(range.from, "dd/MM")} – ${format(addDays(range.to, -1), "dd/MM/yyyy")}`
+        : format(cursor, "EEEE, dd 'de' MMMM 'de' yyyy", { locale: ptBR });
+
+  const toggle = <T,>(list: T[], v: T) => (list.includes(v) ? list.filter((x) => x !== v) : [...list, v]);
+
+  const chip = (e: CalendarEvent, full = false) => (
+    <button
+      key={e.id}
+      onClick={() => setSelected(e)}
+      className={`w-full rounded border px-1.5 py-0.5 text-left text-[11px] leading-tight ${TYPE_CLASS[e.type]}`}
+    >
+      <span className="font-semibold">{e.type === "visita" ? format(new Date(e.at), "HH:mm") : "✓"}</span>{" "}
+      <span className={full ? "break-words" : "line-clamp-2 break-words"}>{e.title}</span>
+      {full && <span className="block opacity-80">{TYPE_LABEL[e.type]} · {e.school_name}</span>}
+    </button>
+  );
+
+  const days: Date[] = [];
+  for (let d = range.from; d < range.to; d = addDays(d, 1)) days.push(d);
+
+  return (
+    <div className="space-y-4 p-4 md:p-6">
+      <div>
+        <p className="text-sm font-medium text-primary">Agenda</p>
+        <h1 className="font-display text-3xl font-bold text-foreground">Calendário</h1>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <Button variant="outline" onClick={() => setCursor(new Date())}>Hoje</Button>
+        <Button variant="ghost" onClick={() => move(-1)} aria-label="Anterior"><ChevronLeft className="h-4 w-4" /></Button>
+        <Button variant="ghost" onClick={() => move(1)} aria-label="Próximo"><ChevronRight className="h-4 w-4" /></Button>
+        <h2 className="mr-auto font-display text-lg font-semibold capitalize text-foreground">{title}</h2>
+        {q.isFetching && <Spinner />}
+        <div className="flex rounded-lg border border-border p-0.5">
+          {(["month", "week", "day"] as View[]).map((v) => (
+            <button
+              key={v}
+              onClick={() => setView(v)}
+              className={`rounded-md px-3 py-1 text-sm ${view === v ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+            >
+              {v === "month" ? "Mês" : v === "week" ? "Semana" : "Dia"}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="font-medium text-foreground">Unidade:</span>
+          {(q.data?.schools ?? []).map((s) => (
+            <button
+              key={s.id}
+              onClick={() => setSchoolFilter((l) => toggle(l, s.id))}
+              className={`rounded-full border px-3 py-1 ${schoolFilter.includes(s.id) ? "border-primary bg-primary text-primary-foreground" : "border-border text-muted-foreground"}`}
+            >
+              {s.name}
+            </button>
+          ))}
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="font-medium text-foreground">Tipo:</span>
+          {(["visita", "matricula"] as const).map((t) => (
+            <button
+              key={t}
+              onClick={() => setTypes((l) => toggle(l, t))}
+              className={`rounded-full border px-3 py-1 ${types.includes(t) ? TYPE_CLASS[t] : "border-border text-muted-foreground"}`}
+            >
+              {TYPE_LABEL[t]}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <Card className="overflow-hidden p-0">
+        {view === "day" ? (
+          <div className="space-y-2 p-4">
+            {eventsOn(cursor).length === 0 && <p className="text-sm text-muted-foreground">Nenhum evento neste dia.</p>}
+            {eventsOn(cursor).map((e) => chip(e, true))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-7">
+            {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((d) => (
+              <div key={d} className="border-b border-border bg-muted/40 px-2 py-1 text-center text-xs font-semibold text-muted-foreground">{d}</div>
+            ))}
+            {days.map((d) => {
+              const list = eventsOn(d);
+              const today = isSameDay(d, new Date());
+              return (
+                <div
+                  key={d.toISOString()}
+                  className={`border-b border-r border-border p-1 ${view === "week" ? "min-h-64" : "min-h-28"} ${view === "month" && !isSameMonth(d, cursor) ? "bg-muted/30" : ""}`}
+                >
+                  <button
+                    onClick={() => { setCursor(d); setView("day"); }}
+                    className={`mb-1 flex h-6 w-6 items-center justify-center rounded-full text-xs ${today ? "bg-primary text-primary-foreground" : "text-foreground"}`}
+                  >
+                    {format(d, "d")}
+                  </button>
+                  <div className="space-y-1">
+                    {(view === "month" ? list.slice(0, 3) : list).map((e) => chip(e, view === "week"))}
+                    {view === "month" && list.length > 3 && (
+                      <button onClick={() => { setCursor(d); setView("day"); }} className="text-[11px] text-primary">
+                        +{list.length - 3} mais
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </Card>
+
+      {selected && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 p-4" onClick={() => setSelected(null)}>
+          <div className="w-full max-w-md rounded-xl bg-card p-5 shadow-lg" onClick={(e) => e.stopPropagation()}>
+            <span className={`inline-block rounded-full border px-2 py-0.5 text-xs ${TYPE_CLASS[selected.type]}`}>{TYPE_LABEL[selected.type]}</span>
+            <h3 className="mt-2 break-words font-display text-lg font-semibold text-foreground">{selected.title}</h3>
+            <dl className="mt-3 space-y-1 text-sm">
+              <div><dt className="inline text-muted-foreground">Quando: </dt><dd className="inline">{format(new Date(selected.at), selected.type === "visita" ? "dd/MM/yyyy 'às' HH:mm" : "dd/MM/yyyy")}</dd></div>
+              <div><dt className="inline text-muted-foreground">Unidade: </dt><dd className="inline">{selected.school_name}</dd></div>
+              {selected.detail && <div className="text-muted-foreground">{selected.detail}</div>}
+              {selected.phone && (
+                <div className="flex items-center gap-2">
+                  <dt className="text-muted-foreground">Telefone:</dt><dd>{selected.phone}</dd>
+                  {whatsapp(selected.phone) && (
+                    <a href={whatsapp(selected.phone)!} target="_blank" rel="noreferrer" className="text-emerald-600" aria-label="WhatsApp">
+                      <MessageCircle className="h-4 w-4" />
+                    </a>
+                  )}
+                </div>
+              )}
+            </dl>
+            <div className="mt-4 flex justify-end gap-2">
+              {selected.funnel_id && (
+                <Link to="/crm/pipeline" search={{ funil: selected.funnel_id } as never} className="text-sm font-medium text-primary hover:underline self-center">
+                  Abrir no Pipeline
+                </Link>
+              )}
+              <Button variant="outline" onClick={() => setSelected(null)}>Fechar</Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

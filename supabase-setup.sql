@@ -371,3 +371,4 @@ alter table public.print_templates
   add column if not exists library_id uuid references public.print_template_library(id) on delete set null;
 create index if not exists print_templates_library_id_idx on public.print_templates(library_id);
 alter table public.opportunities add column if not exists owner_confirmed_at timestamptz null;
+alter table public.opportunities add column if not exists visit_at timestamptz null;

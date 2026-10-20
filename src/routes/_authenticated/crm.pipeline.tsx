@@ -18,6 +18,7 @@ import { listCloseReasons } from "@/lib/ext/motivos.functions";
 import { createTask, deleteTask, listTasks, setTaskDone } from "@/lib/ext/tarefas.functions";
 import { createNote, deleteNote, listNotes } from "@/lib/ext/notas.functions";
 import { getMyPermissions } from "@/lib/ext/cadastros.functions";
+import { setOpportunityVisit } from "@/lib/ext/pipeline.functions";
 import { Button, Card, EmptyState, Input, Label, Select, Spinner, Textarea } from "@/components/ui";
 
 // Monta o link do WhatsApp: DDI 55 + DDD e número do cadastro.
@@ -395,6 +396,11 @@ function PipelinePage() {
                         {card.phone && (
                           <p className="text-xs text-muted-foreground">{card.phone}</p>
                         )}
+                        {card.visit_at && (
+                          <p className="mt-1 inline-block rounded-full bg-orange-100 px-2 py-0.5 text-[11px] font-medium text-orange-900">
+                            Visita: {new Date(card.visit_at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                          </p>
+                        )}
                         <div className="mt-2 flex flex-wrap items-center gap-2">
                           <span
                             className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium"
@@ -683,6 +689,10 @@ function PipelinePage() {
                 >
                   Ver ficha completa
                 </Link>
+              )}
+
+              {card.submissions?.list_type === "leads" && (
+                <OpportunityVisit opportunityId={card.id} visitAt={card.visit_at ?? null} canWrite={canWrite} />
               )}
 
               <OpportunityTasks opportunityId={card.id} canWrite={canWrite} />
@@ -1109,5 +1119,54 @@ function OpportunityNotes({
         )}
       </ul>
     </section>
+  );
+}
+
+function OpportunityVisit({ opportunityId, visitAt, canWrite }: { opportunityId: string; visitAt: string | null; canWrite: boolean }) {
+  const queryClient = useQueryClient();
+  const toLocal = (iso: string) => {
+    const d = new Date(iso);
+    const p = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+  };
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(visitAt ? toLocal(visitAt) : "");
+  const m = useMutation({
+    mutationFn: (v: string | null) => setOpportunityVisit({ data: { id: opportunityId, visit_at: v } }),
+    onSuccess: (_r, v) => {
+      toast.success(v ? "Visita agendada." : "Agendamento removido.");
+      setEditing(false);
+      queryClient.invalidateQueries({ queryKey: ["pipeline"] });
+      queryClient.invalidateQueries({ queryKey: ["calendar"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  return (
+    <div className="mt-6 border-t border-border pt-4">
+      <h3 className="font-display text-sm font-semibold text-foreground">Data da visita</h3>
+      {visitAt && !editing ? (
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <span className="rounded-full bg-orange-100 px-3 py-1 text-sm font-medium text-orange-900">
+            {new Date(visitAt).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}
+          </span>
+          {canWrite && (
+            <>
+              <Button variant="outline" onClick={() => { setValue(toLocal(visitAt)); setEditing(true); }}>Alterar</Button>
+              <Button variant="ghost" disabled={m.isPending} onClick={() => m.mutate(null)}>Remover agendamento</Button>
+            </>
+          )}
+        </div>
+      ) : !canWrite ? (
+        <p className="mt-2 text-sm text-muted-foreground">Sem visita agendada.</p>
+      ) : editing || !visitAt ? (
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <Input type="datetime-local" value={value} onChange={(e) => setValue(e.target.value)} className="max-w-60" />
+          <Button disabled={!value || m.isPending} onClick={() => m.mutate(new Date(value).toISOString())}>
+            Agendar visita
+          </Button>
+          {editing && <Button variant="ghost" onClick={() => setEditing(false)}>Cancelar</Button>}
+        </div>
+      ) : null}
+    </div>
   );
 }

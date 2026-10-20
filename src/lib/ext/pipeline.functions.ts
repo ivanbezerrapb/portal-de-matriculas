@@ -5,7 +5,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { FunnelStage, Opportunity } from "./model";
 
 type OpportunityRow = Opportunity & {
-  submissions: { public_id: string; children_count: number | null; form_id: string } | null;
+  submissions: { public_id: string; children_count: number | null; form_id: string; list_type: string | null } | null;
+  visit_at: string | null;
   crm_close_reasons: { label: string; kind: "won" | "lost" } | null;
   owner: { id: string; full_name: string | null } | null;
   display_name: string;
@@ -90,7 +91,7 @@ export const listPipeline = createServerFn({ method: "GET" })
     const status = data.status ?? "open";
     const { data: opportunities, error: oppError } = await context.supabase
       .from("opportunities")
-      .select("*, submissions(public_id, children_count, form_id), crm_close_reasons(label, kind)")
+      .select("*, submissions(public_id, children_count, form_id, list_type), crm_close_reasons(label, kind)")
       .eq("funnel_id", data.funnel_id)
       .eq("status", status)
       .order(status === "open" ? "position" : "closed_at");
@@ -120,6 +121,12 @@ export const listPipeline = createServerFn({ method: "GET" })
       const nameFieldByForm = new Map(
         (destinations ?? []).map((destination) => [destination.form_id, destination.name_field_id]),
       );
+      // Sem campo de nome na aba Destino: usa o campo do formulário chamado "Nome...".
+      for (const field of fields ?? []) {
+        if (nameFieldByForm.get(field.form_id)) continue;
+        if (field.type === "children" || field.type === "address") continue;
+        if (normalizeLabel(field.label).startsWith("nome")) nameFieldByForm.set(field.form_id, field.id);
+      }
       const relevantFields = (fields ?? []).filter((field) => {
         const label = normalizeLabel(field.label);
         return (
@@ -565,4 +572,31 @@ export const getOpportunityCustomer = createServerFn({ method: "GET" })
       if (lines.length) items.push({ label: f.label, type: f.type, lines });
     }
     return { items };
+  });
+
+// Agenda (ou remove) a visita de um cartão vindo da Lista de LEADS.
+export const setOpportunityVisit = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((data) =>
+    z.object({ id: z.string().uuid(), visit_at: z.string().datetime({ offset: true }).nullable() }).parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    const { getPerms } = await import("./server");
+    const perms = await getPerms(context.supabase, context.userId);
+    if (perms.isDirecao && !perms.isAdmin) throw new Error("Seu perfil é somente leitura.");
+    const { data: opp, error } = await context.supabase
+      .from("opportunities")
+      .select("id, submissions(list_type)")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!opp) throw new Error("Sem acesso a este cartão.");
+    const lt = (opp as unknown as { submissions: { list_type: string | null } | null }).submissions?.list_type;
+    if (lt !== "leads") throw new Error("Agendamento de visita disponível apenas para LEADS.");
+    const { error: upError } = await context.supabase
+      .from("opportunities")
+      .update({ visit_at: data.visit_at, updated_at: new Date().toISOString() })
+      .eq("id", data.id);
+    if (upError) throw new Error(upError.message);
+    return { ok: true };
   });

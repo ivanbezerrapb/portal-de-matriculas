@@ -16,6 +16,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedApresentacaoRouteImport } from './routes/_authenticated/apresentacao'
 import { Route as AuthenticatedBancosAnterioresRouteImport } from './routes/_authenticated/bancos-anteriores'
 import { Route as AuthenticatedCadastrosRouteImport } from './routes/_authenticated/cadastros'
+import { Route as AuthenticatedCalendarioRouteImport } from './routes/_authenticated/calendario'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedEscolasRouteImport } from './routes/_authenticated/escolas'
 import { Route as AuthenticatedFormulariosRouteImport } from './routes/_authenticated/formularios'
@@ -68,6 +69,11 @@ const AuthenticatedBancosAnterioresRoute =
 const AuthenticatedCadastrosRoute = AuthenticatedCadastrosRouteImport.update({
   id: '/cadastros',
   path: '/cadastros',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedCalendarioRoute = AuthenticatedCalendarioRouteImport.update({
+  id: '/calendario',
+  path: '/calendario',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
@@ -170,6 +176,7 @@ export interface FileRoutesByFullPath {
   '/apresentacao': typeof AuthenticatedApresentacaoRoute
   '/bancos-anteriores': typeof AuthenticatedBancosAnterioresRoute
   '/cadastros': typeof AuthenticatedCadastrosRoute
+  '/calendario': typeof AuthenticatedCalendarioRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/escolas': typeof AuthenticatedEscolasRoute
   '/formularios': typeof AuthenticatedFormulariosRoute
@@ -195,6 +202,7 @@ export interface FileRoutesByTo {
   '/apresentacao': typeof AuthenticatedApresentacaoRoute
   '/bancos-anteriores': typeof AuthenticatedBancosAnterioresRoute
   '/cadastros': typeof AuthenticatedCadastrosRoute
+  '/calendario': typeof AuthenticatedCalendarioRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/escolas': typeof AuthenticatedEscolasRoute
   '/formularios': typeof AuthenticatedFormulariosRoute
@@ -222,6 +230,7 @@ export interface FileRoutesById {
   '/_authenticated/apresentacao': typeof AuthenticatedApresentacaoRoute
   '/_authenticated/bancos-anteriores': typeof AuthenticatedBancosAnterioresRoute
   '/_authenticated/cadastros': typeof AuthenticatedCadastrosRoute
+  '/_authenticated/calendario': typeof AuthenticatedCalendarioRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/escolas': typeof AuthenticatedEscolasRoute
   '/_authenticated/formularios': typeof AuthenticatedFormulariosRoute
@@ -249,6 +258,7 @@ export interface FileRouteTypes {
     | '/apresentacao'
     | '/bancos-anteriores'
     | '/cadastros'
+    | '/calendario'
     | '/dashboard'
     | '/escolas'
     | '/formularios'
@@ -274,6 +284,7 @@ export interface FileRouteTypes {
     | '/apresentacao'
     | '/bancos-anteriores'
     | '/cadastros'
+    | '/calendario'
     | '/dashboard'
     | '/escolas'
     | '/formularios'
@@ -300,6 +311,7 @@ export interface FileRouteTypes {
     | '/_authenticated/apresentacao'
     | '/_authenticated/bancos-anteriores'
     | '/_authenticated/cadastros'
+    | '/_authenticated/calendario'
     | '/_authenticated/dashboard'
     | '/_authenticated/escolas'
     | '/_authenticated/formularios'
@@ -377,6 +389,13 @@ declare module '@tanstack/react-router' {
       path: '/cadastros'
       fullPath: '/cadastros'
       preLoaderRoute: typeof AuthenticatedCadastrosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/calendario': {
+      id: '/_authenticated/calendario'
+      path: '/calendario'
+      fullPath: '/calendario'
+      preLoaderRoute: typeof AuthenticatedCalendarioRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/dashboard': {
@@ -505,6 +524,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedApresentacaoRoute: typeof AuthenticatedApresentacaoRoute
   AuthenticatedBancosAnterioresRoute: typeof AuthenticatedBancosAnterioresRoute
   AuthenticatedCadastrosRoute: typeof AuthenticatedCadastrosRoute
+  AuthenticatedCalendarioRoute: typeof AuthenticatedCalendarioRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedEscolasRoute: typeof AuthenticatedEscolasRoute
   AuthenticatedFormulariosRoute: typeof AuthenticatedFormulariosRoute
@@ -526,6 +546,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedApresentacaoRoute: AuthenticatedApresentacaoRoute,
   AuthenticatedBancosAnterioresRoute: AuthenticatedBancosAnterioresRoute,
   AuthenticatedCadastrosRoute: AuthenticatedCadastrosRoute,
+  AuthenticatedCalendarioRoute: AuthenticatedCalendarioRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedEscolasRoute: AuthenticatedEscolasRoute,
   AuthenticatedFormulariosRoute: AuthenticatedFormulariosRoute,
