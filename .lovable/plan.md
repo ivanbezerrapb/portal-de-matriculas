@@ -1,15 +1,20 @@
-# Central de Informações pode escolher o funil na lista
-
-## Situação
-O erro apareceu com um usuário da **Central de Informações**. Hoje o envio ao funil na lista só é liberado para Administrador, Gerente e Secretaria; a Central fica barrada (antes pelo banco, com a mensagem em inglês; após a última correção, com "Você não tem permissão").
+# Botão "Faltou" no Calendário
 
 ## O que muda
-- A Central de Informações passa a poder escolher o funil na Lista de Visitantes e na Lista de LEADS, **somente nas unidades dela e somente nos funis vinculados a ela** (os mesmos que ela já vê no Pipeline).
-- Na coluna Funil, a lista de opções da Central mostra apenas esses funis.
-- Ao escolher, segue o mesmo fluxo: cartão na 1ª etapa, tarefa 1º CONTATO no próximo dia útil e Atendimento preenchido pelo responsável do funil (ou janela "Quem atendeu?" quando houver mais de um).
-- Se tentar um funil que não é dela, aparece em português: "Você não tem acesso a este funil."
+Na janela da visita no Calendário, entre "Dar check-in" e "Fechar", aparece o botão **Faltou** (só para visitas Agendadas de LEADS).
+
+Ao clicar:
+1. Abre uma confirmação: "Confirmar que o cliente não compareceu à visita de DD/MM/AAAA às HH:mm?" com Cancelar / Sim, faltou.
+2. O cartão é movido para a etapa **"Reagendar visita"** do mesmo funil.
+3. No **Histórico** do cartão fica registrado: "Faltou à visita agendada para DD/MM/AAAA às HH:mm", com nome, data e hora de quem marcou.
+4. A data da visita é apagada, então o item some do Calendário e a Central vê o cartão em "Reagendar visita" para marcar nova data (ao arrastar de novo para "Visita agendada", a janela de data já abre normalmente).
+
+## Quem pode
+Os mesmos que podem dar check-in: Administrador, Gerente e Secretaria da unidade. Direção só visualiza.
+
+## Regra se faltar a etapa
+Se o funil não tiver uma etapa com nome "Reagendar visita" (sem diferenciar maiúsculas/acentos), aparece o aviso "Crie a etapa Reagendar visita neste funil" e nada é alterado.
 
 ## Detalhes técnicos
-- `cadastros.functions.ts` (`sendSubmissionToFunnel`): aceitar `perms.infoSchools.includes(school_id)`; para quem é só Central (não admin/gerente/secretaria da unidade), exigir `perms.funnelIds.includes(funnel_id)`.
-- `SubmissionsList.tsx`: liberar o seletor de funil para Central e, nesse caso, filtrar as opções por `perms.funnelIds`.
-- Gravação continua pelo servidor após as validações (sem mudar regras do banco).
+- Nova server fn `markVisitNoShow({ opportunity_id })` em `calendario.functions.ts`: valida permissão igual ao check-in, confere `list_type='leads'` e `visit_at` não nulo, encontra a etapa por nome normalizado contendo "reagend", move para o fim dessa coluna, zera `visit_at`, insere em `crm_notes` com autor.
+- `calendario.tsx`: botão Faltou + diálogo de confirmação; invalida calendário e pipeline.
