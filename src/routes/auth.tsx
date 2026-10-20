@@ -3,6 +3,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { ArrowRight, Eye, EyeOff, LockKeyhole, Mail } from "lucide-react";
 import { getSupabase } from "@/lib/ext/browser";
+import { recordAccess, recordFailedLogin } from "@/lib/ext/logs.functions";
 import { Button, Card, Input, Label } from "@/components/ui";
 import logoAsset from "@/assets/grupo-inter-logo.png.asset.json";
 
@@ -39,7 +40,12 @@ function AuthPage() {
         email,
         password,
       });
-      if (error) throw error;
+      if (error) {
+        void recordFailedLogin({ data: { email } }).catch(() => {});
+        throw error;
+      }
+      sessionStorage.setItem("access-logged", "1");
+      void recordAccess({ data: { event: "login" } }).catch(() => {});
       navigate({ to: "/dashboard" });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Não foi possível entrar.");
