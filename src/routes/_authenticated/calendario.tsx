@@ -48,6 +48,18 @@ function CalendarPage() {
   const [schoolFilter, setSchoolFilter] = useState<string | null>(null);
   const [statuses, setStatuses] = useState<Status[]>(["scheduled", "done", "missed"]);
   const [kinds, setKinds] = useState<Kind[]>(["visita", "matricula"]);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  useEffect(() => {
+    const onChange = () => setIsFullscreen(document.fullscreenElement === rootRef.current && !!rootRef.current);
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, []);
+  const toggleFullscreen = () => {
+    if (document.fullscreenElement) void document.exitFullscreen();
+    else void rootRef.current?.requestFullscreen().catch(() => toast.error("Não foi possível abrir em tela cheia."));
+  };
+  const maxPerDay = isFullscreen ? 6 : 3;
   const [confirming, setConfirming] = useState(false);
   const queryClient = useQueryClient();
   const checkInM = useMutation({
