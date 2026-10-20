@@ -372,3 +372,17 @@ alter table public.print_templates
 create index if not exists print_templates_library_id_idx on public.print_templates(library_id);
 alter table public.opportunities add column if not exists owner_confirmed_at timestamptz null;
 alter table public.opportunities add column if not exists visit_at timestamptz null;
+
+-- Tipos de atividade das tarefas do CRM (lista editável pelo administrador)
+create table if not exists public.crm_task_types (
+  id uuid primary key default gen_random_uuid(),
+  label text not null,
+  position int not null default 0,
+  active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+grant select, insert, update, delete on public.crm_task_types to authenticated;
+grant all on public.crm_task_types to service_role;
+alter table public.crm_task_types enable row level security;
+create policy crm_task_types_select on public.crm_task_types for select to authenticated using (true);
+create policy crm_task_types_write on public.crm_task_types for all to authenticated using (has_role(auth.uid(),'admin')) with check (has_role(auth.uid(),'admin'));

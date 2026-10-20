@@ -107,13 +107,48 @@ export const createTask = createServerFn({ method: "POST" })
 
 export const setTaskDone = createServerFn({ method: "POST" })
   .middleware([requireAuth])
-  .inputValidator((data) => z.object({ id: z.string().uuid(), done: z.boolean() }).parse(data))
+  .inputValidator((data) =>
+    z
+      .object({
+        id: z.string().uuid(),
+        done: z.boolean(),
+        note: z.string().trim().max(4000).optional(),
+      })
+      .parse(data),
+  )
   .handler(async ({ data, context }) => {
+    // Concluir exige o registro do que foi feito (vai para o Histórico do cartão).
+    if (data.done && !data.note) {
+      throw new Error("Descreva no histórico o que foi feito para concluir a tarefa.");
+    }
+    const { data: task, error: readError } = await context.supabase
+      .from("crm_tasks")
+      .select("id, title, opportunity_id")
+      .eq("id", data.id)
+      .single();
+    if (readError || !task) throw new Error(readError?.message ?? "Tarefa não encontrada.");
     const { error } = await context.supabase
       .from("crm_tasks")
       .update({ done: data.done, done_at: data.done ? new Date().toISOString() : null })
       .eq("id", data.id);
     if (error) throw new Error(error.message);
+    if (data.done && data.note) {
+      const { extAdmin } = await import("./server");
+      const { data: profile } = await extAdmin()
+        .from("profiles")
+        .select("full_name")
+        .eq("id", context.userId)
+        .maybeSingle();
+      const authorName =
+        ((profile?.full_name as string | null) ?? "") || context.userEmail || "Usuário";
+      const { error: noteError } = await context.supabase.from("crm_notes").insert({
+        opportunity_id: task.opportunity_id,
+        author_id: context.userId,
+        author_name: authorName,
+        body: `Concluiu ${task.title}: ${data.note}`,
+      });
+      if (noteError) throw new Error(noteError.message);
+    }
     return { ok: true };
   });
 

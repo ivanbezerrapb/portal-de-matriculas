@@ -8,6 +8,7 @@ import { getMyPermissions } from "@/lib/ext/cadastros.functions";
 import { listSchools } from "@/lib/ext/escolas.functions";
 import { listFunnelOwners, listFunnels } from "@/lib/ext/funis.functions";
 import { Badge, Button, Card, EmptyState, Label, Select, Spinner } from "@/components/ui";
+import { CompleteTaskDialog } from "@/components/CompleteTaskDialog";
 
 export const Route = createFileRoute("/_authenticated/crm/tarefas")({
   head: () => ({
@@ -90,9 +91,14 @@ function TarefasPage() {
     void queryClient.invalidateQueries({ queryKey: ["crm-tasks"] });
   }
 
+  const [completing, setCompleting] = useState<{ id: string; title: string } | null>(null);
   const doneM = useMutation({
-    mutationFn: (d: { id: string; done: boolean }) => setTaskDone({ data: d }),
-    onSuccess: refresh,
+    mutationFn: (d: { id: string; done: boolean; note?: string }) => setTaskDone({ data: d }),
+    onSuccess: () => {
+      setCompleting(null);
+      refresh();
+      void queryClient.invalidateQueries({ queryKey: ["crm-notes"] });
+    },
     onError: (e: Error) => toast.error(e.message),
   });
   const deleteM = useMutation({
@@ -106,6 +112,14 @@ function TarefasPage() {
 
   return (
     <div className="mx-auto w-full max-w-6xl">
+      {completing && (
+        <CompleteTaskDialog
+          taskTitle={completing.title}
+          saving={doneM.isPending}
+          onCancel={() => setCompleting(null)}
+          onConfirm={(note) => doneM.mutate({ id: completing.id, done: true, note })}
+        />
+      )}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-sm font-medium text-primary">CRM</p>
@@ -205,7 +219,11 @@ function TarefasPage() {
                     className="accent-[var(--color-primary)]"
                     checked={t.done}
                     disabled={!canWrite}
-                    onChange={(e) => doneM.mutate({ id: t.id, done: e.target.checked })}
+                    onChange={(e) =>
+                      e.target.checked
+                        ? setCompleting({ id: t.id, title: t.title })
+                        : doneM.mutate({ id: t.id, done: false })
+                    }
                     aria-label={t.done ? "Reabrir tarefa" : "Concluir tarefa"}
                   />
                   <div className="min-w-0 flex-1">
