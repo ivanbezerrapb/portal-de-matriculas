@@ -344,7 +344,7 @@ function UsersPage() {
                   <p className="text-xs text-muted-foreground">{u.email}</p>
                   {u.must_change_password && (
                     <span className="mt-1 inline-block">
-                      <Badge color="warning">Troca de senha pendente</Badge>
+                      <Badge color="amber">Troca de senha pendente</Badge>
                     </span>
                   )}
                 </div>
