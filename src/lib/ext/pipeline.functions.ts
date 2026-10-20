@@ -338,8 +338,8 @@ export const moveOpportunity = createServerFn({ method: "POST" })
     // Primeira troca de etapa: exige confirmar o responsável do cartão.
     if (current.stage_id !== data.stage_id && !current.owner_confirmed_at) {
       if (!data.owner_id) throw new Error("Confirme o responsável antes de mover o cartão.");
-      update.owner_id = await validateOwner(context.supabase, ctx.funnel_id, data.owner_id);
-      update.owner_confirmed_at = now;
+      update["owner_id"] = await validateOwner(context.supabase, ctx.funnel_id, data.owner_id);
+      update["owner_confirmed_at"] = now;
     }
     const { error } = await context.supabase
       .from("opportunities")
