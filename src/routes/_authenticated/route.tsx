@@ -33,6 +33,8 @@ import { useEffect, useState } from "react";
 import { getSupabase } from "@/lib/ext/browser";
 import { getMyPermissions } from "@/lib/ext/cadastros.functions";
 import { getFileAccess } from "@/lib/ext/arquivos.functions";
+import { recordAccess } from "@/lib/ext/logs.functions";
+import { History, KeyRound } from "lucide-react";
 import { Button, Card, Spinner } from "@/components/ui";
 import whiteLogoAsset from "@/assets/grupo-inter-logo-branca.png.asset.json";
 import symbolAsset from "@/assets/grupo-inter-simbolo.png.asset.json";
@@ -134,7 +136,17 @@ function AuthenticatedLayout() {
     };
   }, [permsError, navigate]);
 
+  // Log de Acesso: abertura do portal com sessão ativa (servidor limita a 1 a cada 30 min).
+  useEffect(() => {
+    if (sessionStorage.getItem("access-logged")) {
+      sessionStorage.removeItem("access-logged");
+      return;
+    }
+    void recordAccess({ data: { event: "session" } }).catch(() => {});
+  }, []);
+
   async function handleSignOut() {
+    await recordAccess({ data: { event: "logout" } }).catch(() => {});
     await queryClient.cancelQueries();
     queryClient.clear();
     const supabase = await getSupabase();
@@ -238,6 +250,8 @@ function AuthenticatedLayout() {
               { to: "/escolas", label: "Escolas", icon: School },
               { to: "/usuarios", label: "Usuários", icon: Users },
               { to: "/bancos-anteriores", label: "Bancos anteriores", icon: Database },
+              { to: "/logs-acesso", label: "Log de Acesso", icon: KeyRound },
+              { to: "/logs-registro", label: "Log de Registro", icon: History },
             ],
           } as NavGroup,
         ]
