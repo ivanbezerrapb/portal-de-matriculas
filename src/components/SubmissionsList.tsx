@@ -2,7 +2,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
-import { AlertTriangle, Eye } from "lucide-react";
+import { AlertTriangle, ChevronDown, ChevronUp, ChevronsUpDown, Eye } from "lucide-react";
 import { PrintSheets, type PrintSheetsState } from "@/components/print/PrintSheets";
 import { formatAddress, parseAddress, parseChildren, type FormField } from "@/lib/ext/model";
 import {
@@ -22,6 +22,58 @@ import { Button, Card, EmptyState, Input, Label, Select, Spinner } from "@/compo
 
 export type SubmissionsListType = "visitantes" | "leads";
 
+type SortKey =
+  | "id" | "responsible" | "school" | "children" | "date" | "series"
+  | "attendant" | "funnel" | "status" | "checkin";
+type SortState = { key: SortKey; dir: "asc" | "desc" } | null;
+
+function sortValue(s: unknown, key: SortKey, listType: SubmissionsListType): string | number | null {
+  const r = s as {
+    public_id?: string | null; responsible_name?: string | null; schools?: { name?: string } | null;
+    children_count?: number | null; created_at?: string; series?: string[];
+    attendant?: { name?: string } | null; funnel?: { funnel_name?: string } | null;
+    check_in?: { checked_in_at?: string } | null; enrolled?: boolean;
+  };
+  switch (key) {
+    case "id": return r.public_id ?? null;
+    case "responsible": return r.responsible_name || null;
+    case "school": return r.schools?.name ?? null;
+    case "children": return r.children_count ?? null;
+    case "date": return r.created_at ? new Date(r.created_at).getTime() : null;
+    case "series": return ((r.series ?? []) as string[]).filter(Boolean).join(", ") || null;
+    case "attendant": return r.attendant?.name ?? null;
+    case "funnel": return r.funnel?.funnel_name ?? null;
+    case "status": return listType === "leads" ? (r.check_in ? 1 : 0) : r.enrolled ? 1 : 0;
+    case "checkin": return r.check_in?.checked_in_at ? new Date(r.check_in.checked_in_at).getTime() : null;
+  }
+}
+
+export function sortRows<T>(rows: T[], sort: SortState, listType: SubmissionsListType): T[] {
+  if (!sort) return rows;
+  const m = sort.dir === "asc" ? 1 : -1;
+  return [...rows].sort((a, b) => {
+    const va = sortValue(a, sort.key, listType);
+    const vb = sortValue(b, sort.key, listType);
+    if (va == null && vb == null) return 0;
+    if (va == null) return 1;
+    if (vb == null) return -1;
+    if (typeof va === "number" && typeof vb === "number") return (va - vb) * m;
+    return String(va).localeCompare(String(vb), "pt-BR", { numeric: true, sensitivity: "base" }) * m;
+  });
+}
+
+function SortTh({ k, label, sort, onSort }: { k: SortKey; label: string; sort: SortState; onSort: (k: SortKey) => void }) {
+  const active = sort?.key === k;
+  return (
+    <th className="px-4 py-3" aria-sort={active ? (sort!.dir === "asc" ? "ascending" : "descending") : "none"}>
+      <button type="button" onClick={() => onSort(k)} className="inline-flex items-center gap-1 uppercase hover:text-foreground">
+        {label}
+        {active ? (sort!.dir === "asc" ? <ChevronUp size={14} /> : <ChevronDown size={14} />) : <ChevronsUpDown size={12} className="opacity-40" />}
+      </button>
+    </th>
+  );
+}
+
 export function SubmissionsList({
   listType = "visitantes",
   title = "Lista de Visitantes",
@@ -32,6 +84,11 @@ export function SubmissionsList({
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
+  const [sort, setSort] = useState<SortState>(null);
+  const cycleSort = (k: SortKey) =>
+    setSort((cur) =>
+      !cur || cur.key !== k ? { key: k, dir: "asc" } : cur.dir === "asc" ? { key: k, dir: "desc" } : null,
+    );
   const [schoolId, setSchoolId] = useState("");
   const [formId, setFormId] = useState("");
   const [from, setFrom] = useState("");
@@ -393,21 +450,30 @@ export function SubmissionsList({
             <thead>
               <tr className="border-b border-border bg-muted/60 text-left text-xs uppercase tracking-wide text-muted-foreground">
                 <th className="px-4 py-3"></th>
-                <th className="px-4 py-3">ID</th>
-                <th className="px-4 py-3">Responsável</th>
-                <th className="px-4 py-3">Escola</th>
-                {listType === "visitantes" && <th className="px-4 py-3">Crianças</th>}
-                <th className="px-4 py-3">Data</th>
-                <th className="px-4 py-3">Série</th>
-                <th className="px-4 py-3">Atendimento</th>
-                <th className="px-4 py-3">Funil</th>
-                <th className="px-4 py-3">{listType === "leads" ? "Check-in" : "Matrícula"}</th>
-                {listType === "leads" && <th className="px-4 py-3">Data do check-in</th>}
+                <SortTh k="id" label="ID" sort={sort} onSort={cycleSort} />
+                <SortTh k="responsible" label="Responsável" sort={sort} onSort={cycleSort} />
+                <SortTh k="school" label="Escola" sort={sort} onSort={cycleSort} />
+                {listType === "visitantes" && (
+                  <SortTh k="children" label="Crianças" sort={sort} onSort={cycleSort} />
+                )}
+                <SortTh k="date" label="Data" sort={sort} onSort={cycleSort} />
+                <SortTh k="series" label="Série" sort={sort} onSort={cycleSort} />
+                <SortTh k="attendant" label="Atendimento" sort={sort} onSort={cycleSort} />
+                <SortTh k="funnel" label="Funil" sort={sort} onSort={cycleSort} />
+                <SortTh
+                  k="status"
+                  label={listType === "leads" ? "Check-in" : "Matrícula"}
+                  sort={sort}
+                  onSort={cycleSort}
+                />
+                {listType === "leads" && (
+                  <SortTh k="checkin" label="Data do check-in" sort={sort} onSort={cycleSort} />
+                )}
                 <th className="px-4 py-3"></th>
               </tr>
             </thead>
             <tbody>
-              {submissions.map((s) => {
+              {sortRows(submissions, sort, listType).map((s) => {
                 const responsible = (s as unknown as { responsible_name: string | null })
                   .responsible_name;
                 const school = s.schools as unknown as { name: string } | null;
