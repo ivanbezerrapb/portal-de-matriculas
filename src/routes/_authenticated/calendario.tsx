@@ -2,13 +2,13 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { setLeadCheckIn } from "@/lib/ext/cadastros.functions";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   addDays, addMonths, addWeeks, endOfMonth, endOfWeek, format, isSameDay, isSameMonth,
   startOfDay, startOfMonth, startOfWeek,
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, MessageCircle } from "lucide-react";
+import { ChevronLeft, ChevronRight, Maximize, MessageCircle, Minimize } from "lucide-react";
 import { listCalendarEvents, type CalendarEvent } from "@/lib/ext/calendario.functions";
 import { Button, Card, Spinner } from "@/components/ui";
 
@@ -73,6 +73,7 @@ function CalendarPage() {
     queryKey: ["calendar", range.from.toISOString(), range.to.toISOString()],
     queryFn: () => listCalendarEvents({ data: { from: range.from.toISOString(), to: range.to.toISOString() } }),
     refetchInterval: 30000,
+    refetchIntervalInBackground: true,
   });
 
   const events = (q.data?.events ?? []).filter(
@@ -107,7 +108,7 @@ function CalendarPage() {
   for (let d = range.from; d < range.to; d = addDays(d, 1)) days.push(d);
 
   return (
-    <div className="space-y-4 p-4 md:p-6">
+    <div ref={rootRef} className={`space-y-4 p-4 md:p-6 ${isFullscreen ? "h-screen overflow-auto bg-background" : ""}`}>
       <div>
         <p className="text-sm font-medium text-primary">Agenda</p>
         <h1 className="font-display text-3xl font-bold text-foreground">Calendário</h1>
@@ -130,6 +131,10 @@ function CalendarPage() {
             </button>
           ))}
         </div>
+        <Button variant="outline" onClick={toggleFullscreen}>
+          {isFullscreen ? <Minimize className="mr-1 h-4 w-4" /> : <Maximize className="mr-1 h-4 w-4" />}
+          {isFullscreen ? "Sair da tela cheia" : "Tela cheia"}
+        </Button>
       </div>
 
       <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
@@ -188,7 +193,7 @@ function CalendarPage() {
               return (
                 <div
                   key={d.toISOString()}
-                  className={`border-b border-r border-border p-1 ${view === "week" ? "min-h-64" : "min-h-28"} ${view === "month" && !isSameMonth(d, cursor) ? "bg-muted/30" : ""}`}
+                  className={`border-b border-r border-border p-1 ${view === "week" ? "min-h-64" : isFullscreen ? "min-h-40" : "min-h-28"} ${view === "month" && !isSameMonth(d, cursor) ? "bg-muted/30" : ""}`}
                 >
                   <button
                     onClick={() => { setCursor(d); setView("day"); }}
@@ -197,10 +202,10 @@ function CalendarPage() {
                     {format(d, "d")}
                   </button>
                   <div className="space-y-1">
-                    {(view === "month" ? list.slice(0, 3) : list).map((e) => chip(e, view === "week"))}
-                    {view === "month" && list.length > 3 && (
+                    {(view === "month" ? list.slice(0, maxPerDay) : list).map((e) => chip(e, view === "week"))}
+                    {view === "month" && list.length > maxPerDay && (
                       <button onClick={() => { setCursor(d); setView("day"); }} className="text-[11px] text-primary">
-                        +{list.length - 3} mais
+                        +{list.length - maxPerDay} mais
                       </button>
                     )}
                   </div>
