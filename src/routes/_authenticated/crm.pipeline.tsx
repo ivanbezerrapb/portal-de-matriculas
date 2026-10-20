@@ -196,6 +196,53 @@ function PipelinePage() {
     },
   });
 
+  // Mover para "Visita agendada" (cartões de LEADS) exige a data da visita.
+  type MoveData = { id: string; stage_id: string; position: number; owner_id?: string };
+  const [visitMove, setVisitMove] = useState<MoveData | null>(null);
+  const [visitValue, setVisitValue] = useState("");
+  function needsVisit(cardId: string, stageId: string) {
+    const card = opportunities.find((o) => o.id === cardId);
+    const stage = stages.find((s) => s.id === stageId);
+    if (!card || !stage || card.stage_id === stageId) return false;
+    if (card.submissions?.list_type !== "leads") return false;
+    const name = stage.name
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase();
+    return name.includes("visita agendada");
+  }
+  function openVisitMove(move: MoveData) {
+    const card = opportunities.find((o) => o.id === move.id);
+    let initial = "";
+    if (card?.visit_at) {
+      const d = new Date(card.visit_at);
+      const p = (n: number) => String(n).padStart(2, "0");
+      initial = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+    }
+    setVisitValue(initial);
+    setVisitMove(move);
+  }
+  const visitMoveM = useMutation({
+    mutationFn: async () => {
+      if (!visitMove || !visitValue) throw new Error("Informe a data da visita.");
+      await setOpportunityVisit({
+        data: { id: visitMove.id, visit_at: new Date(visitValue).toISOString() },
+      });
+      await moveOpportunity({ data: visitMove });
+    },
+    onSuccess: () => {
+      toast.success("Visita agendada.");
+      setVisitMove(null);
+      refresh();
+      void queryClient.invalidateQueries({ queryKey: ["pipeline"] });
+      void queryClient.invalidateQueries({ queryKey: ["calendar"] });
+    },
+    onError: (e: Error) => {
+      toast.error(e.message);
+      refresh();
+    },
+  });
+
   const createM = useMutation({
     mutationFn: (d: {
       stage_id: string;
@@ -366,6 +413,8 @@ function PipelinePage() {
                   if (moving && moving.stage_id !== stage.id && !moving.owner_confirmed_at) {
                     setPendingMove(move);
                     setPendingOwner(moving.owner_id ?? "");
+                  } else if (needsVisit(move.id, move.stage_id)) {
+                    openVisitMove(move);
                   } else {
                     moveM.mutate(move);
                   }
@@ -771,9 +820,49 @@ function PipelinePage() {
               </Button>
               <Button
                 disabled={!pendingOwner || moveM.isPending}
-                onClick={() => moveM.mutate({ ...pendingMove, owner_id: pendingOwner })}
+                onClick={() => {
+                  const next = { ...pendingMove, owner_id: pendingOwner };
+                  if (needsVisit(next.id, next.stage_id)) {
+                    setPendingMove(null);
+                    openVisitMove(next);
+                  } else {
+                    moveM.mutate(next);
+                  }
+                }}
               >
                 Confirmar e mover
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {visitMove && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 p-4">
+          <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-lg">
+            <h2 className="text-lg font-semibold text-foreground">Agendar visita</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Informe a data e a hora da visita para mover o cartão.
+            </p>
+            <Input
+              type="datetime-local"
+              className="mt-4"
+              value={visitValue}
+              onChange={(e) => setVisitValue(e.target.value)}
+            />
+            <div className="mt-6 flex justify-end gap-2">
+              <Button
+                variant="ghost"
+                onClick={() => setVisitMove(null)}
+                disabled={visitMoveM.isPending}
+              >
+                Cancelar
+              </Button>
+              <Button
+                disabled={!visitValue || visitMoveM.isPending}
+                onClick={() => visitMoveM.mutate()}
+              >
+                Agendar e mover
               </Button>
             </div>
           </div>
