@@ -8,7 +8,12 @@
    - o cartão vai para **"Reagendar Matrícula"**;
    - o Histórico registra "Faltou à matrícula agendada para DD/MM/AAAA às HH:mm", com nome de quem marcou;
    - a data é apagada e sai do Calendário, para a Central reagendar.
-5. **Check-in de matrícula:** fica fora por enquanto (só Faltou). O ganho continua pela matrícula na Lista de Visitantes.
+5. **Botão "Matriculado"** (no lugar de "Dar check-in" nas matrículas): abre a confirmação e a janela de quantidade de matrículas (inteiro maior que zero, como já acontece hoje). Ao confirmar:
+   - o cartão é dado como **ganho** no funil e vai para a etapa "Matriculado";
+   - as tarefas pendentes do cartão são concluídas;
+   - o cadastro fica marcado como matriculado na Lista de Visitantes (mesma regra da coluna Matrícula);
+   - o Histórico registra "Matriculado na matrícula agendada para DD/MM/AAAA às HH:mm", com nome, data e hora de quem marcou;
+   - no Calendário, o item fica verde (Realizada).
 
 ## Quem pode
 Faltou: Administrador, Gerente e Secretaria da unidade. Central vê as matrículas dos seus funis; Direção só visualiza.
@@ -23,4 +28,5 @@ Faltou: Administrador, Gerente e Secretaria da unidade. Central vê as matrícul
 - `crm.pipeline.tsx`: detectar destino "matricula agendada" em funil de visitantes; diálogo com título "Agendar matrícula"; campo de data no cartão com rótulo conforme a lista.
 - `listCalendarEvents`: incluir `list_type` visitantes com `kind: "matricula"`; `can_check_in` falso para matrícula.
 - `markVisitNoShow`: aceitar ambas as listas; procurar etapa com "reagend" + ("visita" ou "matricula") conforme o tipo; texto do histórico conforme o tipo.
-- `calendario.tsx`: botão Faltou também em matrículas; sem botão de check-in nelas.
+- Nova server fn `markEnrollmentDone({ opportunity_id, count })`: mesma permissão do check-in; reaproveita a lógica de `setEnrollment` (ganho, etapa "Matriculado", conclusão de tarefas, `enrolled`/`enrollment_count`), grava evento `enrollment_done` em `audit_log` e nota em `crm_notes`. Situação "done" da matrícula vem desse evento ou de `submissions.enrolled`.
+- `calendario.tsx`: botões Faltou e Matriculado nas matrículas; invalida calendário, pipeline, cadastros e notas.
