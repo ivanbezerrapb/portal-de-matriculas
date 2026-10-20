@@ -28,7 +28,12 @@ type SortKey =
 type SortState = { key: SortKey; dir: "asc" | "desc" } | null;
 
 function sortValue(s: unknown, key: SortKey, listType: SubmissionsListType): string | number | null {
-  const r = s as Record<string, any>;
+  const r = s as {
+    public_id?: string | null; responsible_name?: string | null; schools?: { name?: string } | null;
+    children_count?: number | null; created_at?: string; series?: string[];
+    attendant?: { name?: string } | null; funnel?: { funnel_name?: string } | null;
+    check_in?: { checked_in_at?: string } | null; enrolled?: boolean;
+  };
   switch (key) {
     case "id": return r.public_id ?? null;
     case "responsible": return r.responsible_name || null;
