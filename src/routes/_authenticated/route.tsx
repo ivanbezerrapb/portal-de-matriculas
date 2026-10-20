@@ -199,6 +199,9 @@ function AuthenticatedLayout() {
                     { to: "/crm/funil", label: "Funil", icon: Filter },
                     { to: "/crm/tarefas", label: "Tarefas", icon: ListTodo },
                     { to: "/crm/motivos", label: "Motivos", icon: Trophy },
+                    ...(isAdmin
+                      ? [{ to: "/crm/atividades", label: "Atividades", icon: ListTodo }]
+                      : []),
                   ]
                 : [{ to: "/crm/tarefas", label: "Tarefas", icon: ListTodo }]),
             ],
