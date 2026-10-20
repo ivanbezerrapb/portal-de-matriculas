@@ -21,6 +21,8 @@ import { Route as AuthenticatedDashboardRouteImport } from './routes/_authentica
 import { Route as AuthenticatedEscolasRouteImport } from './routes/_authenticated/escolas'
 import { Route as AuthenticatedFormulariosRouteImport } from './routes/_authenticated/formularios'
 import { Route as AuthenticatedLeadsRouteImport } from './routes/_authenticated/leads'
+import { Route as AuthenticatedLogsAcessoRouteImport } from './routes/_authenticated/logs-acesso'
+import { Route as AuthenticatedLogsRegistroRouteImport } from './routes/_authenticated/logs-registro'
 import { Route as AuthenticatedTemplatesRouteImport } from './routes/_authenticated/templates'
 import { Route as AuthenticatedUsuariosRouteImport } from './routes/_authenticated/usuarios'
 import { Route as FSlugRouteImport } from './routes/f/$slug'
@@ -98,6 +100,17 @@ const AuthenticatedLeadsRoute = AuthenticatedLeadsRouteImport.update({
   path: '/leads',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedLogsAcessoRoute = AuthenticatedLogsAcessoRouteImport.update({
+  id: '/logs-acesso',
+  path: '/logs-acesso',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedLogsRegistroRoute =
+  AuthenticatedLogsRegistroRouteImport.update({
+    id: '/logs-registro',
+    path: '/logs-registro',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedTemplatesRoute = AuthenticatedTemplatesRouteImport.update({
   id: '/templates',
   path: '/templates',
@@ -188,6 +201,8 @@ export interface FileRoutesByFullPath {
   '/escolas': typeof AuthenticatedEscolasRoute
   '/formularios': typeof AuthenticatedFormulariosRoute
   '/leads': typeof AuthenticatedLeadsRoute
+  '/logs-acesso': typeof AuthenticatedLogsAcessoRoute
+  '/logs-registro': typeof AuthenticatedLogsRegistroRoute
   '/templates': typeof AuthenticatedTemplatesRoute
   '/usuarios': typeof AuthenticatedUsuariosRoute
   '/f/$slug': typeof FSlugRoute
@@ -215,6 +230,8 @@ export interface FileRoutesByTo {
   '/escolas': typeof AuthenticatedEscolasRoute
   '/formularios': typeof AuthenticatedFormulariosRoute
   '/leads': typeof AuthenticatedLeadsRoute
+  '/logs-acesso': typeof AuthenticatedLogsAcessoRoute
+  '/logs-registro': typeof AuthenticatedLogsRegistroRoute
   '/templates': typeof AuthenticatedTemplatesRoute
   '/usuarios': typeof AuthenticatedUsuariosRoute
   '/f/$slug': typeof FSlugRoute
@@ -244,6 +261,8 @@ export interface FileRoutesById {
   '/_authenticated/escolas': typeof AuthenticatedEscolasRoute
   '/_authenticated/formularios': typeof AuthenticatedFormulariosRoute
   '/_authenticated/leads': typeof AuthenticatedLeadsRoute
+  '/_authenticated/logs-acesso': typeof AuthenticatedLogsAcessoRoute
+  '/_authenticated/logs-registro': typeof AuthenticatedLogsRegistroRoute
   '/_authenticated/templates': typeof AuthenticatedTemplatesRoute
   '/_authenticated/usuarios': typeof AuthenticatedUsuariosRoute
   '/f/$slug': typeof FSlugRoute
@@ -273,6 +292,8 @@ export interface FileRouteTypes {
     | '/escolas'
     | '/formularios'
     | '/leads'
+    | '/logs-acesso'
+    | '/logs-registro'
     | '/templates'
     | '/usuarios'
     | '/f/$slug'
@@ -300,6 +321,8 @@ export interface FileRouteTypes {
     | '/escolas'
     | '/formularios'
     | '/leads'
+    | '/logs-acesso'
+    | '/logs-registro'
     | '/templates'
     | '/usuarios'
     | '/f/$slug'
@@ -328,6 +351,8 @@ export interface FileRouteTypes {
     | '/_authenticated/escolas'
     | '/_authenticated/formularios'
     | '/_authenticated/leads'
+    | '/_authenticated/logs-acesso'
+    | '/_authenticated/logs-registro'
     | '/_authenticated/templates'
     | '/_authenticated/usuarios'
     | '/f/$slug'
@@ -437,6 +462,20 @@ declare module '@tanstack/react-router' {
       path: '/leads'
       fullPath: '/leads'
       preLoaderRoute: typeof AuthenticatedLeadsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/logs-acesso': {
+      id: '/_authenticated/logs-acesso'
+      path: '/logs-acesso'
+      fullPath: '/logs-acesso'
+      preLoaderRoute: typeof AuthenticatedLogsAcessoRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/logs-registro': {
+      id: '/_authenticated/logs-registro'
+      path: '/logs-registro'
+      fullPath: '/logs-registro'
+      preLoaderRoute: typeof AuthenticatedLogsRegistroRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/templates': {
@@ -549,6 +588,8 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedEscolasRoute: typeof AuthenticatedEscolasRoute
   AuthenticatedFormulariosRoute: typeof AuthenticatedFormulariosRoute
   AuthenticatedLeadsRoute: typeof AuthenticatedLeadsRoute
+  AuthenticatedLogsAcessoRoute: typeof AuthenticatedLogsAcessoRoute
+  AuthenticatedLogsRegistroRoute: typeof AuthenticatedLogsRegistroRoute
   AuthenticatedTemplatesRoute: typeof AuthenticatedTemplatesRoute
   AuthenticatedUsuariosRoute: typeof AuthenticatedUsuariosRoute
   AuthenticatedArquivosConectaRoute: typeof AuthenticatedArquivosConectaRoute
@@ -572,6 +613,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedEscolasRoute: AuthenticatedEscolasRoute,
   AuthenticatedFormulariosRoute: AuthenticatedFormulariosRoute,
   AuthenticatedLeadsRoute: AuthenticatedLeadsRoute,
+  AuthenticatedLogsAcessoRoute: AuthenticatedLogsAcessoRoute,
+  AuthenticatedLogsRegistroRoute: AuthenticatedLogsRegistroRoute,
   AuthenticatedTemplatesRoute: AuthenticatedTemplatesRoute,
   AuthenticatedUsuariosRoute: AuthenticatedUsuariosRoute,
   AuthenticatedArquivosConectaRoute: AuthenticatedArquivosConectaRoute,
