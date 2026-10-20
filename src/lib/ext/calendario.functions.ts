@@ -14,6 +14,7 @@ export type CalendarEvent = {
   checked_in_at: string | null;
   status: "scheduled" | "done" | "missed";
   can_check_in: boolean;
+  kind: "visita" | "matricula";
 };
 
 function norm(v: string) {
@@ -117,6 +118,7 @@ export const listCalendarEvents = createServerFn({ method: "GET" })
           : "scheduled";
       return {
         id: o.id,
+        kind: "visita",
         at: o.visit_at,
         title: name && name !== o.submissions.public_id ? `${o.submissions.public_id} · ${name}` : o.submissions.public_id,
         school_id: o.school_id,
