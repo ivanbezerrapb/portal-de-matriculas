@@ -160,8 +160,8 @@ export type ActivityRow = {
   record_id: string | null;
   school_id: string | null;
   label: string | null;
-  old_data: Record<string, unknown> | null;
-  new_data: Record<string, unknown> | null;
+  old_data: Record<string, string | number | boolean | null> | null;
+  new_data: Record<string, string | number | boolean | null> | null;
   created_at: string;
 };
 
