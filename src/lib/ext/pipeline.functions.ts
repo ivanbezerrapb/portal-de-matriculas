@@ -596,7 +596,7 @@ export const setOpportunityVisit = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     if (!opp) throw new Error("Sem acesso a este cartão.");
     const lt = (opp as unknown as { submissions: { list_type: string | null } | null }).submissions?.list_type;
-    if (lt !== "leads") throw new Error("Agendamento de visita disponível apenas para LEADS.");
+    if (!lt) throw new Error("Agendamento disponível apenas para cartões vindos de cadastros.");
     const { error: upError } = await context.supabase
       .from("opportunities")
       .update({ visit_at: data.visit_at, updated_at: new Date().toISOString() })
