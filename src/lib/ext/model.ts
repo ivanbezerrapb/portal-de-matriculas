@@ -320,3 +320,9 @@ export type CloseReason = {
   position: number;
   active: boolean;
 };
+
+// Funis com "lead" no nome pertencem à Lista de LEADS; os demais à Lista de Visitantes.
+export function funnelListType(name: string | null | undefined): "leads" | "visitantes" {
+  const n = (name ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  return /lead/.test(n) ? "leads" : "visitantes";
+}

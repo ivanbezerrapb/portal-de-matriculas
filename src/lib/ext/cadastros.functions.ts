@@ -1,3 +1,4 @@
+import { funnelListType } from "./model";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAuth } from "./auth";
@@ -618,7 +619,7 @@ export const sendSubmissionToFunnel = createServerFn({ method: "POST" })
 
     const { data: submission, error } = await context.supabase
       .from("submissions")
-      .select("id, school_id, form_id, public_id")
+      .select("id, school_id, form_id, public_id, list_type")
       .eq("id", data.submission_id)
       .single();
     if (error) throw new Error(error.message);
@@ -637,6 +638,9 @@ export const sendSubmissionToFunnel = createServerFn({ method: "POST" })
       .eq("id", data.funnel_id)
       .maybeSingle();
     if (!funnel) throw new Error("Funil não encontrado.");
+    if (funnelListType(funnel.name) !== ((submission as { list_type?: string }).list_type ?? "visitantes")) {
+      throw new Error("Este funil não pertence a esta lista.");
+    }
     if (funnel.school_id !== submission.school_id) {
       throw new Error("Este funil é de outra unidade.");
     }
