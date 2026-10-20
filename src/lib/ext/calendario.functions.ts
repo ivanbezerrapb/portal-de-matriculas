@@ -135,3 +135,56 @@ export const listCalendarEvents = createServerFn({ method: "GET" })
     events.sort((a, b) => a.at.localeCompare(b.at));
     return { schools: schoolList, events };
   });
+
+// Cliente faltou: registra no histórico, apaga a data e move para "Reagendar visita".
+export const markVisitNoShow = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((data) => z.object({ opportunity_id: z.string().uuid() }).parse(data))
+  .handler(async ({ data, context }) => {
+    const { getPerms, extAdmin } = await import("./server");
+    const perms = await getPerms(context.supabase, context.userId);
+    const admin = extAdmin();
+    const { data: opp, error } = await admin
+      .from("opportunities")
+      .select("id, school_id, funnel_id, visit_at, status, submissions(list_type)")
+      .eq("id", data.opportunity_id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!opp) throw new Error("Cartão não encontrado.");
+    const o = opp as unknown as {
+      id: string; school_id: string; funnel_id: string; visit_at: string | null; status: string;
+      submissions: { list_type: string | null } | null;
+    };
+    const allowed = perms.isAdmin || perms.managerSchools.includes(o.school_id) || perms.operatorSchools.includes(o.school_id);
+    if (!allowed) throw new Error("Sem permissão para marcar falta.");
+    if (o.submissions?.list_type !== "leads") throw new Error("Disponível apenas para LEADS.");
+    if (!o.visit_at) throw new Error("Este cartão não tem visita agendada.");
+
+    const { data: stages } = await admin.from("funnel_stages").select("id, name").eq("funnel_id", o.funnel_id);
+    const stage = ((stages ?? []) as { id: string; name: string }[]).find((s) => norm(s.name).includes("reagend"));
+    if (!stage) throw new Error("Crie a etapa Reagendar visita neste funil.");
+
+    const { data: last } = await admin
+      .from("opportunities").select("position").eq("stage_id", stage.id)
+      .order("position", { ascending: false }).limit(1).maybeSingle();
+    const now = new Date().toISOString();
+    const { error: upErr } = await admin
+      .from("opportunities")
+      .update({ stage_id: stage.id, visit_at: null, position: ((last?.position as number | undefined) ?? -1) + 1, updated_at: now })
+      .eq("id", o.id);
+    if (upErr) throw new Error(upErr.message);
+
+    const { data: profile } = await admin.from("profiles").select("full_name").eq("id", context.userId).maybeSingle();
+    const authorName = ((profile?.full_name as string | null) ?? "") || context.userEmail || "Usuário";
+    const when = new Intl.DateTimeFormat("pt-BR", {
+      timeZone: "America/Fortaleza", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit",
+    }).format(new Date(o.visit_at)).replace(",", " às");
+    const { error: noteErr } = await admin.from("crm_notes").insert({
+      opportunity_id: o.id,
+      author_id: context.userId,
+      author_name: authorName,
+      body: `Faltou à visita agendada para ${when}. Aguardando reagendamento.`,
+    });
+    if (noteErr) throw new Error(noteErr.message);
+    return { ok: true };
+  });
