@@ -13,6 +13,7 @@ import {
   setLeadCheckIn,
 } from "@/lib/ext/cadastros.functions";
 import { listFunnelOwners, listFunnels } from "@/lib/ext/funis.functions";
+import { funnelListType } from "@/lib/ext/model";
 import { listSchools } from "@/lib/ext/escolas.functions";
 import { listForms } from "@/lib/ext/formularios.functions";
 import { listPrintTemplates } from "@/lib/ext/impressao.functions";
@@ -491,7 +492,7 @@ export function SubmissionsList({
                           }
                         ).funnel;
                         const options = (funnelsData?.funnels ?? []).filter(
-                          (f) => f.school_id === s.school_id,
+                          (f) => f.school_id === s.school_id && funnelListType(f.name) === listType,
                         );
                         return (
                           <select
