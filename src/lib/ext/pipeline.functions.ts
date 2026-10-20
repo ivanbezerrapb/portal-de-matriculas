@@ -108,12 +108,16 @@ export const listPipeline = createServerFn({ method: "GET" })
     const seriesBySubmission = new Map<string, string[]>();
 
     if (submissionIds.length > 0 && formIds.length > 0) {
+      // Cartões já autorizados pela RLS acima; respostas lidas com o cliente admin
+      // para que todos os perfis vejam nome e série.
+      const { extAdmin } = await import("./server");
+      const admin = extAdmin();
       const [{ data: destinations }, { data: fields }] = await Promise.all([
-        context.supabase
+        admin
           .from("form_destinations")
           .select("form_id, name_field_id")
           .in("form_id", formIds),
-        context.supabase
+        admin
           .from("form_fields")
           .select("id, form_id, label, type")
           .in("form_id", formIds),
@@ -141,7 +145,7 @@ export const listPipeline = createServerFn({ method: "GET" })
       const fieldById = new Map(relevantFields.map((field) => [field.id, field]));
 
       if (relevantFieldIds.length > 0) {
-        const { data: values } = await context.supabase
+        const { data: values } = await admin
           .from("submission_values")
           .select("submission_id, field_id, value")
           .in("submission_id", submissionIds)
