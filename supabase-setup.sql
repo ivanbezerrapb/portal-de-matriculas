@@ -386,3 +386,54 @@ grant all on public.crm_task_types to service_role;
 alter table public.crm_task_types enable row level security;
 create policy crm_task_types_select on public.crm_task_types for select to authenticated using (true);
 create policy crm_task_types_write on public.crm_task_types for all to authenticated using (has_role(auth.uid(),'admin')) with check (has_role(auth.uid(),'admin'));
+create table if not exists public.access_logs(
+  id bigserial primary key, user_id uuid, email text, event text not null,
+  user_agent text, created_at timestamptz not null default now());
+create index if not exists access_logs_created_idx on public.access_logs(created_at desc);
+create index if not exists access_logs_user_idx on public.access_logs(user_id, created_at desc);
+create table if not exists public.activity_logs(
+  id bigserial primary key, actor_id uuid, actor_name text, action text not null,
+  table_name text not null, record_id text, school_id uuid, label text,
+  old_data jsonb, new_data jsonb, created_at timestamptz not null default now());
+create index if not exists activity_logs_created_idx on public.activity_logs(created_at desc);
+grant select on public.access_logs, public.activity_logs to authenticated;
+grant all on public.access_logs, public.activity_logs to service_role;
+grant usage on sequence public.access_logs_id_seq, public.activity_logs_id_seq to service_role;
+alter table public.access_logs enable row level security;
+alter table public.activity_logs enable row level security;
+drop policy if exists "admin read access_logs" on public.access_logs;
+create policy "admin read access_logs" on public.access_logs for select to authenticated using (public.has_role(auth.uid(),'admin'));
+drop policy if exists "admin read activity_logs" on public.activity_logs;
+create policy "admin read activity_logs" on public.activity_logs for select to authenticated using (public.has_role(auth.uid(),'admin'));
+
+create or replace function public.log_activity() returns trigger
+language plpgsql security definer set search_path=public as $$
+declare v_old jsonb; v_new jsonb; v_row jsonb; v_actor uuid; v_name text; k text;
+begin
+  if tg_op <> 'INSERT' then v_old := to_jsonb(old) - 'updated_at'; end if;
+  if tg_op <> 'DELETE' then v_new := to_jsonb(new) - 'updated_at'; end if;
+  if tg_op = 'UPDATE' then
+    if v_old = v_new then return null; end if;
+    for k in select key from jsonb_each(v_new) loop
+      if v_old->k is not distinct from v_new->k then v_old := v_old - k; v_new := v_new - k; end if;
+    end loop;
+  end if;
+  v_row := coalesce(to_jsonb(new), to_jsonb(old));
+  begin v_actor := auth.uid(); exception when others then v_actor := null; end;
+  if v_actor is null then
+    begin v_actor := nullif(current_setting('app.actor_id', true),'')::uuid; exception when others then v_actor := null; end;
+  end if;
+  if v_actor is not null then select full_name into v_name from profiles where id = v_actor; end if;
+  insert into activity_logs(actor_id, actor_name, action, table_name, record_id, school_id, label, old_data, new_data)
+  values (v_actor, v_name, lower(tg_op), tg_table_name, v_row->>'id',
+    case when (v_row->>'school_id') ~ '^[0-9a-f-]{36}$' then (v_row->>'school_id')::uuid end,
+    left(coalesce(v_row->>'public_id', v_row->>'name', v_row->>'title', v_row->>'label', v_row->>'full_name', v_row->>'body', v_row->>'value', v_row->>'role'), 160),
+    v_old, v_new);
+  return null;
+end $$;
+
+do $$ declare t text; begin
+  foreach t in array array['crm_close_reasons','crm_notes','crm_task_types','crm_tasks','file_categories','form_destination_rules','form_destinations','form_fields','forms','funnel_stages','funnels','legacy_datasets','opportunities','presenters','print_template_library','print_templates','profiles','schools','shared_files','submission_values','submissions','user_funnels','user_roles'] loop
+    execute format('drop trigger if exists trg_log_activity on public.%I', t);
+    execute format('create trigger trg_log_activity after insert or update or delete on public.%I for each row execute function public.log_activity()', t);
+  end loop; end $$;
