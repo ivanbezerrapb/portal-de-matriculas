@@ -305,7 +305,7 @@ function CalendarPage() {
                 </p>
                 <div className="mt-3 flex justify-end gap-2">
                   <Button variant="ghost" onClick={() => setNoShow(false)}>Cancelar</Button>
-                  <Button variant="destructive" disabled={noShowM.isPending} onClick={() => noShowM.mutate(selected.id)}>
+                  <Button variant="danger" disabled={noShowM.isPending} onClick={() => noShowM.mutate(selected.id)}>
                     Sim, faltou
                   </Button>
                 </div>
@@ -321,7 +321,7 @@ function CalendarPage() {
                 <Button onClick={() => setConfirming(true)}>Dar check-in</Button>
               )}
               {selected.can_check_in && !confirming && !noShow && (
-                <Button variant="destructive" onClick={() => setNoShow(true)}>Faltou</Button>
+                <Button variant="danger" onClick={() => setNoShow(true)}>Faltou</Button>
               )}
               <Button variant="outline" onClick={() => { setSelected(null); setConfirming(false); setNoShow(false); }}>Fechar</Button>
             </div>
