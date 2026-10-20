@@ -672,7 +672,8 @@ export const sendSubmissionToFunnel = createServerFn({ method: "POST" })
       .maybeSingle();
     if (!stage) throw new Error("Este funil ainda não tem etapas.");
 
-    const { data: last } = await context.supabase
+    const admin = extAdmin();
+    const { data: last } = await admin
       .from("opportunities")
       .select("position")
       .eq("stage_id", stage.id)
@@ -681,14 +682,14 @@ export const sendSubmissionToFunnel = createServerFn({ method: "POST" })
       .maybeSingle();
     const position = (last?.position ?? -1) + 1;
 
-    const { data: existing } = await context.supabase
+    const { data: existing } = await admin
       .from("opportunities")
       .select("id")
       .eq("submission_id", submission.id)
       .maybeSingle();
 
     if (existing) {
-      const { error: moveError } = await context.supabase
+      const { error: moveError } = await admin
         .from("opportunities")
         .update({
           funnel_id: funnel.id,
@@ -732,7 +733,7 @@ export const sendSubmissionToFunnel = createServerFn({ method: "POST" })
         ? `${submission.public_id} · ${responsible}`
         : submission.public_id;
 
-      const { error: insertError } = await context.supabase.from("opportunities").insert({
+      const { error: insertError } = await admin.from("opportunities").insert({
         funnel_id: funnel.id,
         stage_id: stage.id,
         school_id: submission.school_id,
@@ -746,7 +747,7 @@ export const sendSubmissionToFunnel = createServerFn({ method: "POST" })
       if (insertError) throw new Error(insertError.message);
     }
 
-    await context.supabase
+    await admin
       .from("submissions")
       .update({ crm_status: "sent", crm_reason: `Enviado manualmente para ${funnel.name}` })
       .eq("id", submission.id);
