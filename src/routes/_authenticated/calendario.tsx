@@ -10,7 +10,7 @@ import {
 import { ptBR } from "date-fns/locale";
 import { ChevronLeft, ChevronRight, Maximize, MessageCircle, Minimize } from "lucide-react";
 import { listCalendarEvents, markEnrollmentDone, markVisitNoShow, type CalendarEvent } from "@/lib/ext/calendario.functions";
-import { Button, Card, Spinner } from "@/components/ui";
+import { Button, Card, Input, Spinner } from "@/components/ui";
 
 export const Route = createFileRoute("/_authenticated/calendario")({
   head: () => ({
