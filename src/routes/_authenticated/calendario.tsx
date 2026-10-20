@@ -43,7 +43,7 @@ function whatsapp(phone: string | null) {
 function CalendarPage() {
   const [view, setView] = useState<View>("month");
   const [cursor, setCursor] = useState(() => new Date());
-  const [schoolFilter, setSchoolFilter] = useState<string[]>([]);
+  const [schoolFilter, setSchoolFilter] = useState<string | null>(null);
   const [statuses, setStatuses] = useState<Status[]>(["scheduled", "done", "missed"]);
   const [confirming, setConfirming] = useState(false);
   const queryClient = useQueryClient();
@@ -73,7 +73,7 @@ function CalendarPage() {
   });
 
   const events = (q.data?.events ?? []).filter(
-    (e) => statuses.includes(e.status) && (schoolFilter.length === 0 || schoolFilter.includes(e.school_id)),
+    (e) => statuses.includes(e.status) && (!schoolFilter || e.school_id === schoolFilter),
   );
   const eventsOn = (day: Date) => events.filter((e) => isSameDay(new Date(e.at), day));
 
@@ -135,8 +135,8 @@ function CalendarPage() {
           {(q.data?.schools ?? []).map((s) => (
             <button
               key={s.id}
-              onClick={() => setSchoolFilter((l) => toggle(l, s.id))}
-              className={`rounded-full border px-3 py-1 ${schoolFilter.includes(s.id) ? "border-primary bg-primary text-primary-foreground" : "border-border text-muted-foreground"}`}
+              onClick={() => setSchoolFilter((cur) => (cur === s.id ? null : s.id))}
+              className={`rounded-full border px-3 py-1 ${schoolFilter === s.id ? "border-primary bg-primary text-primary-foreground" : "border-border text-muted-foreground"}`}
             >
               {s.name}
             </button>
