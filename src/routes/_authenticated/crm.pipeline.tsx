@@ -8,6 +8,7 @@ import {
   closeOpportunity,
   createOpportunity,
   deleteOpportunity,
+  getOpportunityCustomer,
   listPipeline,
   moveOpportunity,
   reopenOpportunity,
@@ -27,6 +28,52 @@ function whatsappHref(phone: string | null | undefined): string | null {
   if (digits.length < 10 || digits.length > 11) return null;
   return `https://wa.me/55${digits}`;
 }
+
+function OpportunityCustomer({ opportunityId }: { opportunityId: string }) {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["opp-customer", opportunityId],
+    queryFn: () => getOpportunityCustomer({ data: { opportunity_id: opportunityId } }),
+  });
+  return (
+    <div className="mt-6 border-t border-border pt-4">
+      <h3 className="font-display text-sm font-semibold text-foreground">Dados do cliente</h3>
+      {isLoading ? (
+        <div className="mt-2"><Spinner /></div>
+      ) : error ? (
+        <p className="mt-2 text-sm text-destructive">Não foi possível carregar os dados.</p>
+      ) : !data?.items.length ? (
+        <p className="mt-2 text-sm text-muted-foreground">Nenhuma resposta registrada.</p>
+      ) : (
+        <dl className="mt-2 space-y-3 text-sm">
+          {data.items.map((it, i) => (
+            <div key={i}>
+              <dt className="text-xs text-muted-foreground">{it.label}</dt>
+              <dd className="break-words text-foreground">
+                {it.lines.map((l, j) => (
+                  <div key={j} className="flex items-center gap-2">
+                    {l}
+                    {it.type === "phone" && whatsappHref(l) && (
+                      <a
+                        href={whatsappHref(l)!}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label="Abrir conversa no WhatsApp"
+                        className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20"
+                      >
+                        <MessageCircle className="h-4 w-4" />
+                      </a>
+                    )}
+                  </div>
+                ))}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      )}
+    </div>
+  );
+}
+
 
 export const Route = createFileRoute("/_authenticated/crm/pipeline")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -609,13 +656,16 @@ function PipelinePage() {
                 )}
               </dl>
 
-              {card.submission_id && (
+              {card.submission_id && <OpportunityCustomer opportunityId={card.id} />}
+
+              {card.submission_id &&
+                (perms?.isAdmin || (perms?.managerSchools.length ?? 0) > 0 || (perms?.operatorSchools.length ?? 0) > 0) && (
                 <Link
                   to="/cadastros/$submissionId"
                   params={{ submissionId: card.submission_id }}
-                  className="mt-6 inline-flex text-sm font-medium text-primary hover:underline"
+                  className="mt-3 inline-flex text-xs font-medium text-primary hover:underline"
                 >
-                  Abrir cadastro
+                  Ver ficha completa
                 </Link>
               )}
 
