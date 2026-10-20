@@ -44,15 +44,15 @@ export const listCalendarEvents = createServerFn({ method: "GET" })
 
     const { data: opps } = await admin
       .from("opportunities")
-      .select("id, name, phone, visit_at, school_id, funnel_id, submission_id, submissions!inner(public_id, form_id, list_type)")
+      .select("id, name, phone, visit_at, school_id, funnel_id, submission_id, submissions!inner(public_id, form_id, list_type, enrolled, enrolled_at)")
       .not("visit_at", "is", null)
-      .eq("submissions.list_type", "leads")
       .in("school_id", schoolIds)
       .gte("visit_at", data.from)
       .lt("visit_at", data.to);
     type Opp = {
       id: string; name: string; phone: string | null; visit_at: string; school_id: string;
-      funnel_id: string; submission_id: string; submissions: { public_id: string; form_id: string };
+      funnel_id: string; submission_id: string;
+      submissions: { public_id: string; form_id: string; list_type: string | null; enrolled: boolean | null; enrolled_at: string | null };
     };
     const fullSchools = new Set([...perms.managerSchools, ...perms.operatorSchools]);
     const rows = ((opps ?? []) as unknown as Opp[]).filter((o) => {
@@ -109,7 +109,10 @@ export const listCalendarEvents = createServerFn({ method: "GET" })
 
     const now = Date.now();
     const events: CalendarEvent[] = rows.map((o) => {
-      const checked = checkIns.get(o.submission_id) ?? null;
+      const isVisit = o.submissions.list_type === "leads";
+      const checked = isVisit
+        ? checkIns.get(o.submission_id) ?? null
+        : o.submissions.enrolled ? o.submissions.enrolled_at ?? o.visit_at : null;
       const name = names.get(o.submission_id) ?? o.name;
       const status: CalendarEvent["status"] = checked
         ? "done"
@@ -118,7 +121,7 @@ export const listCalendarEvents = createServerFn({ method: "GET" })
           : "scheduled";
       return {
         id: o.id,
-        kind: "visita",
+        kind: isVisit ? "visita" : "matricula",
         at: o.visit_at,
         title: name && name !== o.submissions.public_id ? `${o.submissions.public_id} · ${name}` : o.submissions.public_id,
         school_id: o.school_id,
@@ -157,12 +160,17 @@ export const markVisitNoShow = createServerFn({ method: "POST" })
     };
     const allowed = perms.isAdmin || perms.managerSchools.includes(o.school_id) || perms.operatorSchools.includes(o.school_id);
     if (!allowed) throw new Error("Sem permissão para marcar falta.");
-    if (o.submissions?.list_type !== "leads") throw new Error("Disponível apenas para LEADS.");
-    if (!o.visit_at) throw new Error("Este cartão não tem visita agendada.");
+    const isVisit = o.submissions?.list_type === "leads";
+    if (!o.submissions?.list_type) throw new Error("Cartão sem cadastro vinculado.");
+    if (!o.visit_at) throw new Error("Este cartão não tem agendamento.");
 
     const { data: stages } = await admin.from("funnel_stages").select("id, name").eq("funnel_id", o.funnel_id);
-    const stage = ((stages ?? []) as { id: string; name: string }[]).find((s) => norm(s.name).includes("reagend"));
-    if (!stage) throw new Error("Crie a etapa Reagendar visita neste funil.");
+    const list = (stages ?? []) as { id: string; name: string }[];
+    const word = isVisit ? "visita" : "matricula";
+    const stage =
+      list.find((s) => norm(s.name).includes("reagend") && norm(s.name).includes(word)) ??
+      list.find((s) => norm(s.name).includes("reagend"));
+    if (!stage) throw new Error(isVisit ? "Crie a etapa Reagendar visita neste funil." : "Crie a etapa Reagendar Matrícula neste funil.");
 
     const { data: last } = await admin
       .from("opportunities").select("position").eq("stage_id", stage.id)
@@ -183,8 +191,87 @@ export const markVisitNoShow = createServerFn({ method: "POST" })
       opportunity_id: o.id,
       author_id: context.userId,
       author_name: authorName,
-      body: `Faltou à visita agendada para ${when}. Aguardando reagendamento.`,
+      body: `Faltou à ${isVisit ? "visita agendada" : "matrícula agendada"} para ${when}. Aguardando reagendamento.`,
     });
     if (noteErr) throw new Error(noteErr.message);
+    return { ok: true };
+  });
+
+// Matrícula agendada realizada: ganho, etapa "Matriculado", tarefas concluídas e histórico.
+export const markEnrollmentDone = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((data) =>
+    z.object({ opportunity_id: z.string().uuid(), count: z.number().int().positive() }).parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    const { getPerms, extAdmin } = await import("./server");
+    const perms = await getPerms(context.supabase, context.userId);
+    const admin = extAdmin();
+    const { data: opp, error } = await admin
+      .from("opportunities")
+      .select("id, school_id, funnel_id, visit_at, submission_id, submissions(list_type, enrolled, enrollment_count)")
+      .eq("id", data.opportunity_id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!opp) throw new Error("Cartão não encontrado.");
+    const o = opp as unknown as {
+      id: string; school_id: string; funnel_id: string; visit_at: string | null; submission_id: string | null;
+      submissions: { list_type: string | null; enrolled: boolean | null; enrollment_count: number | null } | null;
+    };
+    const allowed = perms.isAdmin || perms.managerSchools.includes(o.school_id) || perms.operatorSchools.includes(o.school_id);
+    if (!allowed) throw new Error("Sem permissão para confirmar a matrícula.");
+    if (!o.submission_id || o.submissions?.list_type === "leads") throw new Error("Disponível apenas para Pós Visita.");
+    if (o.submissions?.enrolled) throw new Error("Esta matrícula já foi confirmada.");
+
+    const now = new Date().toISOString();
+    const { error: subErr } = await admin
+      .from("submissions")
+      .update({ enrolled: true, enrollment_count: data.count, enrolled_at: now, enrolled_by: context.userId, updated_at: now, updated_by: context.userId })
+      .eq("id", o.submission_id);
+    if (subErr) throw new Error(subErr.message);
+
+    await admin.from("crm_tasks").update({ done: true, done_at: now }).eq("opportunity_id", o.id).eq("done", false);
+
+    const [{ data: reason }, { data: stages }] = await Promise.all([
+      admin.from("crm_close_reasons").select("id").eq("kind", "won").eq("label", "Matrícula realizada").maybeSingle(),
+      admin.from("funnel_stages").select("id, name").eq("funnel_id", o.funnel_id),
+    ]);
+    const stage = ((stages ?? []) as { id: string; name: string }[]).find((s) => norm(s.name).includes("matriculado"));
+    const { error: upErr } = await admin
+      .from("opportunities")
+      .update({
+        status: "won",
+        close_reason_id: (reason?.id as string | undefined) ?? null,
+        close_note: "Matrícula confirmada no Calendário.",
+        closed_at: now,
+        updated_at: now,
+        ...(stage ? { stage_id: stage.id } : {}),
+      })
+      .eq("id", o.id);
+    if (upErr) throw new Error(upErr.message);
+
+    const { data: profile } = await admin.from("profiles").select("full_name").eq("id", context.userId).maybeSingle();
+    const authorName = ((profile?.full_name as string | null) ?? "") || context.userEmail || "Usuário";
+    const when = o.visit_at
+      ? new Intl.DateTimeFormat("pt-BR", {
+          timeZone: "America/Fortaleza", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit",
+        }).format(new Date(o.visit_at)).replace(",", " às")
+      : "";
+    await admin.from("crm_notes").insert({
+      opportunity_id: o.id,
+      author_id: context.userId,
+      author_name: authorName,
+      body: `Matriculado${when ? ` na matrícula agendada para ${when}` : ""}. Quantidade de matrículas: ${data.count}.`,
+    });
+    await admin.from("audit_log").insert({
+      submission_id: o.submission_id,
+      actor_id: context.userId,
+      actor_email: context.userEmail,
+      action: "update",
+      changes: [
+        { field_id: "enrolled", label: "Matrícula", before: "Não", after: "Sim" },
+        { field_id: "enrollment_count", label: "Quantidade de matrículas", before: String(o.submissions?.enrollment_count ?? 0), after: String(data.count) },
+      ],
+    });
     return { ok: true };
   });

@@ -9,7 +9,7 @@ import {
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { ChevronLeft, ChevronRight, Maximize, MessageCircle, Minimize } from "lucide-react";
-import { listCalendarEvents, markVisitNoShow, type CalendarEvent } from "@/lib/ext/calendario.functions";
+import { listCalendarEvents, markEnrollmentDone, markVisitNoShow, type CalendarEvent } from "@/lib/ext/calendario.functions";
 import { Button, Card, Spinner } from "@/components/ui";
 
 export const Route = createFileRoute("/_authenticated/calendario")({
@@ -85,10 +85,23 @@ function CalendarPage() {
   const noShowM = useMutation({
     mutationFn: (id: string) => markVisitNoShow({ data: { opportunity_id: id } }),
     onSuccess: () => {
-      toast.success("Falta registrada. O cartão foi para Reagendar visita.");
+      toast.success("Falta registrada. O cartão foi para a etapa de reagendamento.");
       setNoShow(false);
       setSelected(null);
       for (const k of ["calendar", "pipeline", "crm-notes", "notes"]) queryClient.invalidateQueries({ queryKey: [k] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const [enrolling, setEnrolling] = useState(false);
+  const [enrollCount, setEnrollCount] = useState("1");
+  const enrollM = useMutation({
+    mutationFn: (id: string) => markEnrollmentDone({ data: { opportunity_id: id, count: Number(enrollCount) } }),
+    onSuccess: () => {
+      toast.success("Matrícula confirmada. O cartão foi dado como ganho.");
+      setEnrolling(false);
+      setSelected(null);
+      for (const k of ["calendar", "pipeline", "submissions", "crm-tasks", "crm-notes", "notes"]) queryClient.invalidateQueries({ queryKey: [k] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -301,12 +314,31 @@ function CalendarPage() {
               <div className="mt-4 rounded-lg border border-border bg-muted/40 p-3 text-sm">
                 <p className="font-semibold text-foreground">Confirmar que o cliente faltou?</p>
                 <p className="mt-1 text-muted-foreground">
-                  A falta à visita de {format(new Date(selected.at), "dd/MM/yyyy 'às' HH:mm")} ficará no histórico do cartão, a data será apagada e o cartão irá para Reagendar visita.
+                  A falta à {selected.kind === "matricula" ? "matrícula" : "visita"} de {format(new Date(selected.at), "dd/MM/yyyy 'às' HH:mm")} ficará no histórico do cartão, a data será apagada e o cartão irá para {selected.kind === "matricula" ? "Reagendar Matrícula" : "Reagendar visita"}.
                 </p>
                 <div className="mt-3 flex justify-end gap-2">
                   <Button variant="ghost" onClick={() => setNoShow(false)}>Cancelar</Button>
                   <Button variant="danger" disabled={noShowM.isPending} onClick={() => noShowM.mutate(selected.id)}>
                     Sim, faltou
+                  </Button>
+                </div>
+              </div>
+            )}
+            {enrolling && (
+              <div className="mt-4 rounded-lg border border-border bg-muted/40 p-3 text-sm">
+                <p className="font-semibold text-foreground">Confirmar matrícula?</p>
+                <p className="mt-1 text-muted-foreground">
+                  O cartão será dado como ganho, irá para Matriculado e as tarefas pendentes serão concluídas.
+                </p>
+                <label className="mt-3 block text-xs font-medium text-muted-foreground">Quantidade de matrículas efetivadas</label>
+                <Input type="number" min={1} step={1} value={enrollCount} onChange={(e) => setEnrollCount(e.target.value)} className="mt-1 max-w-32" />
+                <div className="mt-3 flex justify-end gap-2">
+                  <Button variant="ghost" onClick={() => setEnrolling(false)}>Cancelar</Button>
+                  <Button
+                    disabled={enrollM.isPending || !Number.isInteger(Number(enrollCount)) || Number(enrollCount) < 1}
+                    onClick={() => enrollM.mutate(selected.id)}
+                  >
+                    Confirmar matrícula
                   </Button>
                 </div>
               </div>
@@ -317,13 +349,16 @@ function CalendarPage() {
                   Abrir no Pipeline
                 </Link>
               )}
-              {selected.can_check_in && !confirming && !noShow && (
+              {selected.can_check_in && selected.kind === "visita" && !confirming && !noShow && (
                 <Button onClick={() => setConfirming(true)}>Dar check-in</Button>
               )}
-              {selected.can_check_in && !confirming && !noShow && (
+              {selected.can_check_in && selected.kind === "matricula" && !enrolling && !noShow && (
+                <Button onClick={() => { setEnrollCount("1"); setEnrolling(true); }}>Matriculado</Button>
+              )}
+              {selected.can_check_in && !confirming && !enrolling && !noShow && (
                 <Button variant="danger" onClick={() => setNoShow(true)}>Faltou</Button>
               )}
-              <Button variant="outline" onClick={() => { setSelected(null); setConfirming(false); setNoShow(false); }}>Fechar</Button>
+              <Button variant="outline" onClick={() => { setSelected(null); setConfirming(false); setNoShow(false); setEnrolling(false); }}>Fechar</Button>
             </div>
           </div>
         </div>
