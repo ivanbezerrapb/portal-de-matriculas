@@ -317,18 +317,33 @@ export const moveOpportunity = createServerFn({ method: "POST" })
         id: z.string().uuid(),
         stage_id: z.string().uuid(),
         position: z.number().int().min(0),
+        owner_id: z.string().uuid().optional(),
       })
       .parse(data),
   )
   .handler(async ({ data, context }) => {
     const ctx = await stageContext(context.supabase, data.stage_id);
+    const { data: current, error: currentError } = await context.supabase
+      .from("opportunities")
+      .select("stage_id, owner_confirmed_at")
+      .eq("id", data.id)
+      .single();
+    if (currentError) throw new Error(currentError.message);
+    const now = new Date().toISOString();
+    const update: Record<string, unknown> = {
+      stage_id: data.stage_id,
+      funnel_id: ctx.funnel_id,
+      updated_at: now,
+    };
+    // Primeira troca de etapa: exige confirmar o responsável do cartão.
+    if (current.stage_id !== data.stage_id && !current.owner_confirmed_at) {
+      if (!data.owner_id) throw new Error("Confirme o responsável antes de mover o cartão.");
+      update.owner_id = await validateOwner(context.supabase, ctx.funnel_id, data.owner_id);
+      update.owner_confirmed_at = now;
+    }
     const { error } = await context.supabase
       .from("opportunities")
-      .update({
-        stage_id: data.stage_id,
-        funnel_id: ctx.funnel_id,
-        updated_at: new Date().toISOString(),
-      })
+      .update(update)
       .eq("id", data.id);
     if (error) throw new Error(error.message);
 
