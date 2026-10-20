@@ -437,3 +437,6 @@ do $$ declare t text; begin
     execute format('drop trigger if exists trg_log_activity on public.%I', t);
     execute format('create trigger trg_log_activity after insert or update or delete on public.%I for each row execute function public.log_activity()', t);
   end loop; end $$;
+
+-- Troca obrigatória de senha no próximo acesso
+alter table public.profiles add column if not exists must_change_password boolean not null default false;

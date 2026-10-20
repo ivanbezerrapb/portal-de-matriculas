@@ -8,6 +8,8 @@ import {
   listUsers,
   setUserFunnels,
   setUserRole,
+  setMustChangePassword,
+  resetUserPassword,
 } from "@/lib/ext/usuarios.functions";
 import { listSchools } from "@/lib/ext/escolas.functions";
 import { listFunnels } from "@/lib/ext/funis.functions";
@@ -63,6 +65,11 @@ function UsersPage() {
   const [editFunnelsFor, setEditFunnelsFor] = useState<string | null>(null);
   const [editFunnelIds, setEditFunnelIds] = useState<string[]>([]);
 
+  const [mustChange, setMustChange] = useState(true);
+  const [resetFor, setResetFor] = useState<string | null>(null);
+  const [resetPw, setResetPw] = useState("");
+  const [resetMust, setResetMust] = useState(true);
+
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["users"] });
 
   const createMut = useMutation({
@@ -75,6 +82,7 @@ function UsersPage() {
           role,
           ...(NEEDS_SCHOOL.includes(role) && schoolId ? { school_id: schoolId } : {}),
           ...(role === "info_center" ? { funnel_ids: funnelIds } : {}),
+          must_change_password: mustChange,
         },
       }),
     onSuccess: () => {
@@ -108,6 +116,27 @@ function UsersPage() {
     onSuccess: () => {
       toast.success("Funis atualizados.");
       setEditFunnelsFor(null);
+      invalidate();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const mustMut = useMutation({
+    mutationFn: (vars: { user_id: string; value: boolean }) => setMustChangePassword({ data: vars }),
+    onSuccess: () => {
+      toast.success("Atualizado.");
+      invalidate();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const resetMut = useMutation({
+    mutationFn: (vars: { user_id: string; password: string; must_change_password: boolean }) =>
+      resetUserPassword({ data: vars }),
+    onSuccess: () => {
+      toast.success("Senha redefinida.");
+      setResetFor(null);
+      setResetPw("");
       invalidate();
     },
     onError: (e) => toast.error(e.message),
@@ -189,6 +218,14 @@ function UsersPage() {
               minLength={6}
               required
             />
+            <label className="mt-2 flex items-center gap-2 text-sm text-foreground">
+              <input
+                type="checkbox"
+                checked={mustChange}
+                onChange={(e) => setMustChange(e.target.checked)}
+              />
+              Exigir troca de senha no próximo acesso
+            </label>
           </div>
           <div>
             <Label>Perfil</Label>
@@ -305,7 +342,28 @@ function UsersPage() {
                 <div className="min-w-0 flex-1">
                   <p className="font-medium text-foreground">{u.full_name || u.email}</p>
                   <p className="text-xs text-muted-foreground">{u.email}</p>
+                  {u.must_change_password && (
+                    <span className="mt-1 inline-block">
+                      <Badge color="amber">Troca de senha pendente</Badge>
+                    </span>
+                  )}
                 </div>
+                <Button
+                  variant="ghost"
+                  onClick={() => mustMut.mutate({ user_id: u.id, value: !u.must_change_password })}
+                >
+                  {u.must_change_password ? "Cancelar exigência" : "Exigir troca de senha"}
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    setResetFor(resetFor === u.id ? null : u.id);
+                    setResetPw("");
+                    setResetMust(true);
+                  }}
+                >
+                  Redefinir senha
+                </Button>
                 <Button
                   variant="secondary"
                   onClick={() => setAddRoleFor(addRoleFor === u.id ? null : u.id)}
@@ -404,6 +462,45 @@ function UsersPage() {
                       </Button>
                     </div>
                   )}
+                </div>
+              )}
+
+              {resetFor === u.id && (
+                <div className="mt-3 flex flex-wrap items-end gap-3 rounded-md bg-muted p-3">
+                  <div>
+                    <Label>Nova senha provisória</Label>
+                    <Input
+                      type="text"
+                      value={resetPw}
+                      onChange={(e) => setResetPw(e.target.value)}
+                      minLength={6}
+                    />
+                  </div>
+                  <label className="flex items-center gap-2 pb-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={resetMust}
+                      onChange={(e) => setResetMust(e.target.checked)}
+                    />
+                    Exigir troca no próximo acesso
+                  </label>
+                  <Button
+                    variant="secondary"
+                    disabled={resetMut.isPending}
+                    onClick={() => {
+                      if (resetPw.length < 6) {
+                        toast.error("A senha deve ter pelo menos 6 caracteres.");
+                        return;
+                      }
+                      resetMut.mutate({
+                        user_id: u.id,
+                        password: resetPw,
+                        must_change_password: resetMust,
+                      });
+                    }}
+                  >
+                    Salvar senha
+                  </Button>
                 </div>
               )}
 

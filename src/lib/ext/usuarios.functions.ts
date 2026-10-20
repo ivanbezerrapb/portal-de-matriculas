@@ -25,7 +25,7 @@ export const listUsers = createServerFn({ method: "GET" })
 
     const [{ data: roles }, { data: profiles }, { data: userFunnels }] = await Promise.all([
       admin.from("user_roles").select("user_id, role, school_id"),
-      admin.from("profiles").select("id, full_name"),
+      admin.from("profiles").select("id, full_name, must_change_password"),
       admin.from("user_funnels").select("user_id, funnel_id"),
     ]);
     const funnelMap = new Map<string, string[]>();
@@ -41,6 +41,9 @@ export const listUsers = createServerFn({ method: "GET" })
       roleMap.set(r.user_id, list);
     }
     const nameMap = new Map((profiles ?? []).map((p) => [p.id, p.full_name]));
+    const mustMap = new Map(
+      ((profiles ?? []) as { id: string; must_change_password?: boolean }[]).map((p) => [p.id, !!p.must_change_password]),
+    );
 
     return authData.users.map((u) => ({
       id: u.id,
@@ -49,6 +52,7 @@ export const listUsers = createServerFn({ method: "GET" })
       created_at: u.created_at,
       roles: roleMap.get(u.id) ?? [],
       funnel_ids: funnelMap.get(u.id) ?? [],
+      must_change_password: mustMap.get(u.id) ?? false,
     }));
   });
 
@@ -63,6 +67,7 @@ export const createUser = createServerFn({ method: "POST" })
         role: z.enum(["admin", "school_manager", "print_operator", "info_center", "direcao"]),
         school_id: z.string().uuid().optional().nullable(),
         funnel_ids: z.array(z.string().uuid()).optional(),
+        must_change_password: z.boolean().optional(),
       })
       .parse(data),
   )
@@ -89,6 +94,12 @@ export const createUser = createServerFn({ method: "POST" })
       school_id: needsSchool ? data.school_id : null,
     });
     if (roleError) throw new Error(roleError.message);
+
+    if (data.must_change_password) {
+      await admin
+        .from("profiles")
+        .upsert({ id: created.user.id, full_name: data.full_name, must_change_password: true });
+    }
 
     // Central de Informações trabalha apenas nos funis atribuídos.
     if (data.role === "info_center" && data.funnel_ids?.length) {
@@ -184,5 +195,86 @@ export const deleteUser = createServerFn({ method: "POST" })
     const admin = extAdmin();
     const { error } = await admin.auth.admin.deleteUser(data.user_id);
     if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+// ---------- Troca obrigatória de senha ----------
+
+export const setMustChangePassword = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((data) =>
+    z.object({ user_id: z.string().uuid(), value: z.boolean() }).parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    await requireAdmin(context.supabase, context.userId);
+    const { extAdmin } = await import("./server");
+    const { error } = await extAdmin()
+      .from("profiles")
+      .update({ must_change_password: data.value })
+      .eq("id", data.user_id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const resetUserPassword = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((data) =>
+    z
+      .object({
+        user_id: z.string().uuid(),
+        password: z.string().min(6),
+        must_change_password: z.boolean(),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    await requireAdmin(context.supabase, context.userId);
+    const { extAdmin } = await import("./server");
+    const admin = extAdmin();
+    const { error } = await admin.auth.admin.updateUserById(data.user_id, {
+      password: data.password,
+    });
+    if (error) throw new Error(error.message);
+    const { error: pErr } = await admin
+      .from("profiles")
+      .update({ must_change_password: data.must_change_password })
+      .eq("id", data.user_id);
+    if (pErr) throw new Error(pErr.message);
+    return { ok: true };
+  });
+
+export const getMyPasswordStatus = createServerFn({ method: "GET" })
+  .middleware([requireAuth])
+  .handler(async ({ context }) => {
+    const { extAdmin } = await import("./server");
+    const { data } = await extAdmin()
+      .from("profiles")
+      .select("must_change_password")
+      .eq("id", context.userId)
+      .maybeSingle();
+    return { must_change_password: !!(data as { must_change_password?: boolean } | null)?.must_change_password };
+  });
+
+export const completePasswordChange = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((data) => z.object({ password: z.string().min(6).max(72) }).parse(data))
+  .handler(async ({ data, context }) => {
+    const { extAdmin, extAnon } = await import("./server");
+    // A nova senha não pode ser igual à atual.
+    const { error: same } = await extAnon().auth.signInWithPassword({
+      email: context.userEmail,
+      password: data.password,
+    });
+    if (!same) throw new Error("A nova senha deve ser diferente da atual.");
+    const admin = extAdmin();
+    const { error } = await admin.auth.admin.updateUserById(context.userId, {
+      password: data.password,
+    });
+    if (error) throw new Error(error.message);
+    const { error: pErr } = await admin
+      .from("profiles")
+      .update({ must_change_password: false })
+      .eq("id", context.userId);
+    if (pErr) throw new Error(pErr.message);
     return { ok: true };
   });
