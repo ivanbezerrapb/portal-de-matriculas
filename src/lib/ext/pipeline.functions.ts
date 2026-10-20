@@ -476,3 +476,78 @@ export const reopenOpportunity = createServerFn({ method: "POST" })
     }
     return { ok: true };
   });
+
+// Dados do cliente (respostas do formulário) para quem tem acesso ao cartão.
+export const getOpportunityCustomer = createServerFn({ method: "GET" })
+  .middleware([requireAuth])
+  .inputValidator((data) => z.object({ opportunity_id: z.string().uuid() }).parse(data))
+  .handler(async ({ data, context }) => {
+    // RLS: só retorna se o usuário enxerga o cartão.
+    const { data: opp, error } = await context.supabase
+      .from("opportunities")
+      .select("id, submission_id")
+      .eq("id", data.opportunity_id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!opp) throw new Error("Sem acesso a este cartão.");
+    if (!opp.submission_id) return { items: [] as { label: string; type: string; lines: string[] }[] };
+
+    const { extAdmin } = await import("./server");
+    const admin = extAdmin();
+    const { data: sub } = await admin
+      .from("submissions")
+      .select("id, form_id")
+      .eq("id", opp.submission_id)
+      .maybeSingle();
+    if (!sub) return { items: [] };
+    const [{ data: fields }, { data: values }] = await Promise.all([
+      admin.from("form_fields").select("id, label, type, position").eq("form_id", sub.form_id).order("position"),
+      admin.from("submission_values").select("field_id, part, value").eq("submission_id", sub.id),
+    ]);
+    const byField = new Map<string, { part: string; value: string }[]>();
+    for (const v of (values ?? []) as { field_id: string; part: string | null; value: string | null }[]) {
+      if (!v.value) continue;
+      const list = byField.get(v.field_id) ?? [];
+      list.push({ part: v.part ?? "", value: v.value });
+      byField.set(v.field_id, list);
+    }
+    const { parseChildren } = await import("./model");
+    const order = ["cep", "rua", "numero", "complemento", "bairro", "cidade", "estado"];
+    const items: { label: string; type: string; lines: string[] }[] = [];
+    for (const f of (fields ?? []) as { id: string; label: string; type: string }[]) {
+      const vals = byField.get(f.id);
+      if (!vals?.length) continue;
+      let lines: string[] = [];
+      const main = vals.find((v) => v.part === "")?.value ?? "";
+      if (f.type === "children") {
+        lines = parseChildren(main).map((c, i) =>
+          [`${i + 1}. ${c.nome}`, c.nascimento && `nasc. ${c.nascimento}`, c.serie, c.turno]
+            .filter(Boolean)
+            .join(" · "),
+        );
+      } else if (f.type === "address") {
+        const parts = vals.filter((v) => v.part);
+        if (parts.length) {
+          parts.sort((a, b) => order.indexOf(a.part) - order.indexOf(b.part));
+          lines = [parts.map((p) => p.value).join(", ")];
+        } else {
+          try {
+            const o = JSON.parse(main) as Record<string, unknown>;
+            lines = [order.map((k) => o[k]).filter(Boolean).join(", ")];
+          } catch {
+            lines = [main];
+          }
+        }
+      } else {
+        try {
+          const parsed = JSON.parse(main) as unknown;
+          lines = Array.isArray(parsed) ? [parsed.map(String).join(", ")] : [main];
+        } catch {
+          lines = [main];
+        }
+      }
+      lines = lines.filter((l) => l.trim());
+      if (lines.length) items.push({ label: f.label, type: f.type, lines });
+    }
+    return { items };
+  });
