@@ -14,6 +14,7 @@ import {
   Filter,
   FolderOpen,
   Kanban,
+  CalendarDays,
   ListTodo,
   Settings,
   LayoutDashboard,
@@ -204,6 +205,7 @@ function AuthenticatedLayout() {
           } as NavGroup,
         ]
       : []),
+    { to: "/calendario", label: "Calendário", icon: CalendarDays },
     ...((fileAccess?.viewBrands.length ?? 0) > 0
       ? [
           {
