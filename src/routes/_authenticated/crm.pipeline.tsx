@@ -16,6 +16,8 @@ import {
 } from "@/lib/ext/pipeline.functions";
 import { listCloseReasons } from "@/lib/ext/motivos.functions";
 import { createTask, deleteTask, listTasks, setTaskDone } from "@/lib/ext/tarefas.functions";
+import { listTaskTypes } from "@/lib/ext/atividades.functions";
+import { CompleteTaskDialog } from "@/components/CompleteTaskDialog";
 import { createNote, deleteNote, listNotes } from "@/lib/ext/notas.functions";
 import { getMyPermissions } from "@/lib/ext/cadastros.functions";
 import { setOpportunityVisit } from "@/lib/ext/pipeline.functions";
@@ -815,6 +817,11 @@ function OpportunityTasks({
   const queryClient = useQueryClient();
   const [title, setTitle] = useState("");
   const [due, setDue] = useState("");
+  const [completing, setCompleting] = useState<{ id: string; title: string } | null>(null);
+  const { data: taskTypes } = useQuery({
+    queryKey: ["task-types", "active"],
+    queryFn: () => listTaskTypes({ data: { activeOnly: true } }),
+  });
 
   const { data: tasks } = useQuery({
     queryKey: ["crm-tasks", "opp", opportunityId],
@@ -838,8 +845,12 @@ function OpportunityTasks({
     onError: (e: Error) => toast.error(e.message),
   });
   const doneM = useMutation({
-    mutationFn: (d: { id: string; done: boolean }) => setTaskDone({ data: d }),
-    onSuccess: refresh,
+    mutationFn: (d: { id: string; done: boolean; note?: string }) => setTaskDone({ data: d }),
+    onSuccess: () => {
+      setCompleting(null);
+      refresh();
+      void queryClient.invalidateQueries({ queryKey: ["crm-notes", opportunityId] });
+    },
     onError: (e: Error) => toast.error(e.message),
   });
   const deleteM = useMutation({
@@ -850,6 +861,14 @@ function OpportunityTasks({
 
   return (
     <section className="mt-6 border-t border-border pt-4">
+      {completing && (
+        <CompleteTaskDialog
+          taskTitle={completing.title}
+          saving={doneM.isPending}
+          onCancel={() => setCompleting(null)}
+          onConfirm={(note) => doneM.mutate({ id: completing.id, done: true, note })}
+        />
+      )}
       <h3 className="text-sm font-semibold text-foreground">Tarefas</h3>
       <ul className="mt-2 space-y-2">
         {(tasks ?? []).map((t) => (
@@ -859,7 +878,11 @@ function OpportunityTasks({
               className="accent-[var(--color-primary)]"
               checked={t.done}
               disabled={!canWrite}
-              onChange={(e) => doneM.mutate({ id: t.id, done: e.target.checked })}
+              onChange={(e) =>
+                e.target.checked
+                  ? setCompleting({ id: t.id, title: t.title })
+                  : doneM.mutate({ id: t.id, done: false })
+              }
               aria-label={t.done ? "Reabrir tarefa" : "Concluir tarefa"}
             />
             <span
@@ -899,11 +922,14 @@ function OpportunityTasks({
             createM.mutate();
           }}
         >
-          <Input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Nova tarefa…"
-          />
+          <Select value={title} onChange={(e) => setTitle(e.target.value)}>
+            <option value="">Selecione a atividade…</option>
+            {(taskTypes ?? []).map((t) => (
+              <option key={t.id} value={t.label}>
+                {t.label}
+              </option>
+            ))}
+          </Select>
           <div className="flex gap-2">
             <Input type="date" value={due} onChange={(e) => setDue(e.target.value)} />
             <Button type="submit" disabled={createM.isPending || !title.trim()}>
