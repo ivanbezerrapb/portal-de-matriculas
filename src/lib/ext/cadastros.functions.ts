@@ -43,9 +43,17 @@ export const listSubmissions = createServerFn({ method: "GET" })
     const formIds = [...new Set(rows.map((r) => r.form_id))];
     const { data: ff } = await context.supabase
       .from("form_fields")
-      .select("id, form_id, label, type, position")
+      .select("id, form_id, label, type, position, options")
       .in("form_id", formIds)
       .order("position");
+    const { getPerms } = await import("./server");
+    const perms = await getPerms(context.supabase, context.userId);
+    const { splitChildOptions } = await import("./model");
+    const childSeriesByForm = new Map<string, string[]>();
+    for (const f of (ff ?? []) as { form_id: string; type: string; options: string[] | null }[]) {
+      if (f.type === "children" && !childSeriesByForm.has(f.form_id))
+        childSeriesByForm.set(f.form_id, splitChildOptions(f.options).series);
+    }
 
     const norm = (s: string) =>
       s
@@ -202,6 +210,9 @@ export const listSubmissions = createServerFn({ method: "GET" })
         restricted: restrictedIds.has(r.id),
         series,
         check_in: checkInBySubmission.get(r.id) ?? null,
+        child_series_options: childSeriesByForm.get(r.form_id) ?? null,
+        can_edit_children:
+          childSeriesByForm.has(r.form_id) && (perms.isAdmin || perms.managerSchools.includes(r.school_id)),
       };
     });
   });
@@ -1196,4 +1207,84 @@ export const getMyPermissions = createServerFn({ method: "GET" })
       email: context.userEmail,
       fullName: profile?.full_name ?? "",
     };
+  });
+
+// ---------- Editar crianças e séries (Administrador e Gerente da unidade) ----------
+
+export const updateSubmissionChildren = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((data) =>
+    z
+      .object({
+        submission_id: z.string().uuid(),
+        series: z.array(z.string().trim().min(1, "Informe a série de cada criança.").max(100)).min(1).max(10),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    const { getPerms, extAdmin } = await import("./server");
+    const perms = await getPerms(context.supabase, context.userId);
+    const admin = extAdmin();
+    const { data: sub, error } = await admin
+      .from("submissions")
+      .select("id, school_id, form_id, children_count")
+      .eq("id", data.submission_id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!sub) throw new Error("Cadastro não encontrado.");
+    if (!(perms.isAdmin || perms.managerSchools.includes(sub.school_id as string)))
+      throw new Error("Sem permissão para editar este cadastro.");
+    const { data: field } = await admin
+      .from("form_fields")
+      .select("id")
+      .eq("form_id", sub.form_id)
+      .eq("type", "children")
+      .order("position")
+      .limit(1)
+      .maybeSingle();
+    if (!field) throw new Error("Este formulário não tem campo de crianças.");
+    const { data: cur } = await admin
+      .from("submission_values")
+      .select("value")
+      .eq("submission_id", sub.id)
+      .eq("field_id", field.id)
+      .eq("part", "")
+      .maybeSingle();
+    let list: Record<string, string>[] = [];
+    try {
+      const parsed = JSON.parse((cur?.value as string | null) ?? "[]");
+      if (Array.isArray(parsed)) list = parsed;
+    } catch {
+      /* ignora */
+    }
+    const before = list.map((c) => c?.serie ?? "").filter(Boolean).join(", ") || "—";
+    const next = data.series.map((serie, i) => ({
+      nome: list[i]?.nome ?? "",
+      nascimento: list[i]?.nascimento ?? "",
+      turno: list[i]?.turno ?? "",
+      ...(list[i] ?? {}),
+      serie,
+    }));
+    const value = JSON.stringify(next);
+    const { error: vErr } = cur
+      ? await admin.from("submission_values").update({ value }).eq("submission_id", sub.id).eq("field_id", field.id).eq("part", "")
+      : await admin.from("submission_values").insert({ submission_id: sub.id, field_id: field.id, part: "", value });
+    if (vErr) throw new Error(vErr.message);
+    const now = new Date().toISOString();
+    const { error: sErr } = await admin
+      .from("submissions")
+      .update({ children_count: next.length, updated_at: now, updated_by: context.userId })
+      .eq("id", sub.id);
+    if (sErr) throw new Error(sErr.message);
+    await admin.from("audit_log").insert({
+      submission_id: sub.id,
+      actor_id: context.userId,
+      actor_email: context.userEmail,
+      action: "update",
+      changes: [
+        { field_id: "children_count", label: "Crianças", before: String(sub.children_count ?? "—"), after: String(next.length) },
+        { field_id: field.id, label: "Séries", before, after: data.series.join(", ") },
+      ],
+    });
+    return { ok: true };
   });

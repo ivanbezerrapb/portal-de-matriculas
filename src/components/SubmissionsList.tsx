@@ -17,7 +17,7 @@ import { funnelListType } from "@/lib/ext/model";
 import { listSchools } from "@/lib/ext/escolas.functions";
 import { listForms } from "@/lib/ext/formularios.functions";
 import { listPrintTemplates } from "@/lib/ext/impressao.functions";
-import { getMyPermissions } from "@/lib/ext/cadastros.functions";
+import { getMyPermissions, updateSubmissionChildren } from "@/lib/ext/cadastros.functions";
 import { Button, Card, EmptyState, Input, Label, Select, Spinner } from "@/components/ui";
 
 export type SubmissionsListType = "visitantes" | "leads";
@@ -83,6 +83,18 @@ export function SubmissionsList({
 }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [childEdit, setChildEdit] = useState<{ id: string; label: string; options: string[]; series: string[] } | null>(null);
+  const childM = useMutation({
+    mutationFn: (v: { id: string; series: string[] }) =>
+      updateSubmissionChildren({ data: { submission_id: v.id, series: v.series } }),
+    onSuccess: () => {
+      toast.success("Crianças e séries atualizadas.");
+      setChildEdit(null);
+      void queryClient.invalidateQueries({ queryKey: ["submissions"] });
+      void queryClient.invalidateQueries({ queryKey: ["pipeline"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<SortState>(null);
   const cycleSort = (k: SortKey) =>
@@ -485,6 +497,18 @@ export function SubmissionsList({
                 );
                 const checkIn = (s as unknown as { check_in?: { checked_in_at: string } | null })
                   .check_in;
+                const extra = s as unknown as { can_edit_children?: boolean; child_series_options?: string[] | null; series?: string[] };
+                const openChildEdit = extra.can_edit_children
+                  ? () => {
+                      const cur = (extra.series ?? []).filter(Boolean);
+                      setChildEdit({
+                        id: s.id,
+                        label: s.public_id,
+                        options: extra.child_series_options ?? [],
+                        series: cur.length ? cur : Array.from({ length: Math.max(1, childrenCount ?? 1) }, () => ""),
+                      });
+                    }
+                  : null;
                 return (
                   <tr
                     key={s.id}
@@ -524,7 +548,13 @@ export function SubmissionsList({
                     </td>
                     <td className="px-4 py-2.5 text-muted-foreground">{school?.name ?? "—"}</td>
                     {listType === "visitantes" && (
-                      <td className="px-4 py-2.5 text-muted-foreground">{childrenCount ?? "—"}</td>
+                      <td className="px-4 py-2.5 text-muted-foreground">
+                        {openChildEdit ? (
+                          <button type="button" onClick={openChildEdit} className="rounded px-1 text-primary underline-offset-2 hover:underline" title="Editar crianças e séries">
+                            {childrenCount ?? "—"}
+                          </button>
+                        ) : (childrenCount ?? "—")}
+                      </td>
                     )}
                     <td className="px-4 py-2.5 text-muted-foreground">
                       {new Date(s.created_at).toLocaleString("pt-BR", {
@@ -536,12 +566,19 @@ export function SubmissionsList({
                       {(() => {
                         const series = (s as unknown as { series?: string[] }).series ?? [];
                         const filled = series.filter((x) => x);
-                        if (filled.length === 0) return "—";
-                        return filled.map((serie, i) => (
-                          <div key={i} className="whitespace-nowrap">
-                            {serie}
-                          </div>
-                        ));
+                        const content =
+                          filled.length === 0
+                            ? "—"
+                            : filled.map((serie, i) => (
+                                <div key={i} className="whitespace-nowrap">
+                                  {serie}
+                                </div>
+                              ));
+                        return openChildEdit ? (
+                          <button type="button" onClick={openChildEdit} className="rounded px-1 text-left text-primary underline-offset-2 hover:underline" title="Editar crianças e séries">
+                            {content}
+                          </button>
+                        ) : content;
                       })()}
                     </td>
                     <td className="px-4 py-2.5">
