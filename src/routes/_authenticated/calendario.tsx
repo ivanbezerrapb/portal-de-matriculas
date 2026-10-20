@@ -1,5 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { setLeadCheckIn } from "@/lib/ext/cadastros.functions";
 import { useMemo, useState } from "react";
 import {
   addDays, addMonths, addWeeks, endOfMonth, endOfWeek, format, isSameDay, isSameMonth,
@@ -14,9 +16,9 @@ export const Route = createFileRoute("/_authenticated/calendario")({
   head: () => ({
     meta: [
       { title: "Calendário · Portal de Matrículas" },
-      { name: "description", content: "Agenda de visitas e matrículas por unidade." },
+      { name: "description", content: "Agenda de visitas dos LEADS por unidade, com check-in." },
       { property: "og:title", content: "Calendário · Portal de Matrículas" },
-      { property: "og:description", content: "Agenda de visitas e matrículas por unidade." },
+      { property: "og:description", content: "Agenda de visitas dos LEADS por unidade, com check-in." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -25,11 +27,13 @@ export const Route = createFileRoute("/_authenticated/calendario")({
 });
 
 type View = "month" | "week" | "day";
-const TYPE_LABEL = { visita: "Visita", matricula: "Matrícula" } as const;
-const TYPE_CLASS = {
-  visita: "bg-orange-100 text-orange-900 border-orange-300 dark:bg-orange-950 dark:text-orange-100",
-  matricula: "bg-emerald-100 text-emerald-900 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-100",
-} as const;
+type Status = CalendarEvent["status"];
+const STATUS_LABEL: Record<Status, string> = { scheduled: "Agendada", done: "Realizada", missed: "Não realizada" };
+const STATUS_CLASS: Record<Status, string> = {
+  scheduled: "bg-orange-100 text-orange-900 border-orange-300 dark:bg-orange-950 dark:text-orange-100",
+  done: "bg-emerald-100 text-emerald-900 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-100",
+  missed: "bg-red-100 text-red-900 border-red-300 dark:bg-red-950 dark:text-red-100",
+};
 
 function whatsapp(phone: string | null) {
   const d = (phone ?? "").replace(/\D/g, "").replace(/^55(?=\d{10,11}$)/, "");
@@ -40,7 +44,19 @@ function CalendarPage() {
   const [view, setView] = useState<View>("month");
   const [cursor, setCursor] = useState(() => new Date());
   const [schoolFilter, setSchoolFilter] = useState<string[]>([]);
-  const [types, setTypes] = useState<CalendarEvent["type"][]>(["visita", "matricula"]);
+  const [statuses, setStatuses] = useState<Status[]>(["scheduled", "done", "missed"]);
+  const [confirming, setConfirming] = useState(false);
+  const queryClient = useQueryClient();
+  const checkInM = useMutation({
+    mutationFn: (id: string) => setLeadCheckIn({ data: { id } }),
+    onSuccess: () => {
+      toast.success("Check-in confirmado. O cartão foi dado como ganho.");
+      setConfirming(false);
+      setSelected(null);
+      for (const k of ["calendar", "pipeline", "submissions", "crm-tasks"]) queryClient.invalidateQueries({ queryKey: [k] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
   const [selected, setSelected] = useState<CalendarEvent | null>(null);
 
   const range = useMemo(() => {
@@ -57,7 +73,7 @@ function CalendarPage() {
   });
 
   const events = (q.data?.events ?? []).filter(
-    (e) => types.includes(e.type) && (schoolFilter.length === 0 || schoolFilter.includes(e.school_id)),
+    (e) => statuses.includes(e.status) && (schoolFilter.length === 0 || schoolFilter.includes(e.school_id)),
   );
   const eventsOn = (day: Date) => events.filter((e) => isSameDay(new Date(e.at), day));
 
@@ -76,11 +92,11 @@ function CalendarPage() {
     <button
       key={e.id}
       onClick={() => setSelected(e)}
-      className={`w-full rounded border px-1.5 py-0.5 text-left text-[11px] leading-tight ${TYPE_CLASS[e.type]}`}
+      className={`w-full rounded border px-1.5 py-0.5 text-left text-[11px] leading-tight ${STATUS_CLASS[e.status]}`}
     >
-      <span className="font-semibold">{e.type === "visita" ? format(new Date(e.at), "HH:mm") : "✓"}</span>{" "}
+      <span className="font-semibold">{format(new Date(e.at), "HH:mm")}</span>{" "}
       <span className={full ? "break-words" : "line-clamp-2 break-words"}>{e.title}</span>
-      {full && <span className="block opacity-80">{TYPE_LABEL[e.type]} · {e.school_name}</span>}
+      {full && <span className="block opacity-80">{STATUS_LABEL[e.status]} · {e.school_name}</span>}
     </button>
   );
 
@@ -127,14 +143,14 @@ function CalendarPage() {
           ))}
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <span className="font-medium text-foreground">Tipo:</span>
-          {(["visita", "matricula"] as const).map((t) => (
+          <span className="font-medium text-foreground">Situação:</span>
+          {(["scheduled", "done", "missed"] as const).map((t) => (
             <button
               key={t}
-              onClick={() => setTypes((l) => toggle(l, t))}
-              className={`rounded-full border px-3 py-1 ${types.includes(t) ? TYPE_CLASS[t] : "border-border text-muted-foreground"}`}
+              onClick={() => setStatuses((l) => toggle(l, t))}
+              className={`rounded-full border px-3 py-1 ${statuses.includes(t) ? STATUS_CLASS[t] : "border-border text-muted-foreground"}`}
             >
-              {TYPE_LABEL[t]}
+              {STATUS_LABEL[t]}
             </button>
           ))}
         </div>
@@ -181,14 +197,18 @@ function CalendarPage() {
       </Card>
 
       {selected && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 p-4" onClick={() => setSelected(null)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 p-4" onClick={() => { setSelected(null); setConfirming(false); }}>
           <div className="w-full max-w-md rounded-xl bg-card p-5 shadow-lg" onClick={(e) => e.stopPropagation()}>
-            <span className={`inline-block rounded-full border px-2 py-0.5 text-xs ${TYPE_CLASS[selected.type]}`}>{TYPE_LABEL[selected.type]}</span>
+            <span className={`inline-block rounded-full border px-2 py-0.5 text-xs ${STATUS_CLASS[selected.status]}`}>Visita · {STATUS_LABEL[selected.status]}</span>
             <h3 className="mt-2 break-words font-display text-lg font-semibold text-foreground">{selected.title}</h3>
             <dl className="mt-3 space-y-1 text-sm">
-              <div><dt className="inline text-muted-foreground">Quando: </dt><dd className="inline">{format(new Date(selected.at), selected.type === "visita" ? "dd/MM/yyyy 'às' HH:mm" : "dd/MM/yyyy")}</dd></div>
+              <div><dt className="inline text-muted-foreground">Quando: </dt><dd className="inline">{format(new Date(selected.at), "dd/MM/yyyy 'às' HH:mm")}</dd></div>
               <div><dt className="inline text-muted-foreground">Unidade: </dt><dd className="inline">{selected.school_name}</dd></div>
-              {selected.detail && <div className="text-muted-foreground">{selected.detail}</div>}
+              {selected.checked_in_at && (
+                <div className="font-medium text-emerald-700">
+                  Realizada em {format(new Date(selected.checked_in_at), "dd/MM 'às' HH:mm")}
+                </div>
+              )}
               {selected.phone && (
                 <div className="flex items-center gap-2">
                   <dt className="text-muted-foreground">Telefone:</dt><dd>{selected.phone}</dd>
@@ -200,13 +220,30 @@ function CalendarPage() {
                 </div>
               )}
             </dl>
-            <div className="mt-4 flex justify-end gap-2">
+            {confirming && (
+              <div className="mt-4 rounded-lg border border-border bg-muted/40 p-3 text-sm">
+                <p className="font-semibold text-foreground">Confirmar check-in?</p>
+                <p className="mt-1 text-muted-foreground">
+                  A visita será registrada como realizada hoje, o cartão será dado como ganho e as tarefas pendentes serão concluídas. Esta ação é definitiva.
+                </p>
+                <div className="mt-3 flex justify-end gap-2">
+                  <Button variant="ghost" onClick={() => setConfirming(false)}>Cancelar</Button>
+                  <Button disabled={checkInM.isPending} onClick={() => checkInM.mutate(selected.submission_id)}>
+                    Confirmar check-in
+                  </Button>
+                </div>
+              </div>
+            )}
+            <div className="mt-4 flex flex-wrap justify-end gap-2">
               {selected.funnel_id && (
                 <Link to="/crm/pipeline" search={{ funil: selected.funnel_id } as never} className="text-sm font-medium text-primary hover:underline self-center">
                   Abrir no Pipeline
                 </Link>
               )}
-              <Button variant="outline" onClick={() => setSelected(null)}>Fechar</Button>
+              {selected.can_check_in && !confirming && (
+                <Button onClick={() => setConfirming(true)}>Dar check-in</Button>
+              )}
+              <Button variant="outline" onClick={() => { setSelected(null); setConfirming(false); }}>Fechar</Button>
             </div>
           </div>
         </div>
