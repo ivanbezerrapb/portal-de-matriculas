@@ -200,16 +200,17 @@ function PipelinePage() {
   type MoveData = { id: string; stage_id: string; position: number; owner_id?: string };
   const [visitMove, setVisitMove] = useState<MoveData | null>(null);
   const [visitValue, setVisitValue] = useState("");
+  const [visitKind, setVisitKind] = useState<"visita" | "matricula">("visita");
   function needsVisit(cardId: string, stageId: string) {
     const card = opportunities.find((o) => o.id === cardId);
     const stage = stages.find((s) => s.id === stageId);
     if (!card || !stage || card.stage_id === stageId) return false;
-    if (card.submissions?.list_type !== "leads") return false;
     const name = stage.name
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "")
       .toLowerCase();
-    return name.includes("visita agendada");
+    if (card.submissions?.list_type === "leads") return name.includes("visita agendada");
+    return name.includes("matricula agendada");
   }
   function openVisitMove(move: MoveData) {
     const card = opportunities.find((o) => o.id === move.id);
@@ -220,18 +221,19 @@ function PipelinePage() {
       initial = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
     }
     setVisitValue(initial);
+    setVisitKind(card?.submissions?.list_type === "leads" ? "visita" : "matricula");
     setVisitMove(move);
   }
   const visitMoveM = useMutation({
     mutationFn: async () => {
-      if (!visitMove || !visitValue) throw new Error("Informe a data da visita.");
+      if (!visitMove || !visitValue) throw new Error("Informe a data.");
       await setOpportunityVisit({
         data: { id: visitMove.id, visit_at: new Date(visitValue).toISOString() },
       });
       await moveOpportunity({ data: visitMove });
     },
     onSuccess: () => {
-      toast.success("Visita agendada.");
+      toast.success(visitKind === "visita" ? "Visita agendada." : "Matrícula agendada.");
       setVisitMove(null);
       refresh();
       void queryClient.invalidateQueries({ queryKey: ["pipeline"] });
@@ -742,8 +744,13 @@ function PipelinePage() {
                 </Link>
               )}
 
-              {card.submissions?.list_type === "leads" && (
-                <OpportunityVisit opportunityId={card.id} visitAt={card.visit_at ?? null} canWrite={canWrite} />
+              {card.submission_id && (
+                <OpportunityVisit
+                  opportunityId={card.id}
+                  visitAt={card.visit_at ?? null}
+                  canWrite={canWrite}
+                  kind={card.submissions?.list_type === "leads" ? "visita" : "matricula"}
+                />
               )}
 
               <OpportunityTasks opportunityId={card.id} canWrite={canWrite} />
@@ -840,9 +847,9 @@ function PipelinePage() {
       {visitMove && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 p-4">
           <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-lg">
-            <h2 className="text-lg font-semibold text-foreground">Agendar visita</h2>
+            <h2 className="text-lg font-semibold text-foreground">{visitKind === "visita" ? "Agendar visita" : "Agendar matrícula"}</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Informe a data e a hora da visita para mover o cartão.
+              Informe a data e a hora {visitKind === "visita" ? "da visita" : "da matrícula"} para mover o cartão.
             </p>
             <Input
               type="datetime-local"
@@ -1237,7 +1244,8 @@ function OpportunityNotes({
   );
 }
 
-function OpportunityVisit({ opportunityId, visitAt, canWrite }: { opportunityId: string; visitAt: string | null; canWrite: boolean }) {
+function OpportunityVisit({ opportunityId, visitAt, canWrite, kind }: { opportunityId: string; visitAt: string | null; canWrite: boolean; kind: "visita" | "matricula" }) {
+  const label = kind === "visita" ? "visita" : "matrícula";
   const queryClient = useQueryClient();
   const toLocal = (iso: string) => {
     const d = new Date(iso);
@@ -1249,7 +1257,7 @@ function OpportunityVisit({ opportunityId, visitAt, canWrite }: { opportunityId:
   const m = useMutation({
     mutationFn: (v: string | null) => setOpportunityVisit({ data: { id: opportunityId, visit_at: v } }),
     onSuccess: (_r, v) => {
-      toast.success(v ? "Visita agendada." : "Agendamento removido.");
+      toast.success(v ? (kind === "visita" ? "Visita agendada." : "Matrícula agendada.") : "Agendamento removido.");
       setEditing(false);
       queryClient.invalidateQueries({ queryKey: ["pipeline"] });
       queryClient.invalidateQueries({ queryKey: ["calendar"] });
@@ -1258,7 +1266,7 @@ function OpportunityVisit({ opportunityId, visitAt, canWrite }: { opportunityId:
   });
   return (
     <div className="mt-6 border-t border-border pt-4">
-      <h3 className="font-display text-sm font-semibold text-foreground">Data da visita</h3>
+      <h3 className="font-display text-sm font-semibold text-foreground">Data da {label}</h3>
       {visitAt && !editing ? (
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <span className="rounded-full bg-orange-100 px-3 py-1 text-sm font-medium text-orange-900">
@@ -1272,12 +1280,12 @@ function OpportunityVisit({ opportunityId, visitAt, canWrite }: { opportunityId:
           )}
         </div>
       ) : !canWrite ? (
-        <p className="mt-2 text-sm text-muted-foreground">Sem visita agendada.</p>
+        <p className="mt-2 text-sm text-muted-foreground">Sem {label} agendada.</p>
       ) : editing || !visitAt ? (
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <Input type="datetime-local" value={value} onChange={(e) => setValue(e.target.value)} className="max-w-60" />
           <Button disabled={!value || m.isPending} onClick={() => m.mutate(new Date(value).toISOString())}>
-            Agendar visita
+            Agendar {label}
           </Button>
           {editing && <Button variant="ghost" onClick={() => setEditing(false)}>Cancelar</Button>}
         </div>
