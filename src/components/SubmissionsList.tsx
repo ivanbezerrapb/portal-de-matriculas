@@ -346,6 +346,57 @@ export function SubmissionsList({
 
   return (
     <div className="w-full">
+      {childEdit && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 p-4">
+          <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-lg">
+            <h2 className="text-lg font-semibold text-foreground">Crianças e séries · {childEdit.label}</h2>
+            <Label className="mt-4 block">Quantidade de crianças</Label>
+            <Input
+              type="number"
+              min={1}
+              max={10}
+              value={childEdit.series.length}
+              onChange={(e) => {
+                const n = Math.min(10, Math.max(1, Math.floor(Number(e.target.value) || 1)));
+                const next = childEdit.series.slice(0, n);
+                while (next.length < n) next.push("");
+                setChildEdit({ ...childEdit, series: next });
+              }}
+              className="mt-1 max-w-32"
+            />
+            <div className="mt-4 space-y-3">
+              {childEdit.series.map((serie, i) => (
+                <div key={i}>
+                  <Label className="block">Série da {i + 1}ª criança</Label>
+                  <Select
+                    className="mt-1"
+                    value={serie}
+                    onChange={(e) => {
+                      const next = [...childEdit.series];
+                      next[i] = e.target.value;
+                      setChildEdit({ ...childEdit, series: next });
+                    }}
+                  >
+                    <option value="">Selecione…</option>
+                    {[...new Set([...childEdit.options, ...(serie && !childEdit.options.includes(serie) ? [serie] : [])])].map((o) => (
+                      <option key={o} value={o}>{o}</option>
+                    ))}
+                  </Select>
+                </div>
+              ))}
+            </div>
+            <div className="mt-6 flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => setChildEdit(null)} disabled={childM.isPending}>Cancelar</Button>
+              <Button
+                disabled={childM.isPending || childEdit.series.some((x) => !x)}
+                onClick={() => childM.mutate({ id: childEdit.id, series: childEdit.series })}
+              >
+                Salvar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
       <h1 className="font-display text-2xl font-bold text-foreground">{title}</h1>
 
       <Card className="mt-6">
