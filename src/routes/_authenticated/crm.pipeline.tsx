@@ -139,6 +139,12 @@ function PipelinePage() {
   // Direção acompanha o CRM apenas em leitura.
   const canWrite = !isDirecao;
   const canClose = (perms?.isAdmin ?? false) && canWrite;
+  // Perda: Admin, Gerente da unidade e Central de Informações (servidor confere o vínculo ao funil).
+  const canLose = (schoolId: string) =>
+    canWrite &&
+    ((perms?.isAdmin ?? false) ||
+      (perms?.managerSchools ?? []).includes(schoolId) ||
+      ((perms as { infoSchools?: string[] } | undefined)?.infoSchools ?? []).includes(schoolId));
 
   const funnelsQuery = useQuery({ queryKey: ["funnels"], queryFn: () => listFunnels() });
   const allFunnels = funnelsQuery.data?.funnels ?? [];
@@ -758,15 +764,17 @@ function PipelinePage() {
               <OpportunityNotes opportunityId={card.id} canWrite={canWrite} />
 
               {card.status === "open"
-                ? canClose && (
+                ? canLose(card.school_id) && (
                     <div className="mt-6 flex gap-2 border-t border-border pt-4">
-                      <Button
-                        variant="outline"
-                        className="flex-1 border-emerald-600/40 text-emerald-700 hover:bg-emerald-50"
-                        onClick={() => setClosing({ id: card.id, result: "won" })}
-                      >
-                        Marcar como ganha
-                      </Button>
+                      {canClose && (
+                        <Button
+                          variant="outline"
+                          className="flex-1 border-emerald-600/40 text-emerald-700 hover:bg-emerald-50"
+                          onClick={() => setClosing({ id: card.id, result: "won" })}
+                        >
+                          Marcar como ganha
+                        </Button>
+                      )}
                       <Button
                         variant="outline"
                         className="flex-1 border-destructive/40 text-destructive hover:bg-destructive/10"
