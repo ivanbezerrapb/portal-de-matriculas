@@ -10,6 +10,7 @@ import {
   setUserRole,
   setMustChangePassword,
   resetUserPassword,
+  updateUser,
 } from "@/lib/ext/usuarios.functions";
 import { listSchools } from "@/lib/ext/escolas.functions";
 import { listFunnels } from "@/lib/ext/funis.functions";
@@ -125,6 +126,20 @@ function UsersPage() {
     mutationFn: (vars: { user_id: string; value: boolean }) => setMustChangePassword({ data: vars }),
     onSuccess: () => {
       toast.success("Atualizado.");
+      invalidate();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const [editFor, setEditFor] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const editMut = useMutation({
+    mutationFn: (vars: { user_id: string; full_name: string; email: string }) =>
+      updateUser({ data: vars }),
+    onSuccess: () => {
+      toast.success("Usuário atualizado.");
+      setEditFor(null);
       invalidate();
     },
     onError: (e) => toast.error(e.message),
@@ -350,6 +365,16 @@ function UsersPage() {
                 </div>
                 <Button
                   variant="ghost"
+                  onClick={() => {
+                    setEditFor(editFor === u.id ? null : u.id);
+                    setEditName(u.full_name ?? "");
+                    setEditEmail(u.email ?? "");
+                  }}
+                >
+                  Editar
+                </Button>
+                <Button
+                  variant="ghost"
                   onClick={() => mustMut.mutate({ user_id: u.id, value: !u.must_change_password })}
                 >
                   {u.must_change_password ? "Cancelar exigência" : "Exigir troca de senha"}
@@ -381,6 +406,29 @@ function UsersPage() {
                   Excluir
                 </Button>
               </div>
+              {editFor === u.id && (
+                <div className="mt-3 grid gap-3 border-t border-border pt-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+                  <div>
+                    <Label>Nome</Label>
+                    <Input value={editName} onChange={(e) => setEditName(e.target.value)} />
+                  </div>
+                  <div>
+                    <Label>E-mail</Label>
+                    <Input type="email" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="ghost" onClick={() => setEditFor(null)}>Cancelar</Button>
+                    <Button
+                      disabled={editMut.isPending || !editName.trim() || !editEmail.trim()}
+                      onClick={() =>
+                        editMut.mutate({ user_id: u.id, full_name: editName.trim(), email: editEmail.trim() })
+                      }
+                    >
+                      Salvar
+                    </Button>
+                  </div>
+                </div>
+              )}
 
               <div className="mt-3 flex flex-wrap gap-2">
                 {u.roles.length === 0 && (

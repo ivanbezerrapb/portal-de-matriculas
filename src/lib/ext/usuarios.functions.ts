@@ -278,3 +278,32 @@ export const completePasswordChange = createServerFn({ method: "POST" })
     if (pErr) throw new Error(pErr.message);
     return { ok: true };
   });
+
+// ---------- Editar nome e e-mail ----------
+export const updateUser = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((data) =>
+    z
+      .object({
+        user_id: z.string().uuid(),
+        full_name: z.string().trim().min(1).max(120),
+        email: z.string().trim().email().max(255),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    await requireAdmin(context.supabase, context.userId);
+    const { extAdmin } = await import("./server");
+    const admin = extAdmin();
+    const { error } = await admin.auth.admin.updateUserById(data.user_id, {
+      email: data.email,
+      email_confirm: true,
+      user_metadata: { full_name: data.full_name },
+    });
+    if (error) throw new Error(error.message);
+    const { error: pErr } = await admin
+      .from("profiles")
+      .upsert({ id: data.user_id, full_name: data.full_name });
+    if (pErr) throw new Error(pErr.message);
+    return { ok: true };
+  });
