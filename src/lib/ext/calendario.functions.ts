@@ -58,8 +58,8 @@ export const listCalendarEvents = createServerFn({ method: "GET" })
     const fullSchools = new Set([...perms.managerSchools, ...perms.operatorSchools]);
     const rows = ((opps ?? []) as unknown as Opp[]).filter((o) => {
       if (all || fullSchools.has(o.school_id)) return true;
-      // Central de Informações: apenas os funis atribuídos.
-      return perms.infoSchools.includes(o.school_id) && perms.funnelIds.includes(o.funnel_id);
+      // Central de Informações: todos os agendamentos das suas unidades (somente visualização).
+      return perms.infoSchools.includes(o.school_id);
     });
     const subIds = rows.map((o) => o.submission_id);
 
