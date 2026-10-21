@@ -22,11 +22,24 @@ const DEFAULT_STAGES = [
 export const listFunnels = createServerFn({ method: "GET" })
   .middleware([requireAuth])
   .handler(async ({ context }) => {
-    const { data: funnels, error } = await context.supabase
-      .from("funnels")
-      .select("*")
-      .order("created_at");
+    const [{ data: funnels, error }, { data: schools, error: schoolsError }] = await Promise.all([
+      context.supabase.from("funnels").select("*").order("created_at"),
+      context.supabase.from("schools").select("id, name"),
+    ]);
     if (error) throw new Error(error.message);
+    if (schoolsError) throw new Error(schoolsError.message);
+    const schoolName = new Map(
+      (schools ?? []).map((s: { id: string; name: string }) => [s.id, s.name]),
+    );
+    // Funis ordenados pela unidade e depois pelo nome do funil.
+    (funnels ?? []).sort((a: Funnel, b: Funnel) => {
+      const an = schoolName.get(a.school_id) ?? "";
+      const bn = schoolName.get(b.school_id) ?? "";
+      return (
+        an.localeCompare(bn, "pt", { sensitivity: "base" }) ||
+        a.name.localeCompare(b.name, "pt", { sensitivity: "base" })
+      );
+    });
     const ids = (funnels ?? []).map((f: { id: string }) => f.id);
     let stages: FunnelStage[] = [];
     if (ids.length) {
