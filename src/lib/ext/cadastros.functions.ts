@@ -977,6 +977,7 @@ export const getDashboardStats = createServerFn({ method: "GET" })
 
     const attendantCounts = new Map<string, number>();
     const presenterCounts = new Map<string, number>();
+    const attendantsBySchoolMap = new Map<string, Map<string, number>>();
     for (const row of rows) {
       const attendant = (row as unknown as { attendant: { name?: string } | null }).attendant;
       const presenter = (row as unknown as { presenter: { name?: string } | null }).presenter;
@@ -984,7 +985,24 @@ export const getDashboardStats = createServerFn({ method: "GET" })
       const p = presenter?.name?.trim();
       if (a) attendantCounts.set(a, (attendantCounts.get(a) ?? 0) + 1);
       if (p) presenterCounts.set(p, (presenterCounts.get(p) ?? 0) + 1);
+      if (a) {
+        const sName = (row.schools as { name?: string } | null)?.name ?? "—";
+        const m = attendantsBySchoolMap.get(sName) ?? new Map<string, number>();
+        m.set(a, (m.get(a) ?? 0) + 1);
+        attendantsBySchoolMap.set(sName, m);
+      }
     }
+    for (const s of bySchool.values()) {
+      if (!attendantsBySchoolMap.has(s.name)) attendantsBySchoolMap.set(s.name, new Map());
+    }
+    const attendantsBySchool = [...attendantsBySchoolMap.entries()]
+      .map(([school, m]) => ({
+        school,
+        items: [...m.entries()]
+          .map(([label, count]) => ({ label, count }))
+          .sort((x, y) => y.count - x.count || x.label.localeCompare(y.label, "pt-BR")),
+      }))
+      .sort((x, y) => x.school.localeCompare(y.school, "pt-BR"));
 
     const seriesCounts = new Map<string, number>();
     const sourceCounts = new Map<string, number>();
@@ -1184,6 +1202,7 @@ export const getDashboardStats = createServerFn({ method: "GET" })
       })),
       daily: [...dailyBuckets.values()].sort((a, b) => a.month - b.month || a.day - b.day),
       neighborhoods,
+      attendantsBySchool,
       bySchool: [...bySchool.values()].sort(
         (a, b) => b.visits - a.visits || a.name.localeCompare(b.name, "pt-BR"),
       ),

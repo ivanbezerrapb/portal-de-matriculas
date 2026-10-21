@@ -180,16 +180,24 @@ type NeighborhoodGroup = {
   items: { label: string; city: string; count: number }[];
 };
 
-function NeighborhoodChart({ data }: { data: NeighborhoodGroup[] }) {
+function NeighborhoodChart({
+  data,
+  title = "Visitantes por bairro",
+  emptyText = "Nenhum endereço no período.",
+}: {
+  data: NeighborhoodGroup[];
+  title?: string;
+  emptyText?: string;
+}) {
   return (
     <Card className="flex h-full min-w-0 flex-col p-4">
-      <h2 className="font-display text-sm font-semibold text-foreground">Visitantes por bairro</h2>
+      <h2 className="font-display text-sm font-semibold text-foreground">{title}</h2>
       {data.length === 0 ? (
         <div className="flex h-52 items-center justify-center text-sm text-muted-foreground">
-          Nenhum endereço no período.
+          {emptyText}
         </div>
       ) : (
-        <div className="mt-3 grid gap-4 grid-cols-1 min-[520px]:grid-cols-2">
+        <div className="mt-3 grid gap-4 grid-cols-1 @min-[36rem]/dashboard:grid-cols-2 @min-[64rem]/dashboard:grid-cols-4">
           {data.map((group) => {
             const longest = Math.max(
               0,
@@ -197,12 +205,12 @@ function NeighborhoodChart({ data }: { data: NeighborhoodGroup[] }) {
                 (item) => (item.city ? `${item.label} — ${item.city}` : item.label).length,
               ),
             );
-            const labelWidth = Math.min(200, Math.max(150, Math.min(longest, 22) * 7.2));
+            const labelWidth = Math.min(130, Math.max(90, Math.min(longest, 14) * 7));
             return (
               <div key={group.school} className="min-w-0">
                 <p className="text-xs font-semibold text-primary">{group.school}</p>
                 {group.items.length === 0 ? (
-                  <p className="mt-3 text-sm text-muted-foreground">Nenhum endereço no período.</p>
+                  <p className="mt-3 text-sm text-muted-foreground">{emptyText}</p>
                 ) : (
                   <ChartContainer
                     config={{ count: { label: "Visitas", color: "var(--primary)" } }}
@@ -225,7 +233,7 @@ function NeighborhoodChart({ data }: { data: NeighborhoodGroup[] }) {
                         axisLine={false}
                         width={labelWidth}
                         interval={0}
-                        tick={<SeriesTick maxChars={16} />}
+                        tick={<SeriesTick maxChars={14} />}
                       />
                       <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
                       <Bar dataKey="count" fill="var(--color-count)" radius={[0, 4, 4, 0]}>
@@ -738,7 +746,6 @@ function DashboardPage() {
     return (legacy ?? []).find((item) => item.year === year) ?? null;
   }
 
-  const peopleChartHeight = data ? Math.max(208, data.attendants.length * 38) : 208;
   const schoolLabel =
     selected.length === 0
       ? "Todas as escolas"
@@ -853,17 +860,18 @@ function DashboardPage() {
             </div>
           </div>
 
-          <div className="mt-3 grid gap-3 @min-[36rem]/dashboard:grid-cols-2 @min-[52rem]/dashboard:grid-cols-3">
-            <div className="@min-[36rem]/dashboard:col-span-2">
-              <NeighborhoodChart data={data.neighborhoods} />
-            </div>
+          <div className="mt-3">
+            <NeighborhoodChart data={data.neighborhoods} />
           </div>
 
-          <div className="mt-3 grid items-start gap-3 @min-[36rem]/dashboard:grid-cols-2">
-            <SeriesChart
-              data={data.attendants}
+          <div className="mt-3">
+            <NeighborhoodChart
               title="Quem mais atendeu (Coordenação)"
-              chartHeight={peopleChartHeight}
+              emptyText="Sem dados"
+              data={(data.attendantsBySchool ?? []).map((g) => ({
+                school: g.school,
+                items: g.items.map((i) => ({ ...i, city: "" })),
+              }))}
             />
           </div>
         </>
