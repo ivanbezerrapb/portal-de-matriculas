@@ -297,6 +297,12 @@ export const updateUser = createServerFn({ method: "POST" })
     await requireAdmin(context.supabase, context.userId);
     const { extAdmin } = await import("./server");
     const admin = extAdmin();
+    const { data: before } = await admin
+      .from("profiles")
+      .select("full_name")
+      .eq("id", data.user_id)
+      .maybeSingle();
+    const oldName = (before as { full_name?: string | null } | null)?.full_name?.trim();
     const { error } = await admin.auth.admin.updateUserById(data.user_id, {
       email: data.email,
       email_confirm: true,
@@ -307,5 +313,23 @@ export const updateUser = createServerFn({ method: "POST" })
       .from("profiles")
       .upsert({ id: data.user_id, full_name: data.full_name });
     if (pErr) throw new Error(pErr.message);
+    // Mantém o nome do Atendimento em sincronia com o novo nome do usuário.
+    if (oldName && oldName !== data.full_name) {
+      const { data: roles } = await admin
+        .from("user_roles")
+        .select("school_id")
+        .eq("user_id", data.user_id);
+      const schoolIds = [
+        ...new Set((roles ?? []).map((r) => r.school_id).filter(Boolean)),
+      ] as string[];
+      if (schoolIds.length) {
+        await admin
+          .from("presenters")
+          .update({ name: data.full_name })
+          .eq("kind", "secretaria")
+          .ilike("name", oldName)
+          .in("school_id", schoolIds);
+      }
+    }
     return { ok: true };
   });
