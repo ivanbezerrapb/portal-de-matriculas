@@ -195,6 +195,8 @@ export const deleteUser = createServerFn({ method: "POST" })
     const admin = extAdmin();
     const { error } = await admin.auth.admin.deleteUser(data.user_id);
     if (error) throw new Error(error.message);
+    // Remove vínculos com funis para não sobrar "Sem nome" como responsável.
+    await admin.from("user_funnels").delete().eq("user_id", data.user_id);
     return { ok: true };
   });
 
