@@ -541,7 +541,7 @@ export function SubmissionsList({
         <div className="mt-3 flex items-center justify-between gap-3 text-sm text-muted-foreground">
           <span>{filteredRows.length} cadastro{filteredRows.length === 1 ? "" : "s"} encontrado{filteredRows.length === 1 ? "" : "s"}</span>
           {hasFilters && (
-            <Button variant="outline" size="sm" onClick={clearFilters}>Limpar filtros</Button>
+            <Button variant="outline" onClick={clearFilters}>Limpar filtros</Button>
           )}
         </div>
       </Card>
