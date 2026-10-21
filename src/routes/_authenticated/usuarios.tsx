@@ -2,6 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { KeyRound, Lock, Pencil, Plus, Trash2 } from "lucide-react";
+
+const ACT = "inline-flex h-7 items-center gap-1.5 px-2 py-0 text-xs";
 import {
   createUser,
   deleteUser,
@@ -352,9 +355,8 @@ function UsersPage() {
       ) : (
         <div className="mt-6 flex flex-col gap-3">
           {filteredUsers.map((u) => (
-            <Card key={u.id}>
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="min-w-0 flex-1">
+            <Card key={u.id} className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 [&>*]:col-start-1">
+              <div className="min-w-0">
                   <p className="font-medium text-foreground">{u.full_name || u.email}</p>
                   <p className="text-xs text-muted-foreground">{u.email}</p>
                   {u.must_change_password && (
@@ -362,48 +364,54 @@ function UsersPage() {
                       <Badge color="amber">Troca de senha pendente</Badge>
                     </span>
                   )}
-                </div>
+              </div>
+              <div className="!col-start-2 row-span-4 row-start-1 flex flex-col items-end gap-0.5">
                 <Button
                   variant="ghost"
+                  className={ACT}
                   onClick={() => {
                     setEditFor(editFor === u.id ? null : u.id);
                     setEditName(u.full_name ?? "");
                     setEditEmail(u.email ?? "");
                   }}
                 >
-                  Editar
+                  <Pencil className="h-3.5 w-3.5" /> Editar
                 </Button>
                 <Button
                   variant="ghost"
+                  className={ACT}
                   onClick={() => mustMut.mutate({ user_id: u.id, value: !u.must_change_password })}
                 >
-                  {u.must_change_password ? "Cancelar exigência" : "Exigir troca de senha"}
+                  <Lock className="h-3.5 w-3.5" /> {u.must_change_password ? "Cancelar exigência" : "Exigir troca de senha"}
                 </Button>
                 <Button
                   variant="ghost"
+                  className={ACT}
                   onClick={() => {
                     setResetFor(resetFor === u.id ? null : u.id);
                     setResetPw("");
                     setResetMust(true);
                   }}
                 >
-                  Redefinir senha
-                </Button>
-                <Button
-                  variant="secondary"
-                  onClick={() => setAddRoleFor(addRoleFor === u.id ? null : u.id)}
-                >
-                  + Perfil
+                  <KeyRound className="h-3.5 w-3.5" /> Redefinir senha
                 </Button>
                 <Button
                   variant="ghost"
+                  className={ACT}
+                  onClick={() => setAddRoleFor(addRoleFor === u.id ? null : u.id)}
+                >
+                  <Plus className="h-3.5 w-3.5" /> Perfil
+                </Button>
+                <Button
+                  variant="ghost"
+                  className={`${ACT} text-destructive`}
                   onClick={() => {
                     if (window.confirm(`Excluir o usuário ${u.email}?`)) {
                       deleteMut.mutate(u.id);
                     }
                   }}
                 >
-                  Excluir
+                  <Trash2 className="h-3.5 w-3.5" /> Excluir
                 </Button>
               </div>
               {editFor === u.id && (
