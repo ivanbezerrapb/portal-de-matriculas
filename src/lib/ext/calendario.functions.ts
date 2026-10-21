@@ -15,6 +15,7 @@ export type CalendarEvent = {
   status: "scheduled" | "done" | "missed";
   can_check_in: boolean;
   kind: "visita" | "matricula";
+  series?: string[];
 };
 
 function norm(v: string) {
@@ -65,6 +66,7 @@ export const listCalendarEvents = createServerFn({ method: "GET" })
     const checkIns = new Map<string, string>();
     const names = new Map<string, string>();
     const phones = new Map<string, string>();
+    const seriesBySub = new Map<string, string[]>();
     if (subIds.length) {
       const { data: checks } = await admin
         .from("audit_log")
@@ -90,7 +92,13 @@ export const listCalendarEvents = createServerFn({ method: "GET" })
           nameField.set(f.form_id, f.id);
         if (!phoneField.get(f.form_id) && f.type === "phone") phoneField.set(f.form_id, f.id);
       }
-      const wanted = [...new Set([...nameField.values(), ...phoneField.values()])];
+      const seriesFields = new Map<string, string>();
+      for (const f of (fields ?? []) as { id: string; form_id: string; label: string; type: string }[]) {
+        const l = norm(f.label);
+        if (f.type === "children" || l === "serie" || l === "series" || l.includes("serie de interesse")) seriesFields.set(f.id, f.type);
+      }
+      const wanted = [...new Set([...nameField.values(), ...phoneField.values(), ...seriesFields.keys()])];
+      const { parseChildren } = await import("./model");
       if (wanted.length) {
         const { data: vals } = await admin
           .from("submission_values")
@@ -103,6 +111,15 @@ export const listCalendarEvents = createServerFn({ method: "GET" })
           if (!form || !v.value?.trim()) continue;
           if (nameField.get(form) === v.field_id) names.set(v.submission_id, v.value.trim());
           if (phoneField.get(form) === v.field_id) phones.set(v.submission_id, v.value.trim());
+          const st = seriesFields.get(v.field_id);
+          if (st) {
+            const found = st === "children"
+              ? parseChildren(v.value).map((c) => c.serie.trim())
+              : v.value.split(/[,;\n]/).map((x) => x.trim());
+            const cur = seriesBySub.get(v.submission_id) ?? [];
+            cur.push(...found.filter(Boolean));
+            seriesBySub.set(v.submission_id, cur);
+          }
         }
       }
     }
@@ -122,6 +139,7 @@ export const listCalendarEvents = createServerFn({ method: "GET" })
       return {
         id: o.id,
         kind: isVisit ? "visita" : "matricula",
+        series: seriesBySub.get(o.submission_id) ?? [],
         at: o.visit_at,
         title: name && name !== o.submissions.public_id ? `${o.submissions.public_id} · ${name}` : o.submissions.public_id,
         school_id: o.school_id,
