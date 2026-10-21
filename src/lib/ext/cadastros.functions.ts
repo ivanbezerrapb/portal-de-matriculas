@@ -553,31 +553,54 @@ export const setLeadCheckIn = createServerFn({ method: "POST" })
     }
 
     const now = new Date().toISOString();
-    const { data: opportunity } = await context.supabase
+    const { extAdmin } = await import("./server");
+    const admin = extAdmin();
+    const { data: opps, error: oppsError } = await admin
       .from("opportunities")
-      .select("id")
-      .eq("submission_id", data.id)
-      .maybeSingle();
+      .select("id, funnel_id, status")
+      .eq("submission_id", data.id);
+    if (oppsError) throw new Error(oppsError.message);
+    const opportunity = (opps ?? [])[0] ?? null;
 
-    if (opportunity) {
-      const { error: tasksError } = await context.supabase
-        .from("crm_tasks")
-        .update({ done: true, done_at: now })
-        .eq("opportunity_id", opportunity.id)
-        .eq("done", false);
-      if (tasksError) throw new Error(tasksError.message);
+    if (opps && opps.length) {
+      const { data: prof } = await admin.from("profiles").select("full_name").eq("id", context.userId).maybeSingle();
+      const authorName = (prof as { full_name?: string } | null)?.full_name || context.userEmail || "Usuário";
+      const when = new Intl.DateTimeFormat("pt-BR", {
+        timeZone: "America/Fortaleza", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit",
+      }).format(new Date(now)).replace(",", " às");
+      for (const opp of opps) {
+        const { error: tasksError } = await admin
+          .from("crm_tasks")
+          .update({ done: true, done_at: now })
+          .eq("opportunity_id", opp.id)
+          .eq("done", false);
+        if (tasksError) throw new Error(tasksError.message);
 
-      const { error: opportunityError } = await context.supabase
-        .from("opportunities")
-        .update({
-          status: "won",
-          close_reason_id: null,
-          close_note: "Check-in confirmado na Lista de LEADS.",
-          closed_at: now,
-          updated_at: now,
-        })
-        .eq("id", opportunity.id);
-      if (opportunityError) throw new Error(opportunityError.message);
+        const { data: stages } = await admin.from("funnel_stages").select("id, name").eq("funnel_id", opp.funnel_id);
+        const doneStage = (stages ?? []).find((s) => /realizad/i.test(s.name));
+
+        const { data: updated, error: opportunityError } = await admin
+          .from("opportunities")
+          .update({
+            status: "won",
+            ...(doneStage ? { stage_id: doneStage.id } : {}),
+            close_reason_id: null,
+            close_note: "Check-in confirmado (visita realizada).",
+            closed_at: now,
+            updated_at: now,
+          })
+          .eq("id", opp.id)
+          .select("id");
+        if (opportunityError) throw new Error(opportunityError.message);
+        if (!updated?.length) throw new Error("Não foi possível dar ganho no cartão.");
+
+        await admin.from("crm_notes").insert({
+          opportunity_id: opp.id,
+          author_id: context.userId,
+          author_name: authorName,
+          body: `Visita realizada em ${when} — check-in por ${authorName}.`,
+        });
+      }
     }
 
     const { error: auditError } = await context.supabase.from("audit_log").insert({
