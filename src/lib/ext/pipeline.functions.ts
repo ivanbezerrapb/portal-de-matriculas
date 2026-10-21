@@ -679,5 +679,69 @@ export const setOpportunityVisit = createServerFn({ method: "POST" })
       .update({ visit_at: data.visit_at, updated_at: new Date().toISOString() })
       .eq("id", data.id);
     if (upError) throw new Error(upError.message);
+
+    // Agendou: move o cartão para "Visita agendada" (LEADS) ou "Matrícula agendada" (Pós Visita).
+    if (data.visit_at) {
+      const { extAdmin } = await import("./server");
+      const admin = extAdmin();
+      const { data: full } = await admin
+        .from("opportunities")
+        .select("id, funnel_id, stage_id, owner_id, owner_confirmed_at")
+        .eq("id", data.id)
+        .single();
+      const { data: stages } = await admin
+        .from("funnel_stages")
+        .select("id, name")
+        .eq("funnel_id", full!.funnel_id);
+      const isLead = lt === "leads" || lt === "lead";
+      const target =
+        (stages ?? []).find((s) => normalizeLabel(s.name).includes(isLead ? "visita agendada" : "matricula agendada")) ??
+        (stages ?? []).find((s) => {
+          const n = normalizeLabel(s.name);
+          return n.includes("visita agendada") || n.includes("matricula agendada");
+        });
+      const kindLabel = target && normalizeLabel(target.name).includes("visita") ? "Visita" : "Matrícula";
+      const now = new Date().toISOString();
+      if (target && full && full.stage_id !== target.id) {
+        const { data: last } = await admin
+          .from("opportunities")
+          .select("position")
+          .eq("stage_id", target.id)
+          .order("position", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        const { error: mvErr } = await admin
+          .from("opportunities")
+          .update({
+            stage_id: target.id,
+            position: (last?.position ?? -1) + 1,
+            updated_at: now,
+            ...(!full.owner_confirmed_at && full.owner_id ? { owner_confirmed_at: now } : {}),
+          })
+          .eq("id", data.id);
+        if (mvErr) throw new Error(mvErr.message);
+      }
+      const { data: profile } = await admin
+        .from("profiles")
+        .select("full_name")
+        .eq("id", context.userId)
+        .maybeSingle();
+      const authorName = profile?.full_name || context.userEmail || "Usuário";
+      const when = new Intl.DateTimeFormat("pt-BR", {
+        timeZone: "America/Fortaleza",
+        day: "2-digit",
+        month: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+        .format(new Date(data.visit_at))
+        .replace(",", " às");
+      await admin.from("crm_notes").insert({
+        opportunity_id: data.id,
+        author_id: context.userId,
+        author_name: authorName,
+        body: `${kindLabel} agendada para ${when} — por ${authorName}.`,
+      });
+    }
     return { ok: true };
   });
