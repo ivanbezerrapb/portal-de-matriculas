@@ -205,7 +205,7 @@ function NeighborhoodChart({
                 (item) => (item.city ? `${item.label} — ${item.city}` : item.label).length,
               ),
             );
-            const labelWidth = Math.min(130, Math.max(90, Math.min(longest, 14) * 7));
+            const labelWidth = Math.min(140, Math.max(110, Math.min(longest, 14) * 7.5));
             return (
               <div key={group.school} className="min-w-0">
                 <p className="text-xs font-semibold text-primary">{group.school}</p>
@@ -226,6 +226,7 @@ function NeighborhoodChart({
                       margin={{ top: 4, right: 32, bottom: 0, left: 0 }}
                     >
                       <CartesianGrid horizontal={false} />
+                      <XAxis type="number" hide allowDecimals={false} domain={[0, "dataMax"]} />
                       <YAxis
                         type="category"
                         dataKey="label"
