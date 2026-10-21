@@ -97,6 +97,11 @@ export function SubmissionsList({
   });
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<SortState>(null);
+  const [fFunnel, setFFunnel] = useState("");
+  const [fRestricted, setFRestricted] = useState("");
+  const [fAttendant, setFAttendant] = useState("");
+  const [fSeries, setFSeries] = useState("");
+  const [fStatus, setFStatus] = useState("");
   const cycleSort = (k: SortKey) =>
     setSort((cur) =>
       !cur || cur.key !== k ? { key: k, dir: "asc" } : cur.dir === "asc" ? { key: k, dir: "desc" } : null,
@@ -163,7 +168,6 @@ export function SubmissionsList({
 
   const filters = {
     list_type: listType,
-    ...(search.trim() ? { search: search.trim() } : {}),
     ...(schoolId ? { school_id: schoolId } : {}),
     ...(formId ? { form_id: formId } : {}),
     ...(from ? { from } : {}),
@@ -180,6 +184,43 @@ export function SubmissionsList({
     refetchInterval: 30_000,
     refetchIntervalInBackground: false,
   });
+
+  type FRow = {
+    public_id?: string | null; responsible_name?: string | null; restricted?: boolean;
+    attendant?: { name?: string } | null; series?: string[];
+    funnel?: { funnel_id?: string; funnel_name?: string } | null;
+    check_in?: unknown; enrolled?: boolean;
+  };
+  const norm = (v: string) => v.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+  const allRows = (submissions ?? []) as unknown as (FRow & { id: string })[];
+  const attendantOpts = [...new Set(allRows.map((r) => r.attendant?.name?.trim()).filter(Boolean) as string[])].sort((a, b) => a.localeCompare(b, "pt-BR"));
+  const seriesOpts = [...new Set(allRows.flatMap((r) => (r.series ?? []).filter(Boolean)))].sort((a, b) => a.localeCompare(b, "pt-BR"));
+  const funnelOpts = (funnelsData?.funnels ?? []).filter(
+    (f) => funnelListType(f.name) === listType && (!schoolId || f.school_id === schoolId),
+  );
+  const q = norm(search);
+  const filteredRows = allRows.filter((r) => {
+    if (q && !norm(r.public_id ?? "").includes(q) && !norm(r.responsible_name ?? "").includes(q)) return false;
+    if (fFunnel === "__none" && r.funnel?.funnel_id) return false;
+    if (fFunnel && fFunnel !== "__none" && r.funnel?.funnel_id !== fFunnel) return false;
+    if (fRestricted === "yes" && !r.restricted) return false;
+    if (fRestricted === "no" && r.restricted) return false;
+    const att = r.attendant?.name?.trim() ?? "";
+    if (fAttendant === "__none" && att) return false;
+    if (fAttendant && fAttendant !== "__none" && att !== fAttendant) return false;
+    const ser = (r.series ?? []).filter(Boolean);
+    if (fSeries === "__none" && ser.length) return false;
+    if (fSeries && fSeries !== "__none" && !ser.includes(fSeries)) return false;
+    const done = listType === "leads" ? Boolean(r.check_in) : Boolean(r.enrolled);
+    if (fStatus === "yes" && !done) return false;
+    if (fStatus === "no" && done) return false;
+    return true;
+  });
+  const hasFilters = Boolean(search || schoolId || formId || from || to || fFunnel || fRestricted || fAttendant || fSeries || fStatus);
+  const clearFilters = () => {
+    setSearch(""); setSchoolId(""); setFormId(""); setFrom(""); setTo("");
+    setFFunnel(""); setFRestricted(""); setFAttendant(""); setFSeries(""); setFStatus("");
+  };
 
   // Modelos de impressão do formulário dos itens selecionados (precisam ser do mesmo formulário)
   const selectedRows = (submissions ?? []).filter((s) => selected.has(s.id));
@@ -404,12 +445,12 @@ export function SubmissionsList({
           className={`grid gap-3 sm:grid-cols-2 ${perms?.isAdmin || perms?.isDirecao ? "lg:grid-cols-5" : "lg:grid-cols-4"}`}
         >
           <div className="lg:col-span-2">
-            <Label htmlFor="q">Buscar por ID</Label>
+            <Label htmlFor="q">Buscar por ID ou nome</Label>
             <Input
               id="q"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Ex.: 0001/ESCA"
+              placeholder="Ex.: 0001/ESCA ou Maria"
             />
           </div>
           {(perms?.isAdmin || perms?.isDirecao) && (
@@ -452,6 +493,56 @@ export function SubmissionsList({
               <Input id="f-to" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
             </div>
           </div>
+        </div>
+        <div className="mt-3 grid gap-3 border-t border-border pt-3 sm:grid-cols-2 lg:grid-cols-5">
+          <div>
+            <Label htmlFor="f-funnel">Funil</Label>
+            <Select id="f-funnel" value={fFunnel} onChange={(e) => setFFunnel(e.target.value)}>
+              <option value="">Todos</option>
+              <option value="__none">Sem funil</option>
+              {funnelOpts.map((f) => (
+                <option key={f.id} value={f.id}>{f.name}</option>
+              ))}
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="f-restricted">Pendência pedagógica</Label>
+            <Select id="f-restricted" value={fRestricted} onChange={(e) => setFRestricted(e.target.value)}>
+              <option value="">Todos</option>
+              <option value="yes">Com pendência</option>
+              <option value="no">Sem pendência</option>
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="f-att">Atendimento</Label>
+            <Select id="f-att" value={fAttendant} onChange={(e) => setFAttendant(e.target.value)}>
+              <option value="">Todos</option>
+              <option value="__none">Sem atendimento</option>
+              {attendantOpts.map((n) => (<option key={n} value={n}>{n}</option>))}
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="f-ser">Série</Label>
+            <Select id="f-ser" value={fSeries} onChange={(e) => setFSeries(e.target.value)}>
+              <option value="">Todas</option>
+              <option value="__none">Sem série</option>
+              {seriesOpts.map((n) => (<option key={n} value={n}>{n}</option>))}
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="f-status">{listType === "leads" ? "Check-in" : "Matrícula"}</Label>
+            <Select id="f-status" value={fStatus} onChange={(e) => setFStatus(e.target.value)}>
+              <option value="">Todos</option>
+              <option value="yes">Sim</option>
+              <option value="no">Não</option>
+            </Select>
+          </div>
+        </div>
+        <div className="mt-3 flex items-center justify-between gap-3 text-sm text-muted-foreground">
+          <span>{filteredRows.length} cadastro{filteredRows.length === 1 ? "" : "s"} encontrado{filteredRows.length === 1 ? "" : "s"}</span>
+          {hasFilters && (
+            <Button variant="outline" size="sm" onClick={clearFilters}>Limpar filtros</Button>
+          )}
         </div>
       </Card>
 
@@ -502,7 +593,7 @@ export function SubmissionsList({
         <div className="mt-10 flex justify-center">
           <Spinner />
         </div>
-      ) : !submissions || submissions.length === 0 ? (
+      ) : filteredRows.length === 0 ? (
         <EmptyState
           title="Nenhum cadastro encontrado"
           description="Ajuste os filtros ou aguarde novos envios pelo link público."
@@ -536,7 +627,7 @@ export function SubmissionsList({
               </tr>
             </thead>
             <tbody>
-              {sortRows(submissions, sort, listType).map((s) => {
+              {sortRows(filteredRows as unknown as NonNullable<typeof submissions>, sort, listType).map((s) => {
                 const responsible = (s as unknown as { responsible_name: string | null })
                   .responsible_name;
                 const school = s.schools as unknown as { name: string } | null;
