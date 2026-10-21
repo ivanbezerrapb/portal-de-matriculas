@@ -1,5 +1,7 @@
 # Remover o "Sem nome" do funil Centro - Pós Visita (Infantil e Fund I)
 
+O mesmo problema aparece em outros funis (ex.: Centro - Pós Visita (Fund II e Médio), onde aparece "Sem nome" junto de Fabiana Grisi e ALICE FABIANA). A correção abaixo vale para todos.
+
 ## Causa (confirmada no banco)
 O funil tem dois responsáveis vinculados:
 - ANA CLAUDIA (usuária ativa, Central de Informações)
