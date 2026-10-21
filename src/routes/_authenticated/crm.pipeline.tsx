@@ -764,15 +764,17 @@ function PipelinePage() {
               <OpportunityNotes opportunityId={card.id} canWrite={canWrite} />
 
               {card.status === "open"
-                ? canClose && (
+                ? canLose(card.school_id) && (
                     <div className="mt-6 flex gap-2 border-t border-border pt-4">
-                      <Button
-                        variant="outline"
-                        className="flex-1 border-emerald-600/40 text-emerald-700 hover:bg-emerald-50"
-                        onClick={() => setClosing({ id: card.id, result: "won" })}
-                      >
-                        Marcar como ganha
-                      </Button>
+                      {canClose && (
+                        <Button
+                          variant="outline"
+                          className="flex-1 border-emerald-600/40 text-emerald-700 hover:bg-emerald-50"
+                          onClick={() => setClosing({ id: card.id, result: "won" })}
+                        >
+                          Marcar como ganha
+                        </Button>
+                      )}
                       <Button
                         variant="outline"
                         className="flex-1 border-destructive/40 text-destructive hover:bg-destructive/10"
