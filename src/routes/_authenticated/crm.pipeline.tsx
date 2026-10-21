@@ -139,6 +139,12 @@ function PipelinePage() {
   // Direção acompanha o CRM apenas em leitura.
   const canWrite = !isDirecao;
   const canClose = (perms?.isAdmin ?? false) && canWrite;
+  // Perda: Admin, Gerente da unidade e Central de Informações (servidor confere o vínculo ao funil).
+  const canLose = (schoolId: string) =>
+    canWrite &&
+    ((perms?.isAdmin ?? false) ||
+      (perms?.managerSchools ?? []).includes(schoolId) ||
+      ((perms as { infoSchools?: string[] } | undefined)?.infoSchools ?? []).includes(schoolId));
 
   const funnelsQuery = useQuery({ queryKey: ["funnels"], queryFn: () => listFunnels() });
   const allFunnels = funnelsQuery.data?.funnels ?? [];

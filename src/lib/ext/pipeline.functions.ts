@@ -400,6 +400,83 @@ export const closeOpportunity = createServerFn({ method: "POST" })
       .parse(data),
   )
   .handler(async ({ data, context }) => {
+    if (data.result === "lost") {
+      // Perda: Admin, Gerente da unidade ou Central vinculada ao funil.
+      const { extAdmin, getPerms } = await import("./server");
+      const admin = extAdmin();
+      const perms = await getPerms(context.supabase, context.userId);
+      const { data: opp } = await admin
+        .from("opportunities")
+        .select("id, funnel_id, school_id, status")
+        .eq("id", data.id)
+        .maybeSingle();
+      if (!opp) throw new Error("Cartão não encontrado.");
+      if (opp.status !== "open") throw new Error("Este cartão já está fechado.");
+      let allowed = perms.isAdmin || perms.managerSchools.includes(opp.school_id);
+      if (!allowed && perms.infoSchools.includes(opp.school_id)) {
+        const { data: link } = await admin
+          .from("user_funnels")
+          .select("user_id")
+          .eq("funnel_id", opp.funnel_id)
+          .eq("user_id", context.userId)
+          .maybeSingle();
+        allowed = Boolean(link);
+      }
+      if (!allowed) throw new Error("Sem permissão para marcar este cartão como perdido.");
+
+      const { data: reason } = await admin
+        .from("crm_close_reasons")
+        .select("id, kind, label")
+        .eq("id", data.reason_id)
+        .maybeSingle();
+      if (!reason) throw new Error("Motivo não encontrado.");
+      if (reason.kind !== "lost") throw new Error("Motivo não corresponde ao resultado.");
+
+      const { data: stages } = await admin
+        .from("funnel_stages")
+        .select("id, name")
+        .eq("funnel_id", opp.funnel_id);
+      const lostStage = (stages ?? []).find((s) => /^perdid[oa]s?$/.test(normalizeLabel(s.name)));
+      if (!lostStage) throw new Error("Este funil não tem a etapa \"Perdido\".");
+
+      const now = new Date().toISOString();
+      const { error: tErr } = await admin
+        .from("crm_tasks")
+        .update({ done: true, done_at: now })
+        .eq("opportunity_id", opp.id)
+        .eq("done", false);
+      if (tErr) throw new Error(tErr.message);
+
+      const { data: updated, error: upErr } = await admin
+        .from("opportunities")
+        .update({
+          status: "lost",
+          stage_id: lostStage.id,
+          close_reason_id: reason.id,
+          close_note: data.note?.trim() || null,
+          closed_at: now,
+          updated_at: now,
+        })
+        .eq("id", opp.id)
+        .select("id");
+      if (upErr) throw new Error(upErr.message);
+      if (!updated?.length) throw new Error("Não foi possível marcar como perdido.");
+
+      const { data: profile } = await admin
+        .from("profiles")
+        .select("full_name")
+        .eq("id", context.userId)
+        .maybeSingle();
+      const authorName = profile?.full_name || context.userEmail || "Usuário";
+      await admin.from("crm_notes").insert({
+        opportunity_id: opp.id,
+        author_id: context.userId,
+        author_name: authorName,
+        body: `Marcado como perdido — motivo: ${reason.label}${data.note?.trim() ? `. ${data.note.trim()}` : ""}`,
+      });
+      return { ok: true };
+    }
+
     // Confere se o motivo existe e é do tipo certo.
     const { data: reason, error: reasonError } = await context.supabase
       .from("crm_close_reasons")
