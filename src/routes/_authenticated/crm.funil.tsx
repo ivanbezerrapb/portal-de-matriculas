@@ -16,7 +16,7 @@ import {
 } from "@/lib/ext/funis.functions";
 import { listSchools } from "@/lib/ext/escolas.functions";
 import { getMyPermissions } from "@/lib/ext/cadastros.functions";
-import type { Funnel, FunnelStage } from "@/lib/ext/model";
+import { funnelListType, type Funnel, type FunnelStage } from "@/lib/ext/model";
 import { Button, Card, EmptyState, Input, Label, Select, Spinner, Textarea } from "@/components/ui";
 
 export const Route = createFileRoute("/_authenticated/crm/funil")({
@@ -121,6 +121,8 @@ function FunilPage() {
   const [editingFunnel, setEditingFunnel] = useState<string | null>(null);
   const [addingStage, setAddingStage] = useState(false);
   const [editingStage, setEditingStage] = useState<string | null>(null);
+  const [fSchool, setFSchool] = useState("");
+  const [fKind, setFKind] = useState("");
 
   const { data: perms } = useQuery({
     queryKey: ["my-permissions"],
@@ -203,6 +205,9 @@ function FunilPage() {
     reorderM.mutate({ funnel_id: funnelId, ids: next.map((s) => s.id) });
   }
 
+  const shownFunnels = funnels.filter(
+    (f) => (!fSchool || f.school_id === fSchool) && (!fKind || funnelListType(f.name) === fKind),
+  );
   const loading = funnelsQuery.isLoading || schoolsQuery.isLoading;
   const current = funnels.find((f) => f.id === editingFunnel) ?? null;
 
@@ -460,6 +465,34 @@ function FunilPage() {
         </Card>
       )}
 
+      {!loading && funnels.length > 0 && (
+        <Card className="mb-4 flex flex-wrap items-end gap-3">
+          <div className="min-w-[10rem] flex-1">
+            <Label htmlFor="ff-school">Unidade</Label>
+            <Select id="ff-school" value={fSchool} onChange={(e) => setFSchool(e.target.value)}>
+              <option value="">Todas</option>
+              {schools.filter((s) => funnels.some((f) => f.school_id === s.id)).map((s) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </Select>
+          </div>
+          <div className="min-w-[10rem] flex-1">
+            <Label htmlFor="ff-kind">Tipo</Label>
+            <Select id="ff-kind" value={fKind} onChange={(e) => setFKind(e.target.value)}>
+              <option value="">Todos</option>
+              <option value="leads">LEADS</option>
+              <option value="visitantes">Visitantes (Pós Visita)</option>
+            </Select>
+          </div>
+          <span className="pb-2 text-sm text-muted-foreground">
+            {shownFunnels.length} funil{shownFunnels.length === 1 ? "" : "s"}
+          </span>
+          {(fSchool || fKind) && (
+            <Button variant="outline" onClick={() => { setFSchool(""); setFKind(""); }}>Limpar filtros</Button>
+          )}
+        </Card>
+      )}
+
       {loading ? (
         <div className="flex justify-center py-16">
           <Spinner />
@@ -475,7 +508,10 @@ function FunilPage() {
         />
       ) : (
         <div className="space-y-3">
-          {funnels.map((funnel) => {
+          {shownFunnels.length === 0 && (
+            <p className="py-10 text-center text-sm text-muted-foreground">Nenhum funil para este filtro.</p>
+          )}
+          {shownFunnels.map((funnel) => {
             const funnelStages = stagesOf(funnel.id);
             const school = schools.find((s) => s.id === funnel.school_id);
             return (
