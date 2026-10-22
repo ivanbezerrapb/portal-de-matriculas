@@ -152,3 +152,100 @@ export async function getPerms(supabase: SupabaseClient, userId: string): Promis
     roles: rows,
   };
 }
+
+// Garante que cartões abertos de cadastros com check-in (LEADS) ou matrícula
+// realizada (Visitantes) sejam dados como ganhos, na etapa correta, com tarefas
+// concluídas e registro no Histórico. Idempotente; seguro chamar com frequência.
+const normTxt = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+const fmtWhen = (iso: string) =>
+  new Intl.DateTimeFormat("pt-BR", {
+    timeZone: "America/Fortaleza", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit",
+  }).format(new Date(iso)).replace(",", " às");
+
+export async function reconcileWonOpportunities(
+  admin: SupabaseClient,
+  submissionIds?: string[],
+): Promise<{ id: string; kind: "checkin" | "matricula" }[]> {
+  let oq = admin
+    .from("opportunities")
+    .select("id, funnel_id, submission_id, submissions!inner(list_type, enrolled, enrolled_at, enrolled_by)")
+    .eq("status", "open")
+    .not("submission_id", "is", null);
+  if (submissionIds?.length) oq = oq.in("submission_id", submissionIds);
+  const { data: opps, error } = await oq;
+  if (error) throw new Error(error.message);
+  type O = {
+    id: string; funnel_id: string; submission_id: string;
+    submissions: { list_type: string | null; enrolled: boolean | null; enrolled_at: string | null; enrolled_by: string | null };
+  };
+  const list = (opps ?? []) as unknown as O[];
+  if (!list.length) return [];
+
+  const leadSubs = list.filter((o) => o.submissions.list_type === "leads").map((o) => o.submission_id);
+  const checkins = new Map<string, { at: string; by: string | null; email: string | null }>();
+  if (leadSubs.length) {
+    const { data: logs } = await admin
+      .from("audit_log")
+      .select("submission_id, created_at, actor_id, actor_email")
+      .eq("action", "check_in")
+      .in("submission_id", leadSubs)
+      .order("created_at", { ascending: true });
+    for (const l of (logs ?? []) as { submission_id: string; created_at: string; actor_id: string | null; actor_email: string | null }[])
+      if (!checkins.has(l.submission_id)) checkins.set(l.submission_id, { at: l.created_at, by: l.actor_id, email: l.actor_email });
+  }
+
+  const targets = list
+    .map((o) => {
+      if (o.submissions.list_type === "leads") {
+        const c = checkins.get(o.submission_id);
+        return c ? { o, kind: "checkin" as const, at: c.at, by: c.by, email: c.email } : null;
+      }
+      if (o.submissions.enrolled)
+        return { o, kind: "matricula" as const, at: o.submissions.enrolled_at ?? new Date().toISOString(), by: o.submissions.enrolled_by, email: null };
+      return null;
+    })
+    .filter((x): x is NonNullable<typeof x> => !!x);
+  if (!targets.length) return [];
+
+  const funnelIds = [...new Set(targets.map((t) => t.o.funnel_id))];
+  const userIds = [...new Set(targets.map((t) => t.by).filter((x): x is string => !!x))];
+  const [{ data: stages }, { data: profs }, { data: reason }] = await Promise.all([
+    admin.from("funnel_stages").select("id, name, funnel_id").in("funnel_id", funnelIds),
+    userIds.length ? admin.from("profiles").select("id, full_name").in("id", userIds) : Promise.resolve({ data: [] }),
+    admin.from("crm_close_reasons").select("id").eq("kind", "won").eq("label", "Matrícula realizada").maybeSingle(),
+  ]);
+  const names = new Map(((profs ?? []) as { id: string; full_name: string | null }[]).map((p) => [p.id, p.full_name]));
+  const now = new Date().toISOString();
+  const done: { id: string; kind: "checkin" | "matricula" }[] = [];
+
+  for (const t of targets) {
+    const fs = ((stages ?? []) as { id: string; name: string; funnel_id: string }[]).filter((s) => s.funnel_id === t.o.funnel_id);
+    const stage = fs.find((s) => normTxt(s.name).includes(t.kind === "checkin" ? "realizad" : "matriculado"));
+    const author = (t.by && names.get(t.by)) || t.email || "Sistema";
+    await admin.from("crm_tasks").update({ done: true, done_at: now }).eq("opportunity_id", t.o.id).eq("done", false);
+    const { data: upd, error: upErr } = await admin
+      .from("opportunities")
+      .update({
+        status: "won",
+        close_reason_id: t.kind === "matricula" ? ((reason?.id as string | undefined) ?? null) : null,
+        close_note: t.kind === "checkin" ? "Check-in confirmado (visita realizada)." : "Matrícula realizada.",
+        closed_at: t.at,
+        updated_at: now,
+        ...(stage ? { stage_id: stage.id } : {}),
+      })
+      .eq("id", t.o.id)
+      .eq("status", "open")
+      .select("id");
+    if (upErr || !upd?.length) continue;
+    await admin.from("crm_notes").insert({
+      opportunity_id: t.o.id,
+      author_id: t.by,
+      author_name: author,
+      body: t.kind === "checkin"
+        ? `Visita realizada em ${fmtWhen(t.at)} — check-in por ${author}.`
+        : `Matrícula realizada em ${fmtWhen(t.at)} — por ${author}.`,
+    });
+    done.push({ id: t.o.id, kind: t.kind });
+  }
+  return done;
+}
