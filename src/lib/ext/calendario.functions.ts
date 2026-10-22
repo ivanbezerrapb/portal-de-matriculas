@@ -32,6 +32,8 @@ export const listCalendarEvents = createServerFn({ method: "GET" })
     const { getPerms, extAdmin } = await import("./server");
     const perms = await getPerms(context.supabase, context.userId);
     const admin = extAdmin();
+    const { reconcileWonOpportunities } = await import("./server");
+    await reconcileWonOpportunities(admin).catch(() => []);
     const all = perms.isAdmin || perms.isDirecao;
     const own = [...new Set([...perms.managerSchools, ...perms.infoSchools, ...perms.operatorSchools])];
 
