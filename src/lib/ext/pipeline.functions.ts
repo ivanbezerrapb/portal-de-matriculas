@@ -81,6 +81,10 @@ export const listPipeline = createServerFn({ method: "GET" })
       .parse(data),
   )
   .handler(async ({ data, context }) => {
+    {
+      const { extAdmin, reconcileWonOpportunities } = await import("./server");
+      await reconcileWonOpportunities(extAdmin()).catch(() => []);
+    }
     const { data: stages, error } = await context.supabase
       .from("funnel_stages")
       .select("*")

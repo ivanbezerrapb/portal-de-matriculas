@@ -454,29 +454,7 @@ export const setEnrollment = createServerFn({ method: "POST" })
 
     if (opportunity) {
       if (data.enrolled) {
-        await context.supabase
-          .from("crm_tasks")
-          .update({ done: true, done_at: now })
-          .eq("opportunity_id", opportunity.id)
-          .eq("done", false);
-
-        const { data: reason } = await context.supabase
-          .from("crm_close_reasons")
-          .select("id")
-          .eq("kind", "won")
-          .eq("label", "Matrícula realizada")
-          .maybeSingle();
-
-        await context.supabase
-          .from("opportunities")
-          .update({
-            status: "won",
-            close_reason_id: reason?.id ?? null,
-            close_note: "Matrícula confirmada na tela de cadastros.",
-            closed_at: now,
-            updated_at: now,
-          })
-          .eq("id", opportunity.id);
+        // ganho, etapa e histórico feitos por reconcileWonOpportunities abaixo
       } else {
         await context.supabase
           .from("opportunities")
@@ -512,6 +490,10 @@ export const setEnrollment = createServerFn({ method: "POST" })
       ],
     });
 
+    if (data.enrolled) {
+      const { extAdmin, reconcileWonOpportunities } = await import("./server");
+      await reconcileWonOpportunities(extAdmin(), [data.id]);
+    }
     return { ok: true };
   });
 
@@ -630,6 +612,7 @@ export const setLeadCheckIn = createServerFn({ method: "POST" })
       .update({ updated_at: now, updated_by: context.userId })
       .eq("id", data.id);
 
+    await reconcileAfter(data.id);
     return { ok: true, checked_in_at: now, opportunity_closed: Boolean(opportunity) };
   });
 
@@ -819,6 +802,7 @@ export const sendSubmissionToFunnel = createServerFn({ method: "POST" })
       if (updError) throw new Error(updError.message);
     }
 
+    await reconcileAfter(data.submission_id);
     return { ok: true, funnel_id: funnel.id, attendant_id: attendantId };
   });
 
@@ -1330,3 +1314,8 @@ export const updateSubmissionChildren = createServerFn({ method: "POST" })
     });
     return { ok: true };
   });
+
+async function reconcileAfter(submissionId: string) {
+  const { extAdmin, reconcileWonOpportunities } = await import("./server");
+  await reconcileWonOpportunities(extAdmin(), [submissionId]);
+}
