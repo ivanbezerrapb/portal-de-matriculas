@@ -1319,3 +1319,45 @@ async function reconcileAfter(submissionId: string) {
   const { extAdmin, reconcileWonOpportunities } = await import("./server");
   await reconcileWonOpportunities(extAdmin(), [submissionId]);
 }
+
+// Administrador: retira o cadastro do funil (cartão arquivado, nada é apagado).
+export const removeSubmissionFromFunnel = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((data) => z.object({ submission_id: z.string().uuid() }).parse(data))
+  .handler(async ({ data, context }) => {
+    const { getPerms, extAdmin } = await import("./server");
+    const perms = await getPerms(context.supabase, context.userId);
+    if (!perms.isAdmin) throw new Error("Apenas o Administrador pode retirar o funil.");
+    const admin = extAdmin();
+    const { data: opps, error } = await admin
+      .from("opportunities")
+      .select("id, status, funnels(name)")
+      .eq("submission_id", data.submission_id);
+    if (error) throw new Error(error.message);
+    if ((opps ?? []).some((o) => o.status === "won")) {
+      throw new Error("Este cadastro já foi ganho (check-in ou matrícula) e não pode sair do funil.");
+    }
+    const now = new Date().toISOString();
+    const { data: prof } = await admin.from("profiles").select("full_name").eq("id", context.userId).maybeSingle();
+    const author = (prof as { full_name?: string } | null)?.full_name || context.userEmail || "Administrador";
+    for (const o of (opps ?? []) as unknown as { id: string; funnels: { name: string } | null }[]) {
+      await admin.from("crm_tasks").delete().eq("opportunity_id", o.id).eq("done", false);
+      await admin.from("crm_notes").insert({
+        opportunity_id: o.id,
+        author_id: context.userId,
+        author_name: author,
+        body: `Cadastro retirado do funil ${o.funnels?.name ?? ""} por ${author}.`,
+      });
+      const { error: upd } = await admin
+        .from("opportunities")
+        .update({ status: "lost", submission_id: null, closed_at: now, close_note: "Retirado do funil pelo Administrador", updated_at: now })
+        .eq("id", o.id);
+      if (upd) throw new Error(upd.message);
+    }
+    const { error: subErr } = await admin
+      .from("submissions")
+      .update({ attendant_id: null, crm_status: null, crm_reason: "Retirado do funil pelo Administrador", updated_at: now, updated_by: context.userId })
+      .eq("id", data.submission_id);
+    if (subErr) throw new Error(subErr.message);
+    return { ok: true };
+  });
