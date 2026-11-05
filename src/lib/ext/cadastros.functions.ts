@@ -1340,6 +1340,11 @@ export const removeSubmissionFromFunnel = createServerFn({ method: "POST" })
     const now = new Date().toISOString();
     const { data: prof } = await admin.from("profiles").select("full_name").eq("id", context.userId).maybeSingle();
     const author = (prof as { full_name?: string } | null)?.full_name || context.userEmail || "Administrador";
+    const { error: subErr } = await admin
+      .from("submissions")
+      .update({ attendant_id: null, crm_status: "none", crm_reason: "Retirado do funil pelo Administrador", updated_at: now, updated_by: context.userId })
+      .eq("id", data.submission_id);
+    if (subErr) throw new Error(subErr.message);
     for (const o of (opps ?? []) as unknown as { id: string; funnels: { name: string } | null }[]) {
       await admin.from("crm_tasks").delete().eq("opportunity_id", o.id).eq("done", false);
       await admin.from("crm_notes").insert({
@@ -1354,10 +1359,5 @@ export const removeSubmissionFromFunnel = createServerFn({ method: "POST" })
         .eq("id", o.id);
       if (upd) throw new Error(upd.message);
     }
-    const { error: subErr } = await admin
-      .from("submissions")
-      .update({ attendant_id: null, crm_status: null, crm_reason: "Retirado do funil pelo Administrador", updated_at: now, updated_by: context.userId })
-      .eq("id", data.submission_id);
-    if (subErr) throw new Error(subErr.message);
     return { ok: true };
   });
