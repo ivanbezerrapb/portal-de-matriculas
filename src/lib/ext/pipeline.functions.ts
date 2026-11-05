@@ -11,6 +11,7 @@ type OpportunityRow = Opportunity & {
   owner: { id: string; full_name: string | null } | null;
   display_name: string;
   series: string[];
+  restricted?: boolean;
 };
 
 function normalizeLabel(value: string): string {
@@ -110,6 +111,7 @@ export const listPipeline = createServerFn({ method: "GET" })
     ] as string[];
     const displayNames = new Map<string, string>();
     const seriesBySubmission = new Map<string, string[]>();
+    const restrictedSubs = new Set<string>();
 
     if (submissionIds.length > 0 && formIds.length > 0) {
       // Cartões já autorizados pela RLS acima; respostas lidas com o cliente admin
@@ -137,6 +139,7 @@ export const listPipeline = createServerFn({ method: "GET" })
       }
       const relevantFields = (fields ?? []).filter((field) => {
         const label = normalizeLabel(field.label);
+        if (label.includes("acompanhamento") && (label.includes("medico") || label.includes("psicolog") || label.includes("psicopedag"))) return true;
         return (
           field.type === "children" ||
           label === "serie" ||
@@ -164,6 +167,9 @@ export const listPipeline = createServerFn({ method: "GET" })
             displayNames.set(answer.submission_id, answer.value.trim());
           }
           const label = normalizeLabel(field.label);
+          if (label.includes("acompanhamento") && normalizeLabel(answer.value ?? "") === "sim") {
+            restrictedSubs.add(answer.submission_id);
+          }
           const isSeriesField =
             field.type === "children" ||
             label === "serie" ||
@@ -229,6 +235,7 @@ export const listPipeline = createServerFn({ method: "GET" })
             : opportunity.name
           : opportunity.name,
         series: seriesBySubmission.get(opportunity.submission_id) ?? [],
+        restricted: restrictedSubs.has(opportunity.submission_id),
         owner: opportunity.owner_id
           ? { id: opportunity.owner_id, full_name: ownerNames.get(opportunity.owner_id) ?? null }
           : null,
