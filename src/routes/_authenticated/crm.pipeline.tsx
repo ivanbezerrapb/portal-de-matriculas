@@ -451,7 +451,7 @@ function PipelinePage() {
                             <span
                               title="Pendência pedagógica — atenção"
                               aria-label="Pendência pedagógica"
-                              className="shrink-0 text-orange-500"
+                              className="shrink-0 text-[oklch(0.72_0.18_60)]"
                             >
                               <AlertTriangle size={16} strokeWidth={2} />
                             </span>
