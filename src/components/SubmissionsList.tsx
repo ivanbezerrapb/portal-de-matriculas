@@ -9,6 +9,7 @@ import {
   getSubmission,
   listSubmissions,
   sendSubmissionToFunnel,
+  removeSubmissionFromFunnel,
   setEnrollment,
   setLeadCheckIn,
 } from "@/lib/ext/cadastros.functions";
@@ -327,6 +328,18 @@ export function SubmissionsList({
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       setFunnelDialog(null);
       setFunnelAttendant("");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const removeFunnelM = useMutation({
+    mutationFn: (submission_id: string) => removeSubmissionFromFunnel({ data: { submission_id } }),
+    onSuccess: () => {
+      toast.success("Cadastro retirado do funil.");
+      queryClient.invalidateQueries({ queryKey: ["submissions"] });
+      queryClient.invalidateQueries({ queryKey: ["pipeline"] });
+      queryClient.invalidateQueries({ queryKey: ["crm-tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -747,12 +760,22 @@ export function SubmissionsList({
                             onChange={(e) => {
                               const id = e.target.value;
                               if (!id || id === current?.funnel_id) return;
+                              if (id === "__remove") {
+                                if (window.confirm(`Retirar ${s.public_id} do funil ${current?.funnel_name ?? ""}? O cartão sai do Pipeline e as tarefas pendentes são canceladas.`)) {
+                                  removeFunnelM.mutate(s.id);
+                                }
+                                return;
+                              }
+                              if (current?.funnel_id && !window.confirm(`Trocar ${s.public_id} do funil ${current.funnel_name} para outro funil? O cartão volta para a 1ª etapa.`)) return;
                               const funnel = options.find((f) => f.id === id);
                               pickFunnel(s, id, funnel?.name ?? "");
                             }}
                             aria-label={`Funil de ${s.public_id}`}
                           >
                             <option value="">—</option>
+                            {perms?.isAdmin && current?.funnel_id && (
+                              <option value="__remove">Sem funil (retirar)</option>
+                            )}
                             {options.map((f) => (
                               <option key={f.id} value={f.id}>
                                 {f.name}
