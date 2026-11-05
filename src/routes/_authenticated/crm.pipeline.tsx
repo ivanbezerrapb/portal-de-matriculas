@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { MessageCircle, Plus, Trash2 } from "lucide-react";
+import { AlertTriangle, MessageCircle, Plus, Trash2 } from "lucide-react";
 import { listFunnelOwners, listFunnels } from "@/lib/ext/funis.functions";
 import {
   closeOpportunity,
@@ -443,9 +443,20 @@ function PipelinePage() {
                      const cardSeries = card.series ?? [];
                     const body = (
                       <>
-                        <p className="break-words text-sm font-semibold text-foreground">
-                          {card.display_name}
-                        </p>
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="break-words text-sm font-semibold text-foreground">
+                            {card.display_name}
+                          </p>
+                          {card.restricted && (
+                            <span
+                              title="Pendência pedagógica — atenção"
+                              aria-label="Pendência pedagógica"
+                              className="shrink-0 text-orange-500"
+                            >
+                              <AlertTriangle size={16} strokeWidth={2} />
+                            </span>
+                          )}
+                        </div>
                         {cardSeries.length > 0 && (
                           <p className="mt-1 break-words text-xs text-muted-foreground">
                             <span className="font-medium text-foreground">Série:</span>{" "}
