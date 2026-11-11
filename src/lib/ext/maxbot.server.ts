@@ -1,3 +1,4 @@
+import { compareSchoolNames } from "@/lib/school-order";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 // Núcleo da integração Maxbot (somente servidor).
@@ -101,18 +102,26 @@ export async function runImport(db: SupabaseClient, all: All, account: Account):
   if (!s.token) return { at, ok: false, found: 0, imported: 0, skipped: 0, message: "Nenhum token configurado." };
   if (map.length === 0) return { at, ok: false, found: 0, imported: 0, skipped: 0, message: "Nenhuma etiqueta vinculada às unidades." };
   if (!s.import_since) return { at, ok: false, found: 0, imported: 0, skipped: 0, message: "Informe a data inicial." };
+  // Contato com etiquetas de várias unidades entra na primeira pela ordem fixa (Centro, Expedicionários, Cristo, Bessa).
+  const { data: schoolRows } = await db.from("schools").select("id, name").in("id", map.map(([id]) => id));
+  const nameOf = new Map((schoolRows ?? []).map((r: { id: string; name: string }) => [r.id, r.name]));
+  map.sort((a, b) => compareSchoolNames(nameOf.get(a[0]) ?? "", nameOf.get(b[0]) ?? ""));
 
   const today = new Date(Date.now() - 3 * 3600_000).toISOString().slice(0, 10);
   const contacts: Contact[] = [];
-  for (let page = 1; page <= 200; page++) {
-    const json = await maxbotCall(s, {
-      cmd: "get_contact", focus_period: "0", date_start: s.import_since, date_stop: today,
-      pagination: { per_page: "100", current: String(page) },
-    });
-    const list = (json["data"] as Contact[] | undefined) ?? [];
-    contacts.push(...list);
-    const pag = json["pagination"] as { total_pages?: string | number } | undefined;
-    if (list.length < 100 || page >= Number(pag?.total_pages ?? page)) break;
+  const seen = new Set<string>();
+  // 0 = data de cadastro, 1 = data da última atualização (pega contatos antigos que ganharam a etiqueta)
+  for (const focus of ["0", "1"]) {
+    for (let page = 1; page <= 200; page++) {
+      const json = await maxbotCall(s, {
+        cmd: "get_contact", focus_period: focus, date_start: s.import_since, date_stop: today,
+        pagination: { per_page: "100", current: String(page) },
+      });
+      const list = (json["data"] as Contact[] | undefined) ?? [];
+      for (const c of list) { const k = String(c.id); if (!seen.has(k)) { seen.add(k); contacts.push(c); } }
+      const pag = json["pagination"] as { total_pages?: string | number } | undefined;
+      if (list.length < 100 || page >= Number(pag?.total_pages ?? page)) break;
+    }
   }
 
   const imported = (s.imported ??= {});
