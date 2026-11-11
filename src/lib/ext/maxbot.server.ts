@@ -29,6 +29,7 @@ export type Stored = {
   imported?: Record<string, string>; // contactId -> submissionId
   attendants?: Record<string, { id: string; name: string }>; // portalUserId -> atendente Maxbot
   contacts?: Record<string, string>; // opportunityId -> contactId Maxbot
+  named?: Record<string, string>; // contactId -> código da ficha já gravado no nome
 };
 export type All = Record<Account, Stored>;
 
@@ -261,6 +262,42 @@ export async function findContactByPhone(s: Stored, phone: string): Promise<stri
   return null;
 }
 
+function splitName(name: string) {
+  const parts = name.trim().split(/\s+/);
+  return { name: (parts[0] ?? "Contato").slice(0, 45), surname: parts.slice(1).join(" ").slice(0, 45) };
+}
+
+// Nome no padrão "Fulano de Tal (1050/CE2027)", sem duplicar o código.
+export function nameWithCode(name: string, code: string | null | undefined) {
+  const base = name.replace(/\s*\([^)]*\)\s*$/, "").trim() || "Contato";
+  return code ? `${base} (${code})` : base;
+}
+
+async function oppCode(db: SupabaseClient, submissionId: string | null | undefined): Promise<string | null> {
+  if (!submissionId) return null;
+  const { data } = await db.from("submissions").select("public_id").eq("id", submissionId).maybeSingle();
+  return (data?.public_id as string | null) ?? null;
+}
+
+// Atualiza o nome do contato no Maxbot com o código da ficha (uma vez por contato/código).
+async function ensureContactName(db: SupabaseClient, account: Account, contactId: string, opp: Opp) {
+  try {
+    const code = await oppCode(db, opp.submission_id);
+    if (!code) return;
+    const all = await readAll(db);
+    const st = all[account];
+    if (st.named?.[contactId] === code) return;
+    let name = opp.display_name || opp.name || null;
+    if (!name) name = (await submissionContact(db, opp.submission_id)).name;
+    if (!name) return;
+    const full = nameWithCode(name, code);
+    await maxbotCall(st, { cmd: "set_contact", for_contact_id: contactId, ...splitName(full.length > 90 ? full.slice(-90) : full) });
+    const fresh = await readAll(db);
+    fresh[account] = { ...fresh[account], named: { ...(fresh[account].named ?? {}), [contactId]: code } };
+    await writeAll(db, fresh);
+  } catch (e) { console.error("maxbot set_contact", contactId, e); }
+}
+
 export async function createContact(s: Stored, name: string, phone: string, email?: string | null): Promise<string> {
   const parts = name.trim().split(/\s+/);
   const json = await maxbotCall(s, {
@@ -298,7 +335,7 @@ export async function ensureOpportunityContact(
   const s = all[account];
   if (!s.token) return { status: "not_configured", contactId: null, account };
   const saved = s.contacts?.[opp.id];
-  if (saved) return { status: "linked", contactId: saved, account };
+  if (saved) { await ensureContactName(db, account, saved, opp); return { status: "linked", contactId: saved, account }; }
   // Lead importado do Maxbot: o contato de origem já é conhecido.
   if (opp.submission_id) {
     const hit = Object.entries(s.imported ?? {}).find(([, sid]) => sid === opp.submission_id);
@@ -306,6 +343,7 @@ export async function ensureOpportunityContact(
       const fresh = await readAll(db);
       fresh[account] = { ...fresh[account], contacts: { ...(fresh[account].contacts ?? {}), [opp.id]: hit[0] } };
       await writeAll(db, fresh);
+      await ensureContactName(db, account, hit[0], opp);
       return { status: "linked", contactId: hit[0], account };
     }
   }
@@ -316,13 +354,14 @@ export async function ensureOpportunityContact(
   let contactId = await findContactByPhone(s, phone);
   let created = false;
   if (!contactId && opts.register) {
-    contactId = await createContact(s, opp.display_name || "Contato", phone, opp.email);
+    contactId = await createContact(s, nameWithCode(opp.display_name || "Contato", await oppCode(db, opp.submission_id)), phone, opp.email);
     created = true;
   }
   if (!contactId) return { status: "missing", contactId: null, account };
   const fresh = await readAll(db);
   fresh[account] = { ...fresh[account], contacts: { ...(fresh[account].contacts ?? {}), [opp.id]: contactId } };
   await writeAll(db, fresh);
+  await ensureContactName(db, account, contactId, opp);
   if (created) {
     await db.from("crm_notes").insert({ opportunity_id: opp.id, author_id: null, author_name: opts.actor || ACCOUNT_LABEL[account], body: `Contato cadastrado no ${ACCOUNT_LABEL[account]} (ID ${contactId}).` });
     await logActivity(db, null, opts.actor || ACCOUNT_LABEL[account], `Contato cadastrado no Maxbot: ${opp.display_name ?? ""}`, { contato_maxbot: contactId, card: opp.id }, opp.school_id);
@@ -337,7 +376,9 @@ export async function syncRecentOpportunities(db: SupabaseClient, days = 3) {
   const all = await readAll(db);
   let done = 0;
   for (const o of (data ?? []) as Opp[]) {
-    if (ACCOUNTS.some((a) => all[a].contacts?.[o.id]) || (!toMaxbotPhone(o.phone) && !o.submission_id)) continue;
+    if (!toMaxbotPhone(o.phone) && !o.submission_id) continue;
+    const linkedAcc = ACCOUNTS.find((a) => all[a].contacts?.[o.id]);
+    if (linkedAcc && (!o.submission_id || all[linkedAcc].named?.[all[linkedAcc].contacts?.[o.id] ?? ""])) continue;
     try { const r = await ensureOpportunityContact(db, o, { register: true }); if (r.status === "linked") done++; }
     catch (e) { console.error("maxbot sync", o.id, e); }
   }
