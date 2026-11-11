@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { authenticateCronRequest } from "@/integrations/supabase/cron-auth";
 
-// Chamado pelo agendador a cada 15 minutos: importa LEADS das contas Maxbot com importação ativa.
+// Chamado pelo agendador a cada 10 minutos: importa LEADS das contas Maxbot com importação ativa.
 export const Route = createFileRoute("/api/public/maxbot-import")({
   server: {
     handlers: {

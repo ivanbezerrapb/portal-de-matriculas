@@ -206,7 +206,7 @@ function ImportSection({ account, title, data, schools }: { account: Account; ti
       </div>
       <label className="flex items-center gap-3 text-sm font-medium text-foreground">
         <input type="checkbox" className="h-4 w-4 accent-primary" checked={auto} onChange={(e) => setAuto(e.target.checked)} />
-        Importação automática (a cada 15 minutos)
+        Importação automática (a cada 10 minutos)
       </label>
       <div className="flex flex-wrap gap-2">
         <Button onClick={save} disabled={saving}>{saving ? "Salvando..." : "Salvar importação"}</Button>

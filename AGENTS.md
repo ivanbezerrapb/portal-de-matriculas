@@ -11,4 +11,4 @@
 
 ## Maxbot
 - Maxbot settings (per account: conecta/interactivo, tokens, label mapping, imported contact ids) live in the private `integracoes/maxbot.json` storage object on the external DB, read only server-side via `src/lib/ext/maxbot.server.ts` — the external DB has no migration path from here, and tokens must never reach the browser.
-- Automatic lead import runs from the managed schedule `maxbot-import-leads` (every 15 min) calling `/api/public/maxbot-import`, authenticated with `authenticateCronRequest`.
+- Automatic lead import runs from the managed schedule `maxbot-import-leads` (every 10 min) calling `/api/public/maxbot-import`, authenticated with `authenticateCronRequest`.
