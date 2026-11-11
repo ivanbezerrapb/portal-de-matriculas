@@ -2,6 +2,7 @@ import { funnelListType } from "./model";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAuth } from "./auth";
+import { compareSchoolNames } from "@/lib/school-order";
 
 // ---------- Listagem com busca por ID e filtros ----------
 
@@ -1056,7 +1057,7 @@ export const getDashboardStats = createServerFn({ method: "GET" })
           .map(([label, count]) => ({ label, count, started: attendantStarted.get(school)?.get(label) ?? 0, won: attendantWon.get(school)?.get(label) ?? 0 }))
           .sort((x, y) => y.count - x.count || x.label.localeCompare(y.label, "pt-BR")),
       }))
-      .sort((x, y) => x.school.localeCompare(y.school, "pt-BR"));
+      .sort((x, y) => compareSchoolNames(x.school, y.school));
 
     // Central de Informações: LEADS por responsável do card (owner_id).
     let leadOwnersBySchool: { school: string; items: { label: string; count: number; started: number; won: number }[] }[] = [];
@@ -1115,7 +1116,7 @@ export const getDashboardStats = createServerFn({ method: "GET" })
           items: [...g.entries()].map(([label, v]) => ({ label, ...v }))
             .sort((x, y) => y.count - x.count || x.label.localeCompare(y.label, "pt-BR")),
         }))
-        .sort((x, y) => x.school.localeCompare(y.school, "pt-BR"));
+        .sort((x, y) => compareSchoolNames(x.school, y.school));
     }
 
     const seriesCounts = new Map<string, number>();
@@ -1277,7 +1278,7 @@ export const getDashboardStats = createServerFn({ method: "GET" })
         if (rest > 0) top.push({ label: "Outros", city: "", count: rest });
         neighborhoods.push({ school: school.name, items: top });
       }
-      neighborhoods.sort((a, b) => a.school.localeCompare(b.school, "pt-BR"));
+      neighborhoods.sort((a, b) => compareSchoolNames(a.school, b.school));
     }
 
     const enrolled = rows.reduce(
@@ -1318,9 +1319,7 @@ export const getDashboardStats = createServerFn({ method: "GET" })
       neighborhoods,
       attendantsBySchool,
       leadOwnersBySchool,
-      bySchool: [...bySchool.values()].sort(
-        (a, b) => b.visits - a.visits || a.name.localeCompare(b.name, "pt-BR"),
-      ),
+      bySchool: [...bySchool.values()].sort((a, b) => compareSchoolNames(a.name, b.name)),
     };
   });
 

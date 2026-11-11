@@ -18,6 +18,7 @@ import { ChevronDown, ClipboardCheck, ClipboardList, School, Users } from "lucid
 import { useState } from "react";
 import { getDashboardStats, getMyPermissions } from "@/lib/ext/cadastros.functions";
 import { listSchools } from "@/lib/ext/escolas.functions";
+import { compareSchoolNames } from "@/lib/school-order";
 import { getLegacyYearStats } from "@/lib/ext/legado.functions";
 import { Button, Card, Spinner } from "@/components/ui";
 import {
@@ -847,7 +848,11 @@ function DashboardPage() {
               <DropdownMenuSeparator />
               <DropdownMenuItem onSelect={() => setSelected([])}>Todas as escolas</DropdownMenuItem>
               <DropdownMenuSeparator />
-              {(schools ?? []).map((school) => (
+              {[...(schools ?? [])]
+                .sort((a, b) =>
+                  compareSchoolNames(String(a.name ?? ""), String(b.name ?? "")),
+                )
+                .map((school) => (
                 <DropdownMenuCheckboxItem
                   key={school.id as string}
                   checked={selected.includes(school.id as string)}
