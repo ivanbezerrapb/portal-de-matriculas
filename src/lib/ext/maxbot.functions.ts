@@ -312,6 +312,9 @@ export const sendCardMaxbotTemplate = createServerFn({ method: "POST" })
     if (r.status !== "linked" || !r.account || !r.contactId) throw new Error("Contato ainda não está cadastrado no Maxbot.");
     const all = await m.readAll(db);
     const s = all[r.account];
+    const def = s.default_template;
+    if (!def?.id) throw new Error("Nenhum template padrão definido em Configurações › MAXBOT.");
+    data.template_id = def.id; data.template_title = def.title;
     const att = s.attendants?.[context.userId];
     if (!att) throw new Error("Seu usuário não está vinculado a um atendente do Maxbot. Peça ao administrador em Configurações › Usuários.");
     const sector = await m.attendantSector(s, att.id);

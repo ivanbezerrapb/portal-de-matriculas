@@ -94,7 +94,7 @@ function MaxbotSend({ opportunityId }: { opportunityId: string }) {
       {open && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-foreground/40 p-4" onClick={() => setOpen(false)}>
           <div className="w-full max-w-lg rounded-xl bg-card p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-display text-lg font-semibold text-foreground">Enviar mensagem pelo Maxbot</h3>
+            <h3 className="font-display text-lg font-semibold text-foreground">Confirmar envio pelo Maxbot</h3>
             {tq.isLoading ? <div className="mt-4"><Spinner /></div> : tq.error ? (
               <p className="mt-3 text-sm text-destructive">{tq.error instanceof Error ? tq.error.message : "Falha ao carregar templates."}</p>
             ) : tq.data && (
@@ -105,21 +105,18 @@ function MaxbotSend({ opportunityId }: { opportunityId: string }) {
                 ) : (
                   <p className="text-destructive">Seu usuário não está vinculado a um atendente deste Maxbot. Peça ao administrador em Configurações › Usuários.</p>
                 )}
-                <div>
-                  <Label htmlFor="mb-tpl">Template</Label>
-                  <Select id="mb-tpl" value={tpl} onChange={(e) => setTpl(e.target.value)}>
-                    <option value="">Selecione…</option>
-                    {tq.data.templates.map((t) => <option key={t.id} value={t.id}>{t.title}</option>)}
-                  </Select>
-                  {tq.data.templates.length === 0 && <p className="mt-1 text-xs text-muted-foreground">Nenhum template de follow-up cadastrado no Maxbot.</p>}
-                </div>
+                {chosen ? (
+                  <p className="text-foreground">Tem certeza que deseja enviar o template <span className="font-semibold">"{chosen.title}"</span> para este contato?</p>
+                ) : (
+                  <p className="text-destructive">Nenhum template padrão definido. Peça ao administrador em Configurações › MAXBOT.</p>
+                )}
                 {chosen && <div className="whitespace-pre-wrap rounded-lg bg-muted p-3 text-foreground">{chosen.msg}</div>}
               </div>
             )}
             <div className="mt-5 flex justify-end gap-2">
               <Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button>
-              <Button disabled={!tpl || !tq.data?.attendant || sendM.isPending} onClick={() => sendM.mutate()}>
-                {sendM.isPending ? "Enviando…" : "Enviar"}
+              <Button disabled={!chosen || !tq.data?.attendant || sendM.isPending} onClick={() => sendM.mutate()}>
+                {sendM.isPending ? "Enviando…" : "Sim, enviar"}
               </Button>
             </div>
           </div>
