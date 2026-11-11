@@ -667,7 +667,7 @@ export function SubmissionsList({
                 return (
                   <tr
                     key={s.id}
-                    className={`border-b border-border last:border-0 ${listType !== "leads" && enrolled ? "bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/40" : "hover:bg-accent/40"}`}
+                    className={`border-b border-border last:border-0 ${listType !== "leads" && enrolled ? "bg-emerald-200/90 hover:bg-emerald-300/90 dark:bg-emerald-900/60 dark:hover:bg-emerald-800/60" : "hover:bg-accent/40"}`}
                   >
                     <td className="px-4 py-2.5">
                       <input
@@ -827,7 +827,7 @@ export function SubmissionsList({
                             aria-label={`Matrícula de ${s.public_id}`}
                           />
                           {enrolled ? (
-                            <span className="font-medium text-emerald-600">
+                            <span className="font-semibold text-emerald-900">
                               Matriculado · {enrolledCount}
                             </span>
                           ) : null}
