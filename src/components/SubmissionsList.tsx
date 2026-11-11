@@ -803,7 +803,7 @@ export function SubmissionsList({
                             aria-label={`Check-in de ${s.public_id}`}
                           />
                           {checkIn ? (
-                            <span className="font-semibold text-emerald-900">Confirmado</span>
+                            <span className="font-semibold text-emerald-900">Compareceu</span>
                           ) : null}
                         </label>
                       ) : (
