@@ -179,3 +179,8 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+tr.enrolled-row,
+tr.enrolled-row > td {
+  background-color: #bbf7d0 !important;
+}
