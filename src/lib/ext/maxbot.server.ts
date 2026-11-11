@@ -27,6 +27,7 @@ export type Stored = {
   import_enabled?: boolean;
   last_import?: ImportSummary | null;
   imported?: Record<string, string>; // contactId -> submissionId
+  attendants?: Record<string, { id: string; name: string }>; // portalUserId -> atendente Maxbot
 };
 export type All = Record<Account, Stored>;
 
@@ -219,4 +220,13 @@ export async function importAccount(
   fresh[account] = { ...fresh[account], imported: { ...(fresh[account].imported ?? {}), ...(all[account].imported ?? {}) }, last_import: summary };
   await writeAll(db, fresh);
   return summary;
+}
+
+export type MaxbotAttendant = { id: string; name: string; active: boolean };
+export async function listAttendants(s: Stored): Promise<MaxbotAttendant[]> {
+  const json = await maxbotCall(s, { cmd: "get_attendant" });
+  const list = (json["attendant"] as { id: number; name: string; status: number | string }[] | undefined) ?? [];
+  return list
+    .map((a) => ({ id: String(a.id), name: a.name, active: String(a.status) === "1" }))
+    .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
 }

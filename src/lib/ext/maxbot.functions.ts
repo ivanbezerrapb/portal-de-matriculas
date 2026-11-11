@@ -195,3 +195,61 @@ export const runMaxbotImport = createServerFn({ method: "POST" })
     }
     return summary;
   });
+
+// ===== Vínculo usuário do Portal ↔ atendente Maxbot =====
+export const getMaxbotUserLinks = createServerFn({ method: "GET" })
+  .middleware([requireAuth])
+  .handler(async ({ context }) => {
+    await ensureAdmin(context);
+    const db = await admin();
+    const { readAll, listAttendants, ACCOUNTS } = await import("./maxbot.server");
+    const all = await readAll(db);
+    const out = {} as Record<
+      "conecta" | "interactivo",
+      { token_set: boolean; error: string | null; attendants: { id: string; name: string; active: boolean }[]; links: Record<string, { id: string; name: string }> }
+    >;
+    for (const a of ACCOUNTS) {
+      const s = all[a];
+      let attendants: { id: string; name: string; active: boolean }[] = [];
+      let error: string | null = null;
+      if (s.token) {
+        try { attendants = await listAttendants(s); } catch (e) { error = e instanceof Error ? e.message : "Falha ao buscar atendentes."; }
+      }
+      out[a] = { token_set: Boolean(s.token), error, attendants, links: s.attendants ?? {} };
+    }
+    return out;
+  });
+
+const linkSchema = z.object({ id: z.string(), name: z.string() }).nullable();
+export const saveMaxbotUserLink = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((d) =>
+    z.object({ userId: z.string().uuid(), conecta: linkSchema.optional(), interactivo: linkSchema.optional() }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await ensureAdmin(context);
+    const db = await admin();
+    const { readAll, writeAll, logActivity, ACCOUNT_LABEL, ACCOUNTS } = await import("./maxbot.server");
+    const all = await readAll(db);
+    const changes: Record<string, unknown> = {};
+    for (const a of ACCOUNTS) {
+      const v = data[a];
+      if (v === undefined) continue;
+      const map = { ...(all[a].attendants ?? {}) };
+      if (v) {
+        const other = Object.entries(map).find(([uid, l]) => l.id === v.id && uid !== data.userId);
+        if (other) {
+          const { data: p } = await db.from("profiles").select("full_name").eq("id", other[0]).maybeSingle();
+          throw new Error(`No ${ACCOUNT_LABEL[a]}, o atendente ${v.name} já está vinculado a ${(p as { full_name: string | null } | null)?.full_name ?? "outro usuário"}.`);
+        }
+        map[data.userId] = v;
+      } else delete map[data.userId];
+      all[a] = { ...all[a], attendants: map };
+      changes[ACCOUNT_LABEL[a]] = v ? `${v.name} (ID ${v.id})` : "Não vinculado";
+    }
+    await writeAll(db, all);
+    const { data: target } = await db.from("profiles").select("full_name").eq("id", data.userId).maybeSingle();
+    const tName = (target as { full_name: string | null } | null)?.full_name ?? data.userId;
+    await logActivity(db, context.userId, await actorName(db, context.userId), `Vínculo Maxbot de ${tName}`, changes);
+    return { ok: true };
+  });
