@@ -351,7 +351,7 @@ function CalendarPage() {
                 </Link>
               )}
               {selected.can_check_in && selected.kind === "visita" && !confirming && !noShow && (
-                <Button onClick={() => setConfirming(true)}>Dar check-in</Button>
+                <Button className="bg-green-600 text-white hover:bg-green-700" onClick={() => setConfirming(true)}>Compareceu</Button>
               )}
               {selected.can_check_in && selected.kind === "matricula" && !enrolling && !noShow && (
                 <Button onClick={() => { setEnrollCount("1"); setEnrolling(true); }}>Matriculado</Button>
