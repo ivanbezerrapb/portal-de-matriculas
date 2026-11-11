@@ -91,14 +91,23 @@ function SeriesTick({
   x = 0,
   y = 0,
   payload,
+  index,
   maxChars = 28,
+  showRate = false,
+  rates = [],
 }: {
   x?: number;
   y?: number;
-  payload?: { value?: string };
+  payload?: { value?: string; index?: number };
+  index?: number;
   maxChars?: number;
+  showRate?: boolean;
+  rates?: number[];
 }) {
   const label = payload?.value ?? "";
+  const position = index ?? payload?.index ?? -1;
+  const rate = rates[position];
+  const hasRate = showRate && typeof rate === "number";
   const words = label.split(/\s+/);
   const lines = words.reduce<string[]>((result, word) => {
     const last = result[result.length - 1];
@@ -106,6 +115,7 @@ function SeriesTick({
     else result[result.length - 1] = `${last} ${word}`;
     return result;
   }, []);
+  const totalLines = lines.length + (hasRate ? 1 : 0);
 
   return (
     <text x={x - 8} y={y} textAnchor="end" fill="var(--muted-foreground)" fontSize={12}>
@@ -113,11 +123,16 @@ function SeriesTick({
         <tspan
           key={`${line}-${index}`}
           x={x - 8}
-          dy={index === 0 ? `${-(lines.length - 1) * 0.55}em` : "1.1em"}
+          dy={index === 0 ? `${-(totalLines - 1) * 0.55}em` : "1.1em"}
         >
           {line}
         </tspan>
       ))}
+      {hasRate && (
+        <tspan x={x - 8} dy="1.15em" fontSize={10.5} fontWeight={600} fill="var(--primary)">
+          {`${Math.round(rate as number)}%`}
+        </tspan>
+      )}
     </text>
   );
 }
@@ -202,6 +217,8 @@ function NeighborhoodChart({
             <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm bg-primary" />Vinculados</span>
             <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm" style={{ background: "var(--chart-2)" }} />Atendimento iniciado</span>
             <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm" style={{ background: "var(--chart-4)" }} />{wonLabel}</span>
+            <span className="text-[11px] italic">%</span>
+            <span className="text-[11px] italic text-muted-foreground">conversão ({wonLabel.toLowerCase()} ÷ vinculados)</span>
           </div>
         )}
       </div>
@@ -219,6 +236,9 @@ function NeighborhoodChart({
               ),
             );
             const labelWidth = Math.min(140, Math.max(110, Math.min(longest, 14) * 7.5));
+            const rates = group.items.map((item) =>
+              item.count > 0 ? ((item.won ?? 0) / item.count) * 100 : 0,
+            );
             return (
               <div key={group.school} className="min-w-0">
                 <p className="text-xs font-semibold text-primary">{group.school}</p>
@@ -230,7 +250,7 @@ function NeighborhoodChart({
                       ? { count: { label: "Vinculados", color: "var(--primary)" }, started: { label: "Atendimento iniciado", color: "var(--chart-2)" }, won: { label: wonLabel, color: "var(--chart-4)" } }
                       : { count: { label: "Visitas", color: "var(--primary)" } }}
                     className="mt-2 w-full aspect-auto"
-                    style={{ height: Math.max(140, group.items.length * (showStarted ? 84 : 46)) }}
+                    style={{ height: Math.max(140, group.items.length * (showStarted ? 96 : 46)) }}
                   >
                     <BarChart
                       data={group.items.map((item) => ({
@@ -249,7 +269,7 @@ function NeighborhoodChart({
                         axisLine={false}
                         width={labelWidth}
                         interval={0}
-                        tick={<SeriesTick maxChars={14} />}
+                        tick={<SeriesTick maxChars={14} showRate={showStarted} rates={rates} />}
                       />
                       <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
                       <Bar dataKey="count" fill="var(--color-count)" radius={[0, 4, 4, 0]}>
