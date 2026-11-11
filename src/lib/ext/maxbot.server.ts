@@ -28,6 +28,7 @@ export type Stored = {
   last_import?: ImportSummary | null;
   imported?: Record<string, string>; // contactId -> submissionId
   attendants?: Record<string, { id: string; name: string }>; // portalUserId -> atendente Maxbot
+  contacts?: Record<string, string>; // opportunityId -> contactId Maxbot
 };
 export type All = Record<Account, Stored>;
 
@@ -229,4 +230,107 @@ export async function listAttendants(s: Stored): Promise<MaxbotAttendant[]> {
   return list
     .map((a) => ({ id: String(a.id), name: a.name, active: String(a.status) === "1" }))
     .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+}
+
+// ===== Contato do card no Maxbot =====
+export const toMaxbotPhone = (v: string | null | undefined) => {
+  let d = (v ?? "").replace(/\D/g, "").replace(/^0+/, "");
+  if (d.length >= 12 && d.startsWith("55")) d = d.slice(2);
+  if (d.length < 10 || d.length > 11) return null;
+  return `55${d}`;
+};
+
+export async function accountForSchool(db: SupabaseClient, schoolId: string): Promise<Account | null> {
+  const { data } = await db.from("schools").select("brand").eq("id", schoolId).maybeSingle();
+  const b = (data as { brand: string | null } | null)?.brand;
+  return b === "conecta" || b === "interactivo" ? b : null;
+}
+
+export async function findContactByPhone(s: Stored, phone: string): Promise<string | null> {
+  // O WhatsApp costuma guardar o celular sem o 9 extra: testa as duas formas.
+  const variants = [phone];
+  if (phone.length === 13 && phone[4] === "9") variants.push(phone.slice(0, 4) + phone.slice(5));
+  else if (phone.length === 12 && /[6-9]/.test(phone[4] ?? "")) variants.push(phone.slice(0, 4) + "9" + phone.slice(4));
+  for (const v of variants) for (const key of ["whatsapp", "mobile_phone"]) {
+    try {
+      const json = await maxbotCall(s, { cmd: "get_contact", [key]: v, pagination: { per_page: "1", current: "1" } });
+      const c = ((json["data"] as Contact[] | undefined) ?? [])[0];
+      if (c?.id) return String(c.id);
+    } catch { /* nenhum registro */ }
+  }
+  return null;
+}
+
+export async function createContact(s: Stored, name: string, phone: string, email?: string | null): Promise<string> {
+  const parts = name.trim().split(/\s+/);
+  const json = await maxbotCall(s, {
+    cmd: "put_contact", name: (parts[0] ?? "Contato").slice(0, 45), surname: parts.slice(1).join(" ").slice(0, 45),
+    whatsapp: phone, mobile_phone: phone, ...(email ? { email: email.slice(0, 45) } : {}),
+  });
+  if (!json["contact_id"]) throw new Error("Maxbot não retornou o ID do contato.");
+  return String(json["contact_id"]);
+}
+
+type Opp = { id: string; school_id: string; display_name: string | null; phone: string | null; email: string | null };
+
+// Garante o cadastro do card no Maxbot. Retorna o status e grava o vínculo no arquivo.
+export async function ensureOpportunityContact(
+  db: SupabaseClient, opp: Opp, opts: { register: boolean; actor?: string | null },
+): Promise<{ status: "linked" | "missing" | "no_phone" | "not_configured"; contactId: string | null; created?: boolean; account: Account | null }> {
+  const account = await accountForSchool(db, opp.school_id);
+  if (!account) return { status: "not_configured", contactId: null, account };
+  const all = await readAll(db);
+  const s = all[account];
+  if (!s.token) return { status: "not_configured", contactId: null, account };
+  const saved = s.contacts?.[opp.id];
+  if (saved) return { status: "linked", contactId: saved, account };
+  const phone = toMaxbotPhone(opp.phone);
+  if (!phone) return { status: "no_phone", contactId: null, account };
+  let contactId = await findContactByPhone(s, phone);
+  let created = false;
+  if (!contactId && opts.register) {
+    contactId = await createContact(s, opp.display_name || "Contato", phone, opp.email);
+    created = true;
+  }
+  if (!contactId) return { status: "missing", contactId: null, account };
+  const fresh = await readAll(db);
+  fresh[account] = { ...fresh[account], contacts: { ...(fresh[account].contacts ?? {}), [opp.id]: contactId } };
+  await writeAll(db, fresh);
+  if (created) {
+    await db.from("crm_notes").insert({ opportunity_id: opp.id, author_id: null, author_name: opts.actor || ACCOUNT_LABEL[account], body: `Contato cadastrado no ${ACCOUNT_LABEL[account]} (ID ${contactId}).` });
+    await logActivity(db, null, opts.actor || ACCOUNT_LABEL[account], `Contato cadastrado no Maxbot: ${opp.display_name ?? ""}`, { contato_maxbot: contactId, card: opp.id }, opp.school_id);
+  }
+  return { status: "linked", contactId, created, account };
+}
+
+// Varre cards recentes sem vínculo e cadastra no Maxbot (rotina a cada 10 min).
+export async function syncRecentOpportunities(db: SupabaseClient, days = 3) {
+  const since = new Date(Date.now() - days * 86400_000).toISOString();
+  const { data } = await db.from("opportunities").select("id, school_id, display_name, phone, email").gte("created_at", since).limit(500);
+  const all = await readAll(db);
+  let done = 0;
+  for (const o of (data ?? []) as Opp[]) {
+    if (ACCOUNTS.some((a) => all[a].contacts?.[o.id]) || !toMaxbotPhone(o.phone)) continue;
+    try { const r = await ensureOpportunityContact(db, o, { register: true }); if (r.status === "linked") done++; }
+    catch (e) { console.error("maxbot sync", o.id, e); }
+  }
+  return done;
+}
+
+export type MaxbotTemplate = { id: string; title: string; msg: string; category: string };
+export async function listFollowupTemplates(s: Stored): Promise<MaxbotTemplate[]> {
+  const json = await maxbotCall(s, { cmd: "get_template", type: "F" });
+  const list = (json["template"] as { id: number; title: string; msg: string; category_title?: string }[] | undefined) ?? [];
+  return list.map((t) => ({ id: String(t.id), title: t.title, msg: t.msg ?? "", category: t.category_title ?? "" }))
+    .sort((a, b) => a.title.localeCompare(b.title, "pt-BR"));
+}
+
+export async function attendantSector(s: Stored, attendantId: string): Promise<string | null> {
+  const json = await maxbotCall(s, { cmd: "get_attendant" });
+  const list = (json["attendant"] as { id: number; service_sector_id?: unknown }[] | undefined) ?? [];
+  const a = list.find((x) => String(x.id) === attendantId);
+  const sec = a?.service_sector_id;
+  const first = Array.isArray(sec) ? sec[0] : typeof sec === "string" ? sec.split(",")[0] : sec;
+  const v = first && typeof first === "object" ? (first as { id?: unknown }).id : first;
+  return v != null && String(v).trim() ? String(v).trim() : null;
 }

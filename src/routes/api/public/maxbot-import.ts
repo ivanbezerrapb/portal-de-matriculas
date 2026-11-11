@@ -18,7 +18,11 @@ export const Route = createFileRoute("/api/public/maxbot-import")({
           const r = await importAccount(db, a);
           results[a] = { ok: r.ok, imported: r.imported };
         }
-        return Response.json({ ok: true, results });
+        // Cadastra no Maxbot os cards recentes que ainda não estão lá.
+        const { syncRecentOpportunities } = await import("@/lib/ext/maxbot.server");
+        let synced = 0;
+        try { synced = await syncRecentOpportunities(db); } catch (e) { console.error("maxbot sync", e); }
+        return Response.json({ ok: true, results, synced });
       },
     },
   },

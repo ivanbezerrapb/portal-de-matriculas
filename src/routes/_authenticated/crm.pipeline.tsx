@@ -23,6 +23,7 @@ import { getMyPermissions, getSubmission, updateSubmission } from "@/lib/ext/cad
 import { isChildrenCountField, type FormField } from "@/lib/ext/model";
 import { FieldRenderer } from "@/components/FieldRenderer";
 import { setOpportunityVisit } from "@/lib/ext/pipeline.functions";
+import { getCardMaxbotStatus, listCardMaxbotTemplates, sendCardMaxbotTemplate } from "@/lib/ext/maxbot.functions";
 import { Button, Card, EmptyState, Input, Label, Select, Spinner, Textarea } from "@/components/ui";
 
 // Monta o link do WhatsApp: DDI 55 + DDD e número do cadastro.
@@ -32,6 +33,97 @@ function whatsappHref(phone: string | null | undefined): string | null {
   if (digits.startsWith("0")) digits = digits.replace(/^0+/, "");
   if (digits.length < 10 || digits.length > 11) return null;
   return `https://wa.me/55${digits}`;
+}
+
+// Situação do contato no Maxbot (consulta e, se faltar, cadastra ao abrir o card).
+function useMaxbotStatus(opportunityId: string) {
+  return useQuery({
+    queryKey: ["maxbot-card", opportunityId],
+    queryFn: () => getCardMaxbotStatus({ data: { opportunity_id: opportunityId } }),
+    staleTime: 60_000,
+    retry: false,
+  });
+}
+
+function MaxbotBadge({ opportunityId }: { opportunityId: string }) {
+  const { data, isLoading } = useMaxbotStatus(opportunityId);
+  if (isLoading) return <span className="text-[11px] text-muted-foreground">Maxbot…</span>;
+  if (data?.status === "linked")
+    return (
+      <span title={`Cadastrado no ${data.account_label ?? "Maxbot"} (ID ${data.contact_id})`} className="inline-flex items-center rounded-full bg-success px-2 py-0.5 text-[11px] font-semibold text-success-foreground">
+        Maxbot
+      </span>
+    );
+  const label = data?.status === "not_configured" ? "Maxbot não configurado" : data?.status === "no_phone" ? "Telefone inválido p/ Maxbot" : data?.status === "error" ? "Erro no Maxbot" : "Sem Maxbot";
+  return <span title={data?.error ?? undefined} className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">{label}</span>;
+}
+
+function MaxbotSend({ opportunityId }: { opportunityId: string }) {
+  const qc = useQueryClient();
+  const { data: status, refetch, isFetching } = useMaxbotStatus(opportunityId);
+  const [open, setOpen] = useState(false);
+  const [tpl, setTpl] = useState("");
+  const tq = useQuery({
+    queryKey: ["maxbot-templates", opportunityId],
+    queryFn: () => listCardMaxbotTemplates({ data: { opportunity_id: opportunityId } }),
+    enabled: open,
+    retry: false,
+  });
+  const chosen = tq.data?.templates.find((t) => t.id === tpl);
+  const sendM = useMutation({
+    mutationFn: () => sendCardMaxbotTemplate({ data: { opportunity_id: opportunityId, template_id: tpl, template_title: chosen?.title ?? tpl } }),
+    onSuccess: (r) => {
+      toast.success(`Mensagem enviada${r.protocol ? ` (protocolo ${r.protocol})` : ""}.`);
+      setOpen(false); setTpl("");
+      qc.invalidateQueries({ queryKey: ["crm-notes", opportunityId] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Falha ao enviar."),
+  });
+  const linked = status?.status === "linked";
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-2">
+      <Button onClick={() => setOpen(true)} disabled={!linked}>
+        <MessageCircle className="mr-1 h-4 w-4" /> Enviar mensagem
+      </Button>
+      {(status?.status === "missing" || status?.status === "error") && (
+        <Button variant="secondary" disabled={isFetching} onClick={() => refetch()}>Cadastrar no Maxbot</Button>
+      )}
+      {open && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-foreground/40 p-4" onClick={() => setOpen(false)}>
+          <div className="w-full max-w-lg rounded-xl bg-card p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-display text-lg font-semibold text-foreground">Enviar mensagem pelo Maxbot</h3>
+            {tq.isLoading ? <div className="mt-4"><Spinner /></div> : tq.error ? (
+              <p className="mt-3 text-sm text-destructive">{tq.error instanceof Error ? tq.error.message : "Falha ao carregar templates."}</p>
+            ) : tq.data && (
+              <div className="mt-3 space-y-3 text-sm">
+                <p className="text-muted-foreground">Conta: <span className="text-foreground">{tq.data.account_label}</span></p>
+                {tq.data.attendant ? (
+                  <p className="text-muted-foreground">Enviando como: <span className="text-foreground">{tq.data.attendant.name}</span></p>
+                ) : (
+                  <p className="text-destructive">Seu usuário não está vinculado a um atendente deste Maxbot. Peça ao administrador em Configurações › Usuários.</p>
+                )}
+                <div>
+                  <Label htmlFor="mb-tpl">Template</Label>
+                  <Select id="mb-tpl" value={tpl} onChange={(e) => setTpl(e.target.value)}>
+                    <option value="">Selecione…</option>
+                    {tq.data.templates.map((t) => <option key={t.id} value={t.id}>{t.title}</option>)}
+                  </Select>
+                  {tq.data.templates.length === 0 && <p className="mt-1 text-xs text-muted-foreground">Nenhum template de follow-up cadastrado no Maxbot.</p>}
+                </div>
+                {chosen && <div className="whitespace-pre-wrap rounded-lg bg-muted p-3 text-foreground">{chosen.msg}</div>}
+              </div>
+            )}
+            <div className="mt-5 flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button>
+              <Button disabled={!tpl || !tq.data?.attendant || sendM.isPending} onClick={() => sendM.mutate()}>
+                {sendM.isPending ? "Enviando…" : "Enviar"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 // Edição dos dados do cadastro direto no cartão (mesmos campos do formulário).
@@ -782,6 +874,7 @@ function PipelinePage() {
                           <MessageCircle className="h-4 w-4" />
                         </a>
                       )}
+                      <MaxbotBadge opportunityId={card.id} />
                     </dd>
                   </div>
                 )}
@@ -864,6 +957,8 @@ function PipelinePage() {
                   Ver ficha completa
                 </Link>
               )}
+
+              {card.phone && <MaxbotSend opportunityId={card.id} />}
 
               </div>
               <div>

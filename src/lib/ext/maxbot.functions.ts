@@ -253,3 +253,77 @@ export const saveMaxbotUserLink = createServerFn({ method: "POST" })
     await logActivity(db, context.userId, await actorName(db, context.userId), `Vínculo Maxbot de ${tName}`, changes);
     return { ok: true };
   });
+
+// ===== Maxbot no card do CRM =====
+async function loadOpp(context: { supabase: SupabaseClient }, id: string) {
+  // RLS: só retorna se o usuário enxerga o cartão.
+  const { data, error } = await context.supabase
+    .from("opportunities").select("id, school_id, display_name, phone, email").eq("id", id).maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error("Sem acesso a este cartão.");
+  return data as { id: string; school_id: string; display_name: string | null; phone: string | null; email: string | null };
+}
+
+const oppSchema = z.object({ opportunity_id: z.string().uuid() });
+
+export const getCardMaxbotStatus = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((d) => oppSchema.parse(d))
+  .handler(async ({ data, context }) => {
+    const opp = await loadOpp(context, data.opportunity_id);
+    const db = await admin();
+    const { ensureOpportunityContact, ACCOUNT_LABEL } = await import("./maxbot.server");
+    try {
+      // Abre o card: se ainda não está no Maxbot, cadastra na hora.
+      const r = await ensureOpportunityContact(db, opp, { register: true, actor: await actorName(db, context.userId) });
+      return { status: r.status, contact_id: r.contactId, account_label: r.account ? ACCOUNT_LABEL[r.account] : null, error: null as string | null };
+    } catch (e) {
+      return { status: "error" as const, contact_id: null, account_label: null, error: e instanceof Error ? e.message : "Falha no Maxbot." };
+    }
+  });
+
+export const listCardMaxbotTemplates = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((d) => oppSchema.parse(d))
+  .handler(async ({ data, context }) => {
+    const opp = await loadOpp(context, data.opportunity_id);
+    const db = await admin();
+    const { readAll, accountForSchool, listFollowupTemplates, ACCOUNT_LABEL } = await import("./maxbot.server");
+    const account = await accountForSchool(db, opp.school_id);
+    if (!account) throw new Error("Unidade sem conta Maxbot.");
+    const all = await readAll(db);
+    if (!all[account].token) throw new Error(`${ACCOUNT_LABEL[account]} não está configurado.`);
+    const attendant = all[account].attendants?.[context.userId] ?? null;
+    return { account_label: ACCOUNT_LABEL[account], attendant, templates: await listFollowupTemplates(all[account]) };
+  });
+
+export const sendCardMaxbotTemplate = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((d) => oppSchema.extend({ template_id: z.string().min(1), template_title: z.string().max(200) }).parse(d))
+  .handler(async ({ data, context }) => {
+    const opp = await loadOpp(context, data.opportunity_id);
+    const db = await admin();
+    const m = await import("./maxbot.server");
+    const name = await actorName(db, context.userId);
+    const r = await m.ensureOpportunityContact(db, opp, { register: true, actor: name });
+    if (r.status !== "linked" || !r.account || !r.contactId) throw new Error("Contato ainda não está cadastrado no Maxbot.");
+    const all = await m.readAll(db);
+    const s = all[r.account];
+    const att = s.attendants?.[context.userId];
+    if (!att) throw new Error("Seu usuário não está vinculado a um atendente do Maxbot. Peça ao administrador em Configurações › Usuários.");
+    const sector = await m.attendantSector(s, att.id);
+    const [first, ...rest] = (opp.display_name ?? "").trim().split(/\s+/);
+    const [aFirst, ...aRest] = att.name.trim().split(/\s+/);
+    const json = await m.maxbotCall(s, {
+      cmd: "open_followup", contact_id: Number(r.contactId), template_id: Number(data.template_id),
+      attendant_id: Number(att.id), ...(sector ? { sector_id: Number(sector) } : {}), scheduled: 0,
+      tag_name: first ?? "", tag_last_name: rest.join(" "), tag_atd_name: aFirst ?? "", tag_atd_last_name: aRest.join(" "),
+    });
+    const protocol = String(json["protocol"] ?? json["prot_id"] ?? "");
+    await db.from("crm_notes").insert({
+      opportunity_id: opp.id, author_id: context.userId, author_name: name ?? "Usuário",
+      body: `Template "${data.template_title}" enviado via ${m.ACCOUNT_LABEL[r.account]}${protocol ? ` (protocolo ${protocol})` : ""}.`,
+    });
+    await m.logActivity(db, context.userId, name, `Mensagem Maxbot enviada para ${opp.display_name ?? ""}`, { template: data.template_title, protocolo: protocol, atendente: att.name }, opp.school_id);
+    return { ok: true, protocol };
+  });
