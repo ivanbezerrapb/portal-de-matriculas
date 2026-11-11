@@ -305,7 +305,7 @@ export const listCardMaxbotTemplates = createServerFn({ method: "POST" })
       const ids = Object.keys(map);
       const { data: profs } = ids.length ? await db.from("profiles").select("id, full_name").in("id", ids) : { data: [] };
       const names = new Map(((profs ?? []) as { id: string; full_name: string | null }[]).map((p) => [p.id, p.full_name ?? ""]));
-      attendants = ids.map((id) => ({ user_id: id, user_name: names.get(id) || "Usuário", attendant_name: map[id].name }))
+      attendants = ids.map((id) => ({ user_id: id, user_name: names.get(id) || "Usuário", attendant_name: map[id]?.name ?? "" }))
         .sort((a, b) => a.user_name.localeCompare(b.user_name, "pt-BR"));
     }
     return { account_label: ACCOUNT_LABEL[account], attendant, is_admin, attendants, default_template_id: all[account].default_template?.id ?? null, templates: await listFollowupTemplates(all[account]) };
