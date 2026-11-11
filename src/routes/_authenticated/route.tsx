@@ -37,6 +37,7 @@ import { recordAccess } from "@/lib/ext/logs.functions";
 import { getMyPasswordStatus } from "@/lib/ext/usuarios.functions";
 import { ForcePasswordChange } from "@/components/ForcePasswordChange";
 import { PendingAttendanceDialog, usePendingAttendance } from "@/components/PendingAttendanceDialog";
+import { PendingFunnelDialog, usePendingFunnel } from "@/components/PendingFunnelDialog";
 import { History, KeyRound } from "lucide-react";
 import { Button, Card, Spinner } from "@/components/ui";
 import whiteLogoAsset from "@/assets/grupo-inter-logo-branca.png.asset.json";
@@ -181,6 +182,8 @@ function AuthenticatedLayout() {
   const isSecretary = !isAdmin && !isDirecao && !isManager && !isInfo;
   const attendanceAlert = !!perms && !isAdmin && !isDirecao && (isManager || (perms.operatorSchools?.length ?? 0) > 0);
   const { data: pendingAttendance = [] } = usePendingAttendance(attendanceAlert);
+  const { data: pendingFunnel = [] } = usePendingFunnel(attendanceAlert);
+  const attendanceBlocking = pendingAttendance.length > 0 && typeof window !== "undefined" && Date.now() >= Number(localStorage.getItem("pending-attendance-snooze") ?? 0);
 
   const roleLabel = isAdmin
     ? "Administrador"
@@ -372,6 +375,9 @@ function AuthenticatedLayout() {
                   {entry.to === "/calendario" && pendingAttendance.length > 0 && (
                     <span className="rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold text-white">{pendingAttendance.length}</span>
                   )}
+                  {entry.to === "/cadastros" && pendingFunnel.length > 0 && (
+                    <span className="rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold text-white">{pendingFunnel.length}</span>
+                  )}
                 </Link>
               );
             }
@@ -420,7 +426,10 @@ function AuthenticatedLayout() {
                           className={leafClass(active)}
                         >
                           <ChildIcon className="h-4 w-4 shrink-0" />
-                          <span>{child.label}</span>
+                          <span className="flex-1">{child.label}</span>
+                          {child.to === "/cadastros" && pendingFunnel.length > 0 && (
+                            <span className="rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold text-white">{pendingFunnel.length}</span>
+                          )}
                         </Link>
                       );
                     })}
@@ -492,6 +501,7 @@ function AuthenticatedLayout() {
           <Outlet />
         </main>
         <PendingAttendanceDialog enabled={attendanceAlert} />
+        <PendingFunnelDialog enabled={attendanceAlert} blocked={attendanceBlocking} />
       </div>
     </div>
   );
