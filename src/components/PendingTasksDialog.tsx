@@ -15,12 +15,20 @@ export function PendingTasksDialog({ enabled }: { enabled: boolean }) {
   const total = nA + nF;
   const [open, setOpen] = useState(false);
 
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), 60 * 1000);
+    return () => clearInterval(id);
+  }, []);
+
   useEffect(() => {
     if (!total) { setOpen(false); return; }
+    const until = Number(localStorage.getItem(SNOOZE_KEY) ?? 0);
+    if (until > Date.now() + SNOOZE_MS) localStorage.removeItem(SNOOZE_KEY);
     if (!open && Date.now() >= Number(localStorage.getItem(SNOOZE_KEY) ?? 0)) {
       setOpen(true);
     }
-  }, [total]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [total, tick]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!open || !total) return null;
   const snooze = () => { localStorage.setItem(SNOOZE_KEY, String(Date.now() + SNOOZE_MS)); setOpen(false); };
