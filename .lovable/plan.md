@@ -9,7 +9,7 @@
 - O aviso lista cada visita (ID, nome, data, séries) e permite **escolher o funil ali mesmo**, com as mesmas regras da lista: só funis Pós Visita da unidade, responsável preenchido automaticamente e escolha do responsável quando houver mais de um.
 - Também tem o botão **Lembrar depois**, que esconde por 1 hora, e um selo com o total no menu Lista de Visitantes.
 - Se os dois avisos tiverem pendências, primeiro aparece o do Calendário. O aviso de visitas sem funil aparece depois que o primeiro for resolvido ou adiado.
-- Atualização a cada 30 segundos.
+- A lista de pendências do aviso é atualizada a cada 1 hora (e logo após cada associação feita no próprio aviso).
 
 ## Detalhes técnicos
 - Novo componente `PendingFunnelDialog.tsx` usando `listSubmissions` (list_type visitors) e filtrando `!attendant/funil && !restricted && !enrolled`. A permissão de envio fica no servidor.
