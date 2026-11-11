@@ -65,6 +65,7 @@
   --color-success-foreground: var(--success-foreground);
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
+  --color-pill-foreground: var(--pill-foreground);
 }
 
 :root {
@@ -77,6 +78,8 @@
   --popover-foreground: oklch(0.255 0.036 280);
   --primary: oklch(0.43 0.126 287);
   --primary-foreground: oklch(0.99 0.002 260);
+  /* Foreground of solid blue badges (conversion pills): always white. */
+  --pill-foreground: oklch(1 0 0);
   --secondary: oklch(0.94 0.037 239);
   --secondary-foreground: oklch(0.35 0.097 286);
   --muted: oklch(0.958 0.007 266);
@@ -116,6 +119,7 @@
   --popover-foreground: oklch(0.984 0.003 247.858);
   --primary: oklch(0.929 0.013 255.508);
   --primary-foreground: oklch(0.208 0.042 265.755);
+  --pill-foreground: oklch(1 0 0);
   --secondary: oklch(0.279 0.041 260.031);
   --secondary-foreground: oklch(0.984 0.003 247.858);
   --muted: oklch(0.279 0.041 260.031);
