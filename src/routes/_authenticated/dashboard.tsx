@@ -893,6 +893,18 @@ function DashboardPage() {
               }))}
             />
           </div>
+
+          <div className="mt-3">
+            <NeighborhoodChart
+              title="Quem mais atendeu (Central de Informações)"
+              emptyText="Sem dados"
+              showStarted
+              data={(data.leadOwnersBySchool ?? []).map((g) => ({
+                school: g.school,
+                items: g.items.map((i) => ({ ...i, city: "" })),
+              }))}
+            />
+          </div>
         </>
       )}
     </div>

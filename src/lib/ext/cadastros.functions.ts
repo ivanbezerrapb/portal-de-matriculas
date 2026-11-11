@@ -1049,6 +1049,65 @@ export const getDashboardStats = createServerFn({ method: "GET" })
       }))
       .sort((x, y) => x.school.localeCompare(y.school, "pt-BR"));
 
+    // Central de Informações: LEADS por responsável do card (owner_id).
+    let leadOwnersBySchool: { school: string; items: { label: string; count: number; started: number }[] }[] = [];
+    {
+      let lq = context.supabase
+        .from("submissions")
+        .select("id, schools(name)")
+        .eq("list_type", "leads")
+        .gte("created_at", start)
+        .lt("created_at", end);
+      if (data.schoolIds && data.schoolIds.length > 0) lq = lq.in("school_id", data.schoolIds);
+      const { data: leadSubs } = await lq;
+      const schoolOf = new Map<string, string>();
+      for (const r of leadSubs ?? []) schoolOf.set(r.id as string, (r.schools as { name?: string } | null)?.name ?? "—");
+      const ids = [...schoolOf.keys()];
+      const opps: { submission_id: string | null; funnel_id: string; stage_id: string; status: string; owner_confirmed_at: string | null; owner_id: string | null }[] = [];
+      for (let i = 0; i < ids.length; i += 200) {
+        const { data: chunk } = await context.supabase
+          .from("opportunities")
+          .select("submission_id, funnel_id, stage_id, status, owner_confirmed_at, owner_id")
+          .in("submission_id", ids.slice(i, i + 200));
+        opps.push(...((chunk ?? []) as typeof opps));
+      }
+      const funnelIds = [...new Set(opps.map((o) => o.funnel_id))];
+      const firstStage = new Map<string, string>();
+      if (funnelIds.length) {
+        const { data: stages } = await context.supabase
+          .from("funnel_stages").select("id, funnel_id, position").in("funnel_id", funnelIds).order("position", { ascending: true });
+        for (const st of (stages ?? []) as { id: string; funnel_id: string }[]) if (!firstStage.has(st.funnel_id)) firstStage.set(st.funnel_id, st.id);
+      }
+      const ownerIds = [...new Set(opps.map((o) => o.owner_id).filter(Boolean))] as string[];
+      const names = new Map<string, string>();
+      if (ownerIds.length) {
+        const { data: profs } = await context.supabase.from("profiles").select("id, full_name").in("id", ownerIds);
+        for (const pr of (profs ?? []) as { id: string; full_name: string | null }[]) names.set(pr.id, pr.full_name?.trim() || "Sem nome");
+      }
+      const m = new Map<string, Map<string, { count: number; started: number }>>();
+      for (const sName of new Set(schoolOf.values())) m.set(sName, new Map());
+      for (const s of bySchool.values()) if (!m.has(s.name)) m.set(s.name, new Map());
+      for (const o of opps) {
+        if (!o.submission_id) continue;
+        const sName = schoolOf.get(o.submission_id) ?? "—";
+        const label = o.owner_id ? names.get(o.owner_id) ?? "Sem nome" : "Sem responsável";
+        const g = m.get(sName) ?? new Map();
+        const e = g.get(label) ?? { count: 0, started: 0 };
+        e.count += 1;
+        const fs = firstStage.get(o.funnel_id);
+        if (o.status !== "open" || o.owner_confirmed_at || (fs && o.stage_id !== fs)) e.started += 1;
+        g.set(label, e);
+        m.set(sName, g);
+      }
+      leadOwnersBySchool = [...m.entries()]
+        .map(([school, g]) => ({
+          school,
+          items: [...g.entries()].map(([label, v]) => ({ label, ...v }))
+            .sort((x, y) => y.count - x.count || x.label.localeCompare(y.label, "pt-BR")),
+        }))
+        .sort((x, y) => x.school.localeCompare(y.school, "pt-BR"));
+    }
+
     const seriesCounts = new Map<string, number>();
     const sourceCounts = new Map<string, number>();
     const lossReasonCounts = new Map<string, number>();
@@ -1248,6 +1307,7 @@ export const getDashboardStats = createServerFn({ method: "GET" })
       daily: [...dailyBuckets.values()].sort((a, b) => a.month - b.month || a.day - b.day),
       neighborhoods,
       attendantsBySchool,
+      leadOwnersBySchool,
       bySchool: [...bySchool.values()].sort(
         (a, b) => b.visits - a.visits || a.name.localeCompare(b.name, "pt-BR"),
       ),
