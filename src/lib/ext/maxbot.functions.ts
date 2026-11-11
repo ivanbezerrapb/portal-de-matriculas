@@ -258,10 +258,13 @@ export const saveMaxbotUserLink = createServerFn({ method: "POST" })
 async function loadOpp(context: { supabase: SupabaseClient }, id: string) {
   // RLS: só retorna se o usuário enxerga o cartão.
   const { data, error } = await context.supabase
-    .from("opportunities").select("id, school_id, display_name, phone, email, submission_id").eq("id", id).maybeSingle();
+    .from("opportunities").select("id, school_id, name, phone, email, submission_id").eq("id", id).maybeSingle();
   if (error) throw new Error(error.message);
   if (!data) throw new Error("Sem acesso a este cartão.");
-  return data as { id: string; school_id: string; display_name: string | null; phone: string | null; email: string | null; submission_id: string | null };
+  const o = data as { id: string; school_id: string; name: string | null; phone: string | null; email: string | null; submission_id: string | null };
+  const { submissionContact } = await import("./maxbot.server");
+  const sc = await submissionContact(await admin(), o.submission_id);
+  return { ...o, display_name: sc.name || o.name, phone: o.phone || sc.phone };
 }
 
 const oppSchema = z.object({ opportunity_id: z.string().uuid() });

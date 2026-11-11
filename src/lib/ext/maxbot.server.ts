@@ -271,19 +271,21 @@ export async function createContact(s: Stored, name: string, phone: string, emai
   return String(json["contact_id"]);
 }
 
-type Opp = { id: string; school_id: string; display_name: string | null; phone: string | null; email: string | null; submission_id?: string | null };
+type Opp = { id: string; school_id: string; name?: string | null; display_name?: string | null; phone: string | null; email: string | null; submission_id?: string | null };
 
-// Telefone do card ou, se vazio, o campo Telefone/WhatsApp/Celular da ficha.
-async function oppPhone(db: SupabaseClient, opp: Opp): Promise<string | null> {
-  if (opp.phone) return opp.phone;
-  if (!opp.submission_id) return null;
+// Nome e telefone da ficha (submission_values), usados quando o card não os tem.
+export async function submissionContact(db: SupabaseClient, submissionId: string | null | undefined) {
+  const out: { name: string | null; phone: string | null } = { name: null, phone: null };
+  if (!submissionId) return out;
   const { data } = await db.from("submission_values").select("value, form_fields!inner(label)")
-    .eq("submission_id", opp.submission_id).eq("part", "");
+    .eq("submission_id", submissionId).eq("part", "");
   for (const v of (data ?? []) as unknown as { value: string | null; form_fields: { label: string } | { label: string }[] }[]) {
     const f = Array.isArray(v.form_fields) ? v.form_fields[0] : v.form_fields;
-    if (v.value && f && /telefone|whats|celular/i.test(f.label)) return v.value;
+    if (!v.value || !f) continue;
+    if (!out.phone && /telefone|whats|celular/i.test(f.label)) out.phone = v.value;
+    else if (!out.name && /nome/i.test(f.label) && !/respons|m[aã]e|pai/i.test(f.label)) out.name = v.value;
   }
-  return null;
+  return out;
 }
 
 // Garante o cadastro do card no Maxbot. Retorna o status e grava o vínculo no arquivo.
@@ -297,7 +299,19 @@ export async function ensureOpportunityContact(
   if (!s.token) return { status: "not_configured", contactId: null, account };
   const saved = s.contacts?.[opp.id];
   if (saved) return { status: "linked", contactId: saved, account };
-  const phone = toMaxbotPhone(await oppPhone(db, opp));
+  // Lead importado do Maxbot: o contato de origem já é conhecido.
+  if (opp.submission_id) {
+    const hit = Object.entries(s.imported ?? {}).find(([, sid]) => sid === opp.submission_id);
+    if (hit) {
+      const fresh = await readAll(db);
+      fresh[account] = { ...fresh[account], contacts: { ...(fresh[account].contacts ?? {}), [opp.id]: hit[0] } };
+      await writeAll(db, fresh);
+      return { status: "linked", contactId: hit[0], account };
+    }
+  }
+  const sc = (!opp.phone || !opp.display_name) ? await submissionContact(db, opp.submission_id) : { name: null, phone: null };
+  if (!opp.display_name) opp = { ...opp, display_name: sc.name || opp.name || null };
+  const phone = toMaxbotPhone(opp.phone || sc.phone);
   if (!phone) return { status: "no_phone", contactId: null, account };
   let contactId = await findContactByPhone(s, phone);
   let created = false;
@@ -319,7 +333,7 @@ export async function ensureOpportunityContact(
 // Varre cards recentes sem vínculo e cadastra no Maxbot (rotina a cada 10 min).
 export async function syncRecentOpportunities(db: SupabaseClient, days = 3) {
   const since = new Date(Date.now() - days * 86400_000).toISOString();
-  const { data } = await db.from("opportunities").select("id, school_id, display_name, phone, email, submission_id").gte("created_at", since).limit(500);
+  const { data } = await db.from("opportunities").select("id, school_id, name, phone, email, submission_id").gte("created_at", since).limit(500);
   const all = await readAll(db);
   let done = 0;
   for (const o of (data ?? []) as Opp[]) {

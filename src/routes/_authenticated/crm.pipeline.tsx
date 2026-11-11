@@ -46,7 +46,9 @@ function useMaxbotStatus(opportunityId: string) {
 }
 
 function MaxbotBadge({ opportunityId }: { opportunityId: string }) {
-  const { data, isLoading } = useMaxbotStatus(opportunityId);
+  const { data, isLoading, isError, error } = useMaxbotStatus(opportunityId);
+  if (isError)
+    return <span title={error instanceof Error ? error.message : undefined} className="inline-flex items-center rounded-full bg-destructive px-2 py-0.5 text-[11px] font-semibold text-destructive-foreground">Erro no Maxbot</span>;
   if (isLoading) return <span className="text-[11px] text-muted-foreground">Maxbot…</span>;
   if (data?.status === "linked")
     return (
