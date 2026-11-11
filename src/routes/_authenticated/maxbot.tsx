@@ -252,7 +252,7 @@ function DefaultTemplate({ account }: { account: Account }) {
         <div className="flex gap-2">
           <Select value={value} onChange={(e) => setSel(e.target.value)}>
             <option value="">Nenhum (escolher na hora)</option>
-            {q.data?.templates.map((t) => <option key={t.id} value={t.id}>{t.title}</option>)}
+            {q.data?.templates.map((t) => <option key={t.id} value={t.id}>{t.title} ({t.type === "A" ? "Aviso" : "Follow-up"})</option>)}
           </Select>
           <Button onClick={save} disabled={saving}>{saving ? "Salvando..." : "Salvar"}</Button>
         </div>

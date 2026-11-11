@@ -391,12 +391,14 @@ export async function syncRecentOpportunities(db: SupabaseClient, days = 3) {
   return done;
 }
 
-export type MaxbotTemplate = { id: string; title: string; msg: string; category: string };
+export type MaxbotTemplate = { id: string; title: string; msg: string; category: string; type: "F" | "A" };
+export const TEMPLATE_TYPE_LABEL = { F: "Follow-up", A: "Aviso" } as const;
 export async function listFollowupTemplates(s: Stored): Promise<MaxbotTemplate[]> {
   const json = await maxbotCall(s, { cmd: "get_template" });
-  const list = ((json["template"] as { id: number; title: string; msg: string; category_title?: string }[] | undefined) ?? [])
-    .filter((t) => (t.category_title ?? "").toUpperCase().includes("WABA")); // por enquanto só templates WABA
-  return list.map((t) => ({ id: String(t.id), title: t.title, msg: t.msg ?? "", category: t.category_title ?? "" }))
+  const list = ((json["template"] as { id: number; type?: string; title: string; msg: string; category_title?: string }[] | undefined) ?? [])
+    // só WABA, e só Follow-up (F) ou Aviso (A): templates de Chat não podem ser disparados pela API
+    .filter((t) => (t.category_title ?? "").toUpperCase().includes("WABA") && (t.type === "F" || t.type === "A"));
+  return list.map((t) => ({ id: String(t.id), title: t.title, msg: t.msg ?? "", category: t.category_title ?? "", type: t.type as "F" | "A" }))
     .sort((a, b) => a.title.localeCompare(b.title, "pt-BR"));
 }
 

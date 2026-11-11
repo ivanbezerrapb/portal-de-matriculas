@@ -122,7 +122,7 @@ function MaxbotSend({ opportunityId }: { opportunityId: string }) {
                 {chosen ? (
                   <p className="text-foreground">Tem certeza que deseja enviar o template <span className="font-semibold">"{chosen.title}"</span> para este contato?</p>
                 ) : (
-                  <p className="text-destructive">Nenhum template padrão definido. Peça ao administrador em Configurações › MAXBOT.</p>
+                  <p className="text-destructive">{tq.data.default_template_id ? "O template padrão não pode ser disparado. Escolha um template de Follow-up ou Aviso em Configurações › MAXBOT." : "Nenhum template padrão definido. Peça ao administrador em Configurações › MAXBOT."}</p>
                 )}
                 {chosen && <div className="whitespace-pre-wrap rounded-lg bg-muted p-3 text-foreground">{chosen.msg}</div>}
               </div>

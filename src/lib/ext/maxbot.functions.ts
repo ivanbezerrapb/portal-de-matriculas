@@ -325,6 +325,8 @@ export const sendCardMaxbotTemplate = createServerFn({ method: "POST" })
     const s = all[r.account];
     const def = s.default_template;
     if (!def?.id) throw new Error("Nenhum template padrão definido em Configurações › MAXBOT.");
+    const tpl = (await m.listFollowupTemplates(s)).find((t) => t.id === String(def.id));
+    if (!tpl) throw new Error("O template padrão não pode ser disparado. Escolha um template de Follow-up ou Aviso em Configurações › MAXBOT.");
     data.template_id = def.id; data.template_title = def.title;
     let senderId = context.userId;
     if (data.as_user_id && data.as_user_id !== context.userId) {
@@ -337,7 +339,10 @@ export const sendCardMaxbotTemplate = createServerFn({ method: "POST" })
     const [first, ...rest] = (opp.display_name ?? "").trim().split(/\s+/);
     const [aFirst, ...aRest] = att.name.trim().split(/\s+/);
     const { maxbotSlot } = await import("./maxbot-slot");
-    const payload = (dt: string) => ({
+    const payload = (dt: string) => tpl.type === "A" ? ({
+      cmd: "send_notice", contact_id: Number(r.contactId), template_id: Number(data.template_id), scheduled: 0, date_time: dt,
+      tag_name: first ?? "", tag_last_name: rest.join(" "), tag_atd_name: aFirst ?? "", tag_atd_last_name: aRest.join(" "),
+    }) : ({
       cmd: "open_followup", contact_id: Number(r.contactId), template_id: Number(data.template_id),
       attendant_id: Number(att.id), ...(sector ? { sector_id: Number(sector) } : {}), scheduled: 0, date_time: dt,
       tag_name: first ?? "", tag_last_name: rest.join(" "), tag_atd_name: aFirst ?? "", tag_atd_last_name: aRest.join(" "),
@@ -377,8 +382,10 @@ export const saveMaxbotDefaultTemplate = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await ensureAdmin(context);
     const db = await admin();
-    const { readAll, writeAll, logActivity, ACCOUNT_LABEL } = await import("./maxbot.server");
+    const { readAll, writeAll, logActivity, ACCOUNT_LABEL, listFollowupTemplates } = await import("./maxbot.server");
     const all = await readAll(db);
+    if (data.id && !(await listFollowupTemplates(all[data.account])).some((t) => t.id === data.id))
+      throw new Error("Esse template não pode ser disparado. Escolha um template de Follow-up ou Aviso.");
     all[data.account] = { ...all[data.account], default_template: data.id ? { id: data.id, title: data.title } : null };
     await writeAll(db, all);
     const name = await actorName(db, context.userId);
