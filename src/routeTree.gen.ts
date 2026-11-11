@@ -38,6 +38,7 @@ import { Route as AuthenticatedCrmTarefasRouteImport } from './routes/_authentic
 import { Route as AuthenticatedFormulariosFormIdRouteImport } from './routes/_authenticated/formularios_.$formId'
 import { Route as AuthenticatedImprimirTemplateIdRouteImport } from './routes/_authenticated/imprimir.$templateId'
 import { Route as ApiPublicConfigRouteImport } from './routes/api/public/config'
+import { Route as ApiPublicMaxbotImportRouteImport } from './routes/api/public/maxbot-import'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -194,6 +195,11 @@ const ApiPublicConfigRoute = ApiPublicConfigRouteImport.update({
   path: '/api/public/config',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicMaxbotImportRoute = ApiPublicMaxbotImportRouteImport.update({
+  id: '/api/public/maxbot-import',
+  path: '/api/public/maxbot-import',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -224,6 +230,7 @@ export interface FileRoutesByFullPath {
   '/formularios/$formId': typeof AuthenticatedFormulariosFormIdRoute
   '/imprimir/$templateId': typeof AuthenticatedImprimirTemplateIdRoute
   '/api/public/config': typeof ApiPublicConfigRoute
+  '/api/public/maxbot-import': typeof ApiPublicMaxbotImportRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -254,6 +261,7 @@ export interface FileRoutesByTo {
   '/formularios/$formId': typeof AuthenticatedFormulariosFormIdRoute
   '/imprimir/$templateId': typeof AuthenticatedImprimirTemplateIdRoute
   '/api/public/config': typeof ApiPublicConfigRoute
+  '/api/public/maxbot-import': typeof ApiPublicMaxbotImportRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -286,6 +294,7 @@ export interface FileRoutesById {
   '/_authenticated/formularios_/$formId': typeof AuthenticatedFormulariosFormIdRoute
   '/_authenticated/imprimir/$templateId': typeof AuthenticatedImprimirTemplateIdRoute
   '/api/public/config': typeof ApiPublicConfigRoute
+  '/api/public/maxbot-import': typeof ApiPublicMaxbotImportRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -318,6 +327,7 @@ export interface FileRouteTypes {
     | '/formularios/$formId'
     | '/imprimir/$templateId'
     | '/api/public/config'
+    | '/api/public/maxbot-import'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -348,6 +358,7 @@ export interface FileRouteTypes {
     | '/formularios/$formId'
     | '/imprimir/$templateId'
     | '/api/public/config'
+    | '/api/public/maxbot-import'
   id:
     | '__root__'
     | '/'
@@ -379,6 +390,7 @@ export interface FileRouteTypes {
     | '/_authenticated/formularios_/$formId'
     | '/_authenticated/imprimir/$templateId'
     | '/api/public/config'
+    | '/api/public/maxbot-import'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -388,6 +400,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   FSlugRoute: typeof FSlugRoute
   ApiPublicConfigRoute: typeof ApiPublicConfigRoute
+  ApiPublicMaxbotImportRoute: typeof ApiPublicMaxbotImportRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -595,6 +608,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicConfigRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/maxbot-import': {
+      id: '/api/public/maxbot-import'
+      path: '/api/public/maxbot-import'
+      fullPath: '/api/public/maxbot-import'
+      preLoaderRoute: typeof ApiPublicMaxbotImportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -661,6 +681,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   FSlugRoute: FSlugRoute,
   ApiPublicConfigRoute: ApiPublicConfigRoute,
+  ApiPublicMaxbotImportRoute: ApiPublicMaxbotImportRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
