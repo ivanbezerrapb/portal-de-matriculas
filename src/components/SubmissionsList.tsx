@@ -667,7 +667,8 @@ export function SubmissionsList({
                 return (
                   <tr
                     key={s.id}
-                    className={`border-b border-border last:border-0 ${listType !== "leads" && enrolled ? "bg-emerald-200/90 hover:bg-emerald-300/90 dark:bg-emerald-900/60 dark:hover:bg-emerald-800/60" : "hover:bg-accent/40"}`}
+                    className={`border-b border-border last:border-0 ${listType !== "leads" && enrolled ? "hover:brightness-95" : "hover:bg-accent/40"}`}
+                    style={listType !== "leads" && enrolled ? { backgroundColor: "#bbf7d0" } : undefined}
                   >
                     <td className="px-4 py-2.5">
                       <input
