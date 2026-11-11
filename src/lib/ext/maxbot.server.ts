@@ -389,7 +389,8 @@ export async function syncRecentOpportunities(db: SupabaseClient, days = 3) {
 export type MaxbotTemplate = { id: string; title: string; msg: string; category: string };
 export async function listFollowupTemplates(s: Stored): Promise<MaxbotTemplate[]> {
   const json = await maxbotCall(s, { cmd: "get_template" });
-  const list = (json["template"] as { id: number; title: string; msg: string; category_title?: string }[] | undefined) ?? [];
+  const list = ((json["template"] as { id: number; title: string; msg: string; category_title?: string }[] | undefined) ?? [])
+    .filter((t) => (t.category_title ?? "").toUpperCase().includes("WABA")); // por enquanto só templates WABA
   return list.map((t) => ({ id: String(t.id), title: t.title, msg: t.msg ?? "", category: t.category_title ?? "" }))
     .sort((a, b) => a.title.localeCompare(b.title, "pt-BR"));
 }
