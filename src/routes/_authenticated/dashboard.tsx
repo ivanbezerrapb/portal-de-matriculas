@@ -147,14 +147,14 @@ function SeriesTick({
             height={badgeH}
             rx={badgeH / 2}
             ry={badgeH / 2}
-            fill="var(--destructive)"
+            style={{ fill: "var(--destructive)" }}
           />
           <text
             x={badgeX + badgeW / 2}
             y={badgeY + badgeH / 2}
             textAnchor="middle"
             dominantBaseline="central"
-            fill="var(--pill-foreground)"
+            style={{ fill: "var(--pill-foreground)" }}
             fontSize={10.5}
             fontWeight={700}
           >
