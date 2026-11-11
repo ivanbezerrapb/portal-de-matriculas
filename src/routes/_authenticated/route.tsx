@@ -36,8 +36,9 @@ import { getFileAccess } from "@/lib/ext/arquivos.functions";
 import { recordAccess } from "@/lib/ext/logs.functions";
 import { getMyPasswordStatus } from "@/lib/ext/usuarios.functions";
 import { ForcePasswordChange } from "@/components/ForcePasswordChange";
-import { PendingAttendanceDialog, usePendingAttendance } from "@/components/PendingAttendanceDialog";
-import { PendingFunnelDialog, usePendingFunnel } from "@/components/PendingFunnelDialog";
+import { usePendingAttendance } from "@/components/PendingAttendanceDialog";
+import { PendingTasksDialog } from "@/components/PendingTasksDialog";
+import { usePendingFunnel } from "@/components/PendingFunnelDialog";
 import { History, KeyRound } from "lucide-react";
 import { Button, Card, Spinner } from "@/components/ui";
 import whiteLogoAsset from "@/assets/grupo-inter-logo-branca.png.asset.json";
@@ -183,7 +184,6 @@ function AuthenticatedLayout() {
   const attendanceAlert = !!perms && !isAdmin && !isDirecao && (isManager || (perms.operatorSchools?.length ?? 0) > 0);
   const { data: pendingAttendance = [] } = usePendingAttendance(attendanceAlert);
   const { data: pendingFunnel = [] } = usePendingFunnel(attendanceAlert);
-  const attendanceBlocking = pendingAttendance.length > 0 && typeof window !== "undefined" && Date.now() >= Number(localStorage.getItem("pending-attendance-snooze") ?? 0);
 
   const roleLabel = isAdmin
     ? "Administrador"
@@ -500,8 +500,7 @@ function AuthenticatedLayout() {
         <main className="min-w-0 overflow-x-hidden px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
           <Outlet />
         </main>
-        <PendingAttendanceDialog enabled={attendanceAlert} />
-        <PendingFunnelDialog enabled={attendanceAlert} blocked={attendanceBlocking} />
+        <PendingTasksDialog enabled={attendanceAlert} />
       </div>
     </div>
   );

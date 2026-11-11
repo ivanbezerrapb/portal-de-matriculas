@@ -1,15 +1,12 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { GitBranch } from "lucide-react";
 import { Button, Select } from "@/components/ui";
 import { listSubmissions, sendSubmissionToFunnel } from "@/lib/ext/cadastros.functions";
 import { listFunnelOwners, listFunnels } from "@/lib/ext/funis.functions";
 import { funnelListType } from "@/lib/ext/model";
 
-const SNOOZE_KEY = "pending-funnel-snooze";
-const SNOOZE_MS = 60 * 60 * 1000;
 
 type Row = {
   id: string; public_id: string; school_id: string; created_at?: string;
@@ -30,19 +27,14 @@ export function usePendingFunnel(enabled: boolean) {
   });
 }
 
-export function PendingFunnelDialog({ enabled, blocked }: { enabled: boolean; blocked: boolean }) {
+export function PendingFunnelSection({ enabled }: { enabled: boolean }) {
   const { data: raw, refetch } = usePendingFunnel(enabled);
   const data = Array.isArray(raw) ? raw : [];
   const qc = useQueryClient();
-  const [open, setOpen] = useState(false);
   const [choice, setChoice] = useState<Record<string, { funnel?: string; owner?: string }>>({});
-  const { data: funnels = [] } = useQuery({ queryKey: ["funnels"], queryFn: () => listFunnels(), enabled: open });
-  const { data: owners = [] } = useQuery({ queryKey: ["funnel-owners"], queryFn: () => listFunnelOwners(), enabled: open });
+  const { data: funnels = [] } = useQuery({ queryKey: ["funnels"], queryFn: () => listFunnels(), enabled });
+  const { data: owners = [] } = useQuery({ queryKey: ["funnel-owners"], queryFn: () => listFunnelOwners(), enabled });
 
-  useEffect(() => {
-    if (!data.length || blocked) { setOpen(false); return; }
-    if (Date.now() >= Number(localStorage.getItem(SNOOZE_KEY) ?? 0)) setOpen(true);
-  }, [data.length, blocked]);
 
   const send = useMutation({
     mutationFn: (v: { submission_id: string; funnel_id: string; attendant_user_id?: string; attendant_name?: string }) =>
@@ -55,22 +47,14 @@ export function PendingFunnelDialog({ enabled, blocked }: { enabled: boolean; bl
     onError: (e: Error) => toast.error(e.message),
   });
 
-  if (!open || !data.length) return null;
-  const snooze = () => { localStorage.setItem(SNOOZE_KEY, String(Date.now() + SNOOZE_MS)); setOpen(false); };
+
   const fd = funnels as unknown as { funnels?: { id: string; name: string; school_id: string }[] } | undefined;
   const list = Array.isArray(fd?.funnels) ? fd!.funnels! : [];
   const ownerList = (Array.isArray(owners) ? owners : []) as { funnel_id: string; user_id: string; name: string }[];
 
+  if (!data.length) return <p className="p-6 text-center text-sm text-muted-foreground">Nada pendente.</p>;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-lg border border-border bg-card shadow-xl">
-        <div className="flex items-start gap-3 border-b border-border p-4">
-          <GitBranch className="mt-0.5 h-6 w-6 shrink-0 text-[oklch(0.72_0.18_60)]" />
-          <div>
-            <h2 className="text-lg font-semibold">Visitas sem funil ({data.length})</h2>
-            <p className="text-sm text-muted-foreground">Escolha o funil de cada visita da Lista de Visitantes.</p>
-          </div>
-        </div>
+    <>
         <ul className="flex-1 divide-y divide-border overflow-y-auto">
           {data.map((r) => {
             const opts = list.filter((f) => f.school_id === r.school_id && funnelListType(f.name) === "visitantes");
@@ -110,10 +94,6 @@ export function PendingFunnelDialog({ enabled, blocked }: { enabled: boolean; bl
             );
           })}
         </ul>
-        <div className="flex justify-end border-t border-border p-3">
-          <Button variant="outline" onClick={snooze}>Lembrar depois</Button>
-        </div>
-      </div>
-    </div>
+    </>
   );
 }

@@ -1,15 +1,13 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { AlertTriangle, MessageCircle } from "lucide-react";
+import { MessageCircle } from "lucide-react";
 import { Button, Input } from "@/components/ui";
 import { setLeadCheckIn } from "@/lib/ext/cadastros.functions";
 import { listCalendarEvents, markEnrollmentDone, markVisitNoShow, type CalendarEvent } from "@/lib/ext/calendario.functions";
 
-const SNOOZE_KEY = "pending-attendance-snooze";
-const SNOOZE_MS = 60 * 60 * 1000;
 
 function waLink(phone: string | null) {
   const d = (phone ?? "").replace(/\D/g, "").replace(/^55(?=\d{10,11}$)/, "");
@@ -30,19 +28,13 @@ export function usePendingAttendance(enabled: boolean) {
   });
 }
 
-export function PendingAttendanceDialog({ enabled }: { enabled: boolean }) {
+export function PendingAttendanceSection({ enabled }: { enabled: boolean }) {
   const { data = [] } = usePendingAttendance(enabled);
   const qc = useQueryClient();
-  const [open, setOpen] = useState(false);
   const [enrollFor, setEnrollFor] = useState<string | null>(null);
   const [count, setCount] = useState("1");
   const [noShowFor, setNoShowFor] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!data.length) { setOpen(false); return; }
-    const until = Number(localStorage.getItem(SNOOZE_KEY) ?? 0);
-    if (Date.now() >= until) setOpen(true);
-  }, [data.length]);
 
   const refresh = () => {
     for (const k of ["calendar", "pipeline", "submissions", "crm-tasks", "crm-notes", "notes"]) qc.invalidateQueries({ queryKey: [k] });
@@ -63,20 +55,11 @@ export function PendingAttendanceDialog({ enabled }: { enabled: boolean }) {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  if (!open || !data.length) return null;
+  if (!data.length) return <p className="p-6 text-center text-sm text-muted-foreground">Nada pendente.</p>;
   const busy = checkIn.isPending || enroll.isPending || noShow.isPending;
-  const snooze = () => { localStorage.setItem(SNOOZE_KEY, String(Date.now() + SNOOZE_MS)); setOpen(false); };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-lg border border-border bg-card shadow-xl">
-        <div className="flex items-start gap-3 border-b border-border p-4">
-          <AlertTriangle className="mt-0.5 h-6 w-6 shrink-0 text-[oklch(0.72_0.18_60)]" />
-          <div>
-            <h2 className="text-lg font-semibold">Agendamentos sem confirmação ({data.length})</h2>
-            <p className="text-sm text-muted-foreground">Informe se cada cliente compareceu ou faltou.</p>
-          </div>
-        </div>
+    <>
         <ul className="flex-1 divide-y divide-border overflow-y-auto">
           {data.map((e) => {
             const wa = waLink(e.phone);
@@ -130,10 +113,6 @@ export function PendingAttendanceDialog({ enabled }: { enabled: boolean }) {
             );
           })}
         </ul>
-        <div className="flex justify-end border-t border-border p-3">
-          <Button variant="outline" onClick={snooze}>Lembrar depois</Button>
-        </div>
-      </div>
-    </div>
+    </>
   );
 }
