@@ -158,6 +158,7 @@ function AuthenticatedLayout() {
   }, []);
 
   async function handleSignOut() {
+    localStorage.removeItem("pending-tasks-snooze");
     await recordAccess({ data: { event: "logout" } }).catch(() => {});
     await queryClient.cancelQueries();
     queryClient.clear();

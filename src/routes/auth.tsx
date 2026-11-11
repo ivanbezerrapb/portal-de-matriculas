@@ -45,6 +45,7 @@ function AuthPage() {
         throw error;
       }
       sessionStorage.setItem("access-logged", "1");
+      localStorage.removeItem("pending-tasks-snooze");
       void recordAccess({ data: { event: "login" } }).catch(() => {});
       navigate({ to: "/dashboard" });
     } catch (err) {
