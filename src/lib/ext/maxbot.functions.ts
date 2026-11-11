@@ -31,18 +31,33 @@ async function admin() {
   return extAdmin();
 }
 
-async function readStored(db: SupabaseClient): Promise<Stored> {
-  const empty: Stored = { api_url: DEFAULT_URL, enabled: false, token: null, updated_by: null, updated_by_name: null, updated_at: null };
-  const { data } = await db.storage.from(BUCKET).download(PATH);
-  if (!data) return empty;
-  try {
-    return { ...empty, ...(JSON.parse(await data.text()) as Partial<Stored>) };
-  } catch {
-    return empty;
-  }
+const ACCOUNTS = ["conecta", "interactivo"] as const;
+type Account = (typeof ACCOUNTS)[number];
+const ACCOUNT_LABEL: Record<Account, string> = { conecta: "Conecta", interactivo: "Interactivo" };
+type All = Record<Account, Stored>;
+const accountSchema = z.enum(ACCOUNTS);
+
+function empty(): Stored {
+  return { api_url: DEFAULT_URL, enabled: false, token: null, updated_by: null, updated_by_name: null, updated_at: null };
 }
 
-async function writeStored(db: SupabaseClient, s: Stored) {
+async function readAll(db: SupabaseClient): Promise<All> {
+  const all: All = { conecta: empty(), interactivo: empty() };
+  const { data } = await db.storage.from(BUCKET).download(PATH);
+  if (!data) return all;
+  try {
+    const raw = JSON.parse(await data.text()) as Record<string, unknown>;
+    if (raw["conecta"] || raw["interactivo"]) {
+      for (const a of ACCOUNTS) all[a] = { ...empty(), ...((raw[a] as Partial<Stored>) ?? {}) };
+    } else {
+      // Formato antigo (conta única) vira Conecta.
+      all.conecta = { ...empty(), ...(raw as Partial<Stored>) };
+    }
+  } catch { /* arquivo inválido */ }
+  return all;
+}
+
+async function writeStored(db: SupabaseClient, s: All) {
   const { data: buckets } = await db.storage.listBuckets();
   if (!buckets?.some((b) => b.name === BUCKET)) {
     await db.storage.createBucket(BUCKET, { public: false });
@@ -81,13 +96,15 @@ export const getMaxbotSettings = createServerFn({ method: "GET" })
   .middleware([requireAuth])
   .handler(async ({ context }) => {
     await ensureAdmin(context);
-    return publicView(await readStored(await admin()));
+    const all = await readAll(await admin());
+    return { conecta: publicView(all.conecta), interactivo: publicView(all.interactivo) };
   });
 
 export const saveMaxbotSettings = createServerFn({ method: "POST" })
   .middleware([requireAuth])
   .inputValidator((d) =>
     z.object({
+      account: accountSchema,
       api_url: z.string().trim().url("Endereço inválido.").max(300),
       enabled: z.boolean(),
       token: z.string().trim().max(500).optional(),
@@ -97,7 +114,8 @@ export const saveMaxbotSettings = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await ensureAdmin(context);
     const db = await admin();
-    const cur = await readStored(db);
+    const all = await readAll(db);
+    const cur = all[data.account];
     const name = await actorName(db, context.userId);
     const tokenChanged = Boolean(data.token) || Boolean(data.clear_token);
     const next: Stored = {
@@ -110,8 +128,9 @@ export const saveMaxbotSettings = createServerFn({ method: "POST" })
       updated_at: new Date().toISOString(),
     };
     if (next.enabled && !next.token) throw new Error("Informe o token antes de ativar a integração.");
-    await writeStored(db, next);
-    await logActivity(db, context.userId, name, "Configuração Maxbot salva", {
+    all[data.account] = next;
+    await writeStored(db, all);
+    await logActivity(db, context.userId, name, `Configuração Maxbot ${ACCOUNT_LABEL[data.account]} salva`, {
       api_url: next.api_url, enabled: next.enabled, token: tokenChanged ? (next.token ? "alterado" : "removido") : "sem alteração",
     });
     return publicView(next);
@@ -119,10 +138,12 @@ export const saveMaxbotSettings = createServerFn({ method: "POST" })
 
 export const testMaxbotConnection = createServerFn({ method: "POST" })
   .middleware([requireAuth])
-  .handler(async ({ context }) => {
+  .inputValidator((d) => z.object({ account: accountSchema }).parse(d))
+  .handler(async ({ data, context }) => {
     await ensureAdmin(context);
     const db = await admin();
-    const cur = await readStored(db);
+    const all = await readAll(db);
+    const cur = all[data.account];
     if (!cur.token) return { ok: false, message: "Nenhum token configurado." };
     let ok = false;
     let message = "";
@@ -145,7 +166,8 @@ export const testMaxbotConnection = createServerFn({ method: "POST" })
       message = "Não foi possível alcançar o Maxbot. Verifique o endereço.";
     }
     const name = await actorName(db, context.userId);
-    await writeStored(db, { ...cur, last_test_at: new Date().toISOString(), last_test_ok: ok, last_test_message: message });
-    await logActivity(db, context.userId, name, "Teste de conexão Maxbot", { ok, message });
+    all[data.account] = { ...cur, last_test_at: new Date().toISOString(), last_test_ok: ok, last_test_message: message };
+    await writeStored(db, all);
+    await logActivity(db, context.userId, name, `Teste de conexão Maxbot ${ACCOUNT_LABEL[data.account]}`, { ok, message });
     return { ok, message };
   });
