@@ -827,7 +827,7 @@ export function SubmissionsList({
                             aria-label={`Matrícula de ${s.public_id}`}
                           />
                           {enrolled ? (
-                            <span className="font-medium text-emerald-600">
+                            <span className="font-semibold text-emerald-900">
                               Matriculado · {enrolledCount}
                             </span>
                           ) : null}
