@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
-import { Eye, EyeOff, PlugZap } from "lucide-react";
+import { Eye, EyeOff, FlaskConical, PlugZap } from "lucide-react";
 import { toast } from "sonner";
 import { getMaxbotSettings, listMaxbotSegmentations, runMaxbotImport, saveMaxbotImport, saveMaxbotSettings, testMaxbotConnection } from "@/lib/ext/maxbot.functions";
 import { compareSchoolNames } from "@/lib/school-order";
@@ -143,6 +143,7 @@ function ImportSection({ account, title, data, schools }: { account: Account; ti
   const [auto, setAuto] = useState(data.import_enabled);
   const [saving, setSaving] = useState(false);
   const [running, setRunning] = useState(false);
+  const [testing, setTesting] = useState(false);
   const ordered = [...schools].sort((a, b) => compareSchoolNames(a.name, b.name));
   const options = segs.data?.items ?? [];
 
@@ -166,6 +167,20 @@ function ImportSection({ account, title, data, schools }: { account: Account; ti
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Erro na importação.");
     } finally { setRunning(false); }
+  }
+
+  // Roda na hora com a etiqueta e a data que estão na tela, sem precisar salvar antes.
+  async function testNow() {
+    if (!since) { toast.error("Escolha a data inicial."); return; }
+    if (Object.values(map).filter((v) => v.trim()).length === 0) { toast.error("Escolha a etiqueta de ao menos uma unidade."); return; }
+    setTesting(true);
+    try {
+      const r = await runFn({ data: { account, segmentations: map, import_since: since, test: true } });
+      r.ok ? toast.success(`${title}: ${r.message}`) : toast.error(`${title}: ${r.message}`);
+      qc.invalidateQueries({ queryKey: ["maxbot-settings"] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erro no teste.");
+    } finally { setTesting(false); }
   }
 
   const li = data.last_import;
@@ -195,8 +210,15 @@ function ImportSection({ account, title, data, schools }: { account: Account; ti
       </label>
       <div className="flex flex-wrap gap-2">
         <Button onClick={save} disabled={saving}>{saving ? "Salvando..." : "Salvar importação"}</Button>
+        <Button variant="outline" onClick={testNow} disabled={testing || running}>
+          <FlaskConical className="h-4 w-4" />{testing ? "Testando..." : "Testar agora"}
+        </Button>
         <Button variant="outline" onClick={run} disabled={running || !data.import_since}>{running ? "Importando..." : "Importar agora"}</Button>
       </div>
+      <p className="text-xs text-muted-foreground">
+        <span className="font-medium text-foreground">Testar agora</span> roda a importação na hora com a etiqueta e a data que estão nesta tela,
+        sem precisar salvar antes. Os leads encontrados entram de verdade na Lista de LEADS.
+      </p>
       <p className="text-sm">
         <span className="text-muted-foreground">Última importação:</span> {fmt(li?.at ?? null)}
         {li && <span className={li.ok ? " text-primary" : " text-destructive"}> — {li.message}{li.ok ? ` (encontrados ${li.found}, importados ${li.imported}, já existentes ${li.skipped})` : ""}</span>}

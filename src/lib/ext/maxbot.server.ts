@@ -184,8 +184,21 @@ export async function runImport(db: SupabaseClient, all: All, account: Account):
 }
 
 // Executa a importação de uma conta e grava o resumo (relê o arquivo para não perder alterações).
-export async function importAccount(db: SupabaseClient, account: Account): Promise<ImportSummary> {
+// overrides permite rodar com a etiqueta/data que estão na tela, sem salvar antes.
+export async function importAccount(
+  db: SupabaseClient,
+  account: Account,
+  overrides?: { segmentations?: Record<string, string> | undefined; import_since?: string | null },
+): Promise<ImportSummary> {
   const all = await readAll(db);
+  if (overrides) {
+    const patch: Partial<Stored> = {};
+    if (overrides.segmentations) {
+      patch.segmentations = Object.fromEntries(Object.entries(overrides.segmentations).filter(([, t]) => t.trim()));
+    }
+    if (overrides.import_since !== undefined) patch.import_since = overrides.import_since;
+    all[account] = { ...all[account], ...patch };
+  }
   let summary: ImportSummary;
   try {
     summary = await runImport(db, all, account);

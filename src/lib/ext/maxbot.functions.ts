@@ -170,10 +170,28 @@ export const saveMaxbotImport = createServerFn({ method: "POST" })
 
 export const runMaxbotImport = createServerFn({ method: "POST" })
   .middleware([requireAuth])
-  .inputValidator((d) => z.object({ account: accountSchema }).parse(d))
+  .inputValidator((d) =>
+    z.object({
+      account: accountSchema,
+      segmentations: z.record(z.string().uuid(), z.string().max(200)).optional(),
+      import_since: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data inválida.").nullable().optional(),
+      test: z.boolean().optional(),
+    }).parse(d),
+  )
   .handler(async ({ data, context }) => {
     await ensureAdmin(context);
     const db = await admin();
-    const { importAccount } = await import("./maxbot.server");
-    return importAccount(db, data.account);
+    const { importAccount, logActivity, ACCOUNT_LABEL } = await import("./maxbot.server");
+    const overrides =
+      data.segmentations || data.import_since !== undefined
+        ? { segmentations: data.segmentations, import_since: data.import_since ?? null }
+        : undefined;
+    const summary = await importAccount(db, data.account, overrides);
+    if (data.test) {
+      const name = await actorName(db, context.userId);
+      await logActivity(db, context.userId, name, `Teste de importação de LEADS ${ACCOUNT_LABEL[data.account]}`, {
+        ok: summary.ok, found: summary.found, imported: summary.imported, skipped: summary.skipped, message: summary.message,
+      });
+    }
+    return summary;
   });
