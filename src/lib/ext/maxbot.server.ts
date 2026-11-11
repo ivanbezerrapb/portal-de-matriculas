@@ -269,8 +269,12 @@ function splitName(name: string) {
 }
 
 // Nome no padrão "Fulano de Tal (1050/CE2027)", sem duplicar o código.
+export function cleanName(name: string) {
+  return name.replace(/^\s*\S+\/\S+\s*([·\-–]\s*|$)/, "").replace(/\s*\([^)]*\)\s*$/, "").trim();
+}
+
 export function nameWithCode(name: string, code: string | null | undefined) {
-  const base = name.replace(/\s*\([^)]*\)\s*$/, "").trim() || "Contato";
+  const base = name.replace(/^\s*\S+\/\S+\s*[·\-–]\s*/, "").replace(/\s*\([^)]*\)\s*$/, "").trim() || "Contato";
   return code ? `${base} (${code})` : base;
 }
 
@@ -288,7 +292,7 @@ async function ensureContactName(db: SupabaseClient, account: Account, contactId
     const all = await readAll(db);
     const st = all[account];
     if (st.named?.[contactId] === code) return;
-    let name = opp.display_name || opp.name || null;
+    let name: string | null = cleanName(opp.display_name || opp.name || "") || null;
     if (!name) name = (await submissionContact(db, opp.submission_id)).name;
     if (!name) return;
     const full = nameWithCode(name, code);
@@ -348,8 +352,9 @@ export async function ensureOpportunityContact(
       return { status: "linked", contactId: hit[0], account };
     }
   }
+  if (opp.display_name && !cleanName(opp.display_name)) opp = { ...opp, display_name: null };
   const sc = (!opp.phone || !opp.display_name) ? await submissionContact(db, opp.submission_id) : { name: null, phone: null };
-  if (!opp.display_name) opp = { ...opp, display_name: sc.name || opp.name || null };
+  if (!opp.display_name) opp = { ...opp, display_name: sc.name || cleanName(opp.name ?? "") || null };
   const phone = toMaxbotPhone(opp.phone || sc.phone);
   if (!phone) return { status: "no_phone", contactId: null, account };
   let contactId = await findContactByPhone(s, phone);
