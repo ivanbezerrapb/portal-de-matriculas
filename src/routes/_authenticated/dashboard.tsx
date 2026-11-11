@@ -116,24 +116,53 @@ function SeriesTick({
     return result;
   }, []);
   const totalLines = lines.length + (hasRate ? 1 : 0);
+  const rateText = hasRate ? `${Math.round(rate as number)}%` : "";
+  const badgeW = rateText.length * 6.4 + 14;
+  const badgeH = 16;
+  const badgeX = x - 8 - badgeW;
+  const labelStep = 13.2;
+  const firstOffset = -(totalLines - 1) * 6.6;
+  const lastBaseline = y + firstOffset + (lines.length - 1) * labelStep;
+  const badgeY = lastBaseline + 1;
 
   return (
-    <text x={x - 8} y={y} textAnchor="end" fill="var(--muted-foreground)" fontSize={12}>
-      {lines.map((line, index) => (
-        <tspan
-          key={`${line}-${index}`}
-          x={x - 8}
-          dy={index === 0 ? `${-(totalLines - 1) * 0.55}em` : "1.1em"}
-        >
-          {line}
-        </tspan>
-      ))}
+    <g>
+      <text x={x - 8} y={y} textAnchor="end" fill="var(--muted-foreground)" fontSize={12}>
+        {lines.map((line, index) => (
+          <tspan
+            key={`${line}-${index}`}
+            x={x - 8}
+            dy={index === 0 ? `${firstOffset}px` : `${labelStep}px`}
+          >
+            {line}
+          </tspan>
+        ))}
+      </text>
       {hasRate && (
-        <tspan x={x - 8} dy="1.15em" fontSize={10.5} fontWeight={600} fill="var(--primary)">
-          {`${Math.round(rate as number)}%`}
-        </tspan>
+        <g>
+          <rect
+            x={badgeX}
+            y={badgeY}
+            width={badgeW}
+            height={badgeH}
+            rx={badgeH / 2}
+            ry={badgeH / 2}
+            fill="var(--primary)"
+          />
+          <text
+            x={badgeX + badgeW / 2}
+            y={badgeY + badgeH / 2}
+            textAnchor="middle"
+            dominantBaseline="central"
+            fill="var(--primary-foreground)"
+            fontSize={10.5}
+            fontWeight={700}
+          >
+            {rateText}
+          </text>
+        </g>
       )}
-    </text>
+    </g>
   );
 }
 
@@ -217,8 +246,10 @@ function NeighborhoodChart({
             <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm bg-primary" />Vinculados</span>
             <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm" style={{ background: "var(--chart-2)" }} />Atendimento iniciado</span>
             <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm" style={{ background: "var(--chart-4)" }} />{wonLabel}</span>
-            <span className="text-[11px] italic">%</span>
-            <span className="text-[11px] italic text-muted-foreground">conversão ({wonLabel.toLowerCase()} ÷ vinculados)</span>
+            <span className="flex items-center gap-1">
+              <span className="rounded-full bg-primary px-1.5 py-px text-[10px] font-bold leading-none text-primary-foreground">%</span>
+              <span className="text-[11px] italic text-muted-foreground">conversão ({wonLabel.toLowerCase()} ÷ vinculados)</span>
+            </span>
           </div>
         )}
       </div>
