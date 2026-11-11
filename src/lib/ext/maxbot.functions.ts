@@ -297,12 +297,23 @@ export const listCardMaxbotTemplates = createServerFn({ method: "POST" })
     const all = await readAll(db);
     if (!all[account].token) throw new Error(`${ACCOUNT_LABEL[account]} não está configurado.`);
     const attendant = all[account].attendants?.[context.userId] ?? null;
-    return { account_label: ACCOUNT_LABEL[account], attendant, default_template_id: all[account].default_template?.id ?? null, templates: await listFollowupTemplates(all[account]) };
+    const { getPerms } = await import("./server");
+    const is_admin = (await getPerms(context.supabase, context.userId)).isAdmin;
+    let attendants: { user_id: string; user_name: string; attendant_name: string }[] = [];
+    if (is_admin) {
+      const map = all[account].attendants ?? {};
+      const ids = Object.keys(map);
+      const { data: profs } = ids.length ? await db.from("profiles").select("id, full_name").in("id", ids) : { data: [] };
+      const names = new Map(((profs ?? []) as { id: string; full_name: string | null }[]).map((p) => [p.id, p.full_name ?? ""]));
+      attendants = ids.map((id) => ({ user_id: id, user_name: names.get(id) || "Usuário", attendant_name: map[id].name }))
+        .sort((a, b) => a.user_name.localeCompare(b.user_name, "pt-BR"));
+    }
+    return { account_label: ACCOUNT_LABEL[account], attendant, is_admin, attendants, default_template_id: all[account].default_template?.id ?? null, templates: await listFollowupTemplates(all[account]) };
   });
 
 export const sendCardMaxbotTemplate = createServerFn({ method: "POST" })
   .middleware([requireAuth])
-  .inputValidator((d) => oppSchema.extend({ template_id: z.string().min(1), template_title: z.string().max(200) }).parse(d))
+  .inputValidator((d) => oppSchema.extend({ template_id: z.string().min(1), template_title: z.string().max(200), as_user_id: z.string().uuid().optional() }).parse(d))
   .handler(async ({ data, context }) => {
     const opp = await loadOpp(context, data.opportunity_id);
     const db = await admin();
@@ -315,7 +326,12 @@ export const sendCardMaxbotTemplate = createServerFn({ method: "POST" })
     const def = s.default_template;
     if (!def?.id) throw new Error("Nenhum template padrão definido em Configurações › MAXBOT.");
     data.template_id = def.id; data.template_title = def.title;
-    const att = s.attendants?.[context.userId];
+    let senderId = context.userId;
+    if (data.as_user_id && data.as_user_id !== context.userId) {
+      const { getPerms } = await import("./server");
+      if ((await getPerms(context.supabase, context.userId)).isAdmin) senderId = data.as_user_id;
+    }
+    const att = s.attendants?.[senderId];
     if (!att) throw new Error("Seu usuário não está vinculado a um atendente do Maxbot. Peça ao administrador em Configurações › Usuários.");
     const sector = await m.attendantSector(s, att.id);
     const [first, ...rest] = (opp.display_name ?? "").trim().split(/\s+/);
@@ -328,7 +344,7 @@ export const sendCardMaxbotTemplate = createServerFn({ method: "POST" })
     const protocol = String(json["protocol"] ?? json["prot_id"] ?? "");
     await db.from("crm_notes").insert({
       opportunity_id: opp.id, author_id: context.userId, author_name: name ?? "Usuário",
-      body: `Template "${data.template_title}" enviado via ${m.ACCOUNT_LABEL[r.account]}${protocol ? ` (protocolo ${protocol})` : ""}.`,
+      body: `Template "${data.template_title}" enviado via ${m.ACCOUNT_LABEL[r.account]}${protocol ? ` (protocolo ${protocol})` : ""}${senderId !== context.userId ? ` em nome do atendente ${att.name}` : ""}.`,
     });
     await m.logActivity(db, context.userId, name, `Mensagem Maxbot enviada para ${opp.display_name ?? ""}`, { template: data.template_title, protocolo: protocol, atendente: att.name }, opp.school_id);
     return { ok: true, protocol };

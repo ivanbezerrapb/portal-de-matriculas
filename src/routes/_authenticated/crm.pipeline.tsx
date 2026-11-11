@@ -65,6 +65,7 @@ function MaxbotSend({ opportunityId }: { opportunityId: string }) {
   const { data: status, refetch, isFetching } = useMaxbotStatus(opportunityId);
   const [open, setOpen] = useState(false);
   const [tpl, setTpl] = useState("");
+  const [asUser, setAsUser] = useState("");
   const tq = useQuery({
     queryKey: ["maxbot-templates", opportunityId],
     queryFn: () => listCardMaxbotTemplates({ data: { opportunity_id: opportunityId } }),
@@ -73,11 +74,15 @@ function MaxbotSend({ opportunityId }: { opportunityId: string }) {
   });
   useEffect(() => { if (open && !tpl && tq.data?.default_template_id && tq.data.templates.some((t) => t.id === tq.data!.default_template_id)) setTpl(tq.data.default_template_id); }, [open, tq.data, tpl]);
   const chosen = tq.data?.templates.find((t) => t.id === tpl);
+  const isAdm = !!tq.data?.is_admin;
+  const selfId = tq.data?.attendants.find((a) => a.attendant_name === tq.data?.attendant?.name && tq.data?.attendant)?.user_id ?? "";
+  const sender = isAdm ? (asUser || selfId) : "";
+  const canSend = isAdm ? !!sender : !!tq.data?.attendant;
   const sendM = useMutation({
-    mutationFn: () => sendCardMaxbotTemplate({ data: { opportunity_id: opportunityId, template_id: tpl, template_title: chosen?.title ?? tpl } }),
+    mutationFn: () => sendCardMaxbotTemplate({ data: { opportunity_id: opportunityId, template_id: tpl, template_title: chosen?.title ?? tpl, ...(sender ? { as_user_id: sender } : {}) } }),
     onSuccess: (r) => {
       toast.success(`Mensagem enviada${r.protocol ? ` (protocolo ${r.protocol})` : ""}.`);
-      setOpen(false); setTpl("");
+      setOpen(false); setTpl(""); setAsUser("");
       qc.invalidateQueries({ queryKey: ["crm-notes", opportunityId] });
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Falha ao enviar."),
@@ -100,7 +105,16 @@ function MaxbotSend({ opportunityId }: { opportunityId: string }) {
             ) : tq.data && (
               <div className="mt-3 space-y-3 text-sm">
                 <p className="text-muted-foreground">Conta: <span className="text-foreground">{tq.data.account_label}</span></p>
-                {tq.data.attendant ? (
+                {isAdm ? (
+                  <div>
+                    <Label htmlFor="mb-as">Enviar como</Label>
+                    <Select id="mb-as" value={sender} onChange={(e) => setAsUser(e.target.value)}>
+                      <option value="">Selecione…</option>
+                      {tq.data.attendants.map((a) => <option key={a.user_id} value={a.user_id}>{a.user_name} — atendente {a.attendant_name}</option>)}
+                    </Select>
+                    {tq.data.attendants.length === 0 && <p className="mt-1 text-xs text-destructive">Nenhum usuário vinculado a atendente desta conta.</p>}
+                  </div>
+                ) : tq.data.attendant ? (
                   <p className="text-muted-foreground">Enviando como: <span className="text-foreground">{tq.data.attendant.name}</span></p>
                 ) : (
                   <p className="text-destructive">Seu usuário não está vinculado a um atendente deste Maxbot. Peça ao administrador em Configurações › Usuários.</p>
@@ -115,7 +129,7 @@ function MaxbotSend({ opportunityId }: { opportunityId: string }) {
             )}
             <div className="mt-5 flex justify-end gap-2">
               <Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button>
-              <Button disabled={!chosen || !tq.data?.attendant || sendM.isPending} onClick={() => sendM.mutate()}>
+              <Button disabled={!chosen || !canSend || sendM.isPending} onClick={() => sendM.mutate()}>
                 {sendM.isPending ? "Enviando…" : "Sim, enviar"}
               </Button>
             </div>
