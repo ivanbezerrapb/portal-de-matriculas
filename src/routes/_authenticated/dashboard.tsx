@@ -177,7 +177,7 @@ function SeriesChart({
 
 type NeighborhoodGroup = {
   school: string;
-  items: { label: string; city: string; count: number; started?: number }[];
+  items: { label: string; city: string; count: number; started?: number; won?: number }[];
 };
 
 function NeighborhoodChart({
@@ -199,6 +199,7 @@ function NeighborhoodChart({
           <div className="flex items-center gap-3 text-xs text-muted-foreground">
             <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm bg-primary" />Vinculados</span>
             <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm" style={{ background: "var(--chart-2)" }} />Iniciados</span>
+            <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm" style={{ background: "var(--chart-4)" }} />Ganhos</span>
           </div>
         )}
       </div>
@@ -224,10 +225,10 @@ function NeighborhoodChart({
                 ) : (
                   <ChartContainer
                     config={showStarted
-                      ? { count: { label: "Vinculados", color: "var(--primary)" }, started: { label: "Iniciados", color: "var(--chart-2)" } }
+                      ? { count: { label: "Vinculados", color: "var(--primary)" }, started: { label: "Iniciados", color: "var(--chart-2)" }, won: { label: "Ganhos", color: "var(--chart-4)" } }
                       : { count: { label: "Visitas", color: "var(--primary)" } }}
                     className="mt-2 w-full aspect-auto"
-                    style={{ height: Math.max(140, group.items.length * (showStarted ? 64 : 46)) }}
+                    style={{ height: Math.max(140, group.items.length * (showStarted ? 84 : 46)) }}
                   >
                     <BarChart
                       data={group.items.map((item) => ({
@@ -261,6 +262,11 @@ function NeighborhoodChart({
                       {showStarted && (
                         <Bar dataKey="started" fill="var(--color-started)" radius={[0, 4, 4, 0]}>
                           <LabelList dataKey="started" position="right" offset={6} className="fill-foreground" fontSize={11} />
+                        </Bar>
+                      )}
+                      {showStarted && (
+                        <Bar dataKey="won" fill="var(--color-won)" radius={[0, 4, 4, 0]}>
+                          <LabelList dataKey="won" position="right" offset={6} className="fill-foreground" fontSize={11} />
                         </Bar>
                       )}
                     </BarChart>

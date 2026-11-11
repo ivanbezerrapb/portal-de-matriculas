@@ -984,6 +984,8 @@ export const getDashboardStats = createServerFn({ method: "GET" })
 
     // Cartões cujo atendimento já foi iniciado (saíram da 1ª etapa ao menos uma vez).
     const startedSubs = new Set<string>();
+    const wonSubs = new Set<string>();
+    for (const r0 of rows) if (r0.enrolled) wonSubs.add(r0.id as string);
     {
       const ids = rows.filter((r) => (r as unknown as { attendant: unknown }).attendant).map((r) => r.id as string);
       const opps: { submission_id: string | null; funnel_id: string; stage_id: string; status: string; owner_confirmed_at: string | null }[] = [];
@@ -1008,12 +1010,14 @@ export const getDashboardStats = createServerFn({ method: "GET" })
       }
       for (const o of opps) {
         if (!o.submission_id) continue;
+        if (o.status === "won") wonSubs.add(o.submission_id);
         if (o.status !== "open" || o.owner_confirmed_at || (firstStage.get(o.funnel_id) && o.stage_id !== firstStage.get(o.funnel_id))) {
           startedSubs.add(o.submission_id);
         }
       }
     }
     const attendantStarted = new Map<string, Map<string, number>>();
+    const attendantWon = new Map<string, Map<string, number>>();
 
     const attendantCounts = new Map<string, number>();
     const presenterCounts = new Map<string, number>();
@@ -1035,6 +1039,11 @@ export const getDashboardStats = createServerFn({ method: "GET" })
           sm.set(a, (sm.get(a) ?? 0) + 1);
           attendantStarted.set(sName, sm);
         }
+        if (wonSubs.has(row.id as string)) {
+          const wm = attendantWon.get(sName) ?? new Map<string, number>();
+          wm.set(a, (wm.get(a) ?? 0) + 1);
+          attendantWon.set(sName, wm);
+        }
       }
     }
     for (const s of bySchool.values()) {
@@ -1044,13 +1053,13 @@ export const getDashboardStats = createServerFn({ method: "GET" })
       .map(([school, m]) => ({
         school,
         items: [...m.entries()]
-          .map(([label, count]) => ({ label, count, started: attendantStarted.get(school)?.get(label) ?? 0 }))
+          .map(([label, count]) => ({ label, count, started: attendantStarted.get(school)?.get(label) ?? 0, won: attendantWon.get(school)?.get(label) ?? 0 }))
           .sort((x, y) => y.count - x.count || x.label.localeCompare(y.label, "pt-BR")),
       }))
       .sort((x, y) => x.school.localeCompare(y.school, "pt-BR"));
 
     // Central de Informações: LEADS por responsável do card (owner_id).
-    let leadOwnersBySchool: { school: string; items: { label: string; count: number; started: number }[] }[] = [];
+    let leadOwnersBySchool: { school: string; items: { label: string; count: number; started: number; won: number }[] }[] = [];
     {
       let lq = context.supabase
         .from("submissions")
@@ -1084,7 +1093,7 @@ export const getDashboardStats = createServerFn({ method: "GET" })
         const { data: profs } = await context.supabase.from("profiles").select("id, full_name").in("id", ownerIds);
         for (const pr of (profs ?? []) as { id: string; full_name: string | null }[]) names.set(pr.id, pr.full_name?.trim() || "Sem nome");
       }
-      const m = new Map<string, Map<string, { count: number; started: number }>>();
+      const m = new Map<string, Map<string, { count: number; started: number; won: number }>>();
       for (const sName of new Set(schoolOf.values())) m.set(sName, new Map());
       for (const s of bySchool.values()) if (!m.has(s.name)) m.set(s.name, new Map());
       for (const o of opps) {
@@ -1092,8 +1101,9 @@ export const getDashboardStats = createServerFn({ method: "GET" })
         const sName = schoolOf.get(o.submission_id) ?? "—";
         const label = o.owner_id ? names.get(o.owner_id) ?? "Sem nome" : "Sem responsável";
         const g = m.get(sName) ?? new Map();
-        const e = g.get(label) ?? { count: 0, started: 0 };
+        const e = g.get(label) ?? { count: 0, started: 0, won: 0 };
         e.count += 1;
+        if (o.status === "won") e.won += 1;
         const fs = firstStage.get(o.funnel_id);
         if (o.status !== "open" || o.owner_confirmed_at || (fs && o.stage_id !== fs)) e.started += 1;
         g.set(label, e);
