@@ -36,6 +36,7 @@ import { getFileAccess } from "@/lib/ext/arquivos.functions";
 import { recordAccess } from "@/lib/ext/logs.functions";
 import { getMyPasswordStatus } from "@/lib/ext/usuarios.functions";
 import { ForcePasswordChange } from "@/components/ForcePasswordChange";
+import { PendingAttendanceDialog, usePendingAttendance } from "@/components/PendingAttendanceDialog";
 import { History, KeyRound } from "lucide-react";
 import { Button, Card, Spinner } from "@/components/ui";
 import whiteLogoAsset from "@/assets/grupo-inter-logo-branca.png.asset.json";
@@ -178,6 +179,8 @@ function AuthenticatedLayout() {
   const isManager = (perms?.managerSchools.length ?? 0) > 0;
   const isInfo = (perms?.infoSchools.length ?? 0) > 0;
   const isSecretary = !isAdmin && !isDirecao && !isManager && !isInfo;
+  const attendanceAlert = !!perms && !isAdmin && !isDirecao && (isManager || (perms.operatorSchools?.length ?? 0) > 0);
+  const { data: pendingAttendance = [] } = usePendingAttendance(attendanceAlert);
 
   const roleLabel = isAdmin
     ? "Administrador"
@@ -365,7 +368,10 @@ function AuthenticatedLayout() {
                   title={collapsed ? entry.label : undefined}
                 >
                   <Icon className="h-5 w-5 shrink-0" />
-                  {!collapsed && <span>{entry.label}</span>}
+                  {!collapsed && <span className="flex-1">{entry.label}</span>}
+                  {entry.to === "/calendario" && pendingAttendance.length > 0 && (
+                    <span className="rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold text-white">{pendingAttendance.length}</span>
+                  )}
                 </Link>
               );
             }
@@ -485,6 +491,7 @@ function AuthenticatedLayout() {
         <main className="min-w-0 overflow-x-hidden px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
           <Outlet />
         </main>
+        <PendingAttendanceDialog enabled={attendanceAlert} />
       </div>
     </div>
   );
