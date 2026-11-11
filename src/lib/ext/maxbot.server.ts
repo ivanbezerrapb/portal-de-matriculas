@@ -30,6 +30,7 @@ export type Stored = {
   attendants?: Record<string, { id: string; name: string }>; // portalUserId -> atendente Maxbot
   contacts?: Record<string, string>; // opportunityId -> contactId Maxbot
   named?: Record<string, string>; // contactId -> código da ficha já gravado no nome
+  default_template?: { id: string; title: string } | null;
 };
 export type All = Record<Account, Stored>;
 
@@ -387,7 +388,7 @@ export async function syncRecentOpportunities(db: SupabaseClient, days = 3) {
 
 export type MaxbotTemplate = { id: string; title: string; msg: string; category: string };
 export async function listFollowupTemplates(s: Stored): Promise<MaxbotTemplate[]> {
-  const json = await maxbotCall(s, { cmd: "get_template", type: "F" });
+  const json = await maxbotCall(s, { cmd: "get_template" });
   const list = (json["template"] as { id: number; title: string; msg: string; category_title?: string }[] | undefined) ?? [];
   return list.map((t) => ({ id: String(t.id), title: t.title, msg: t.msg ?? "", category: t.category_title ?? "" }))
     .sort((a, b) => a.title.localeCompare(b.title, "pt-BR"));

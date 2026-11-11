@@ -71,6 +71,7 @@ function MaxbotSend({ opportunityId }: { opportunityId: string }) {
     enabled: open,
     retry: false,
   });
+  useEffect(() => { if (open && !tpl && tq.data?.default_template_id && tq.data.templates.some((t) => t.id === tq.data!.default_template_id)) setTpl(tq.data.default_template_id); }, [open, tq.data, tpl]);
   const chosen = tq.data?.templates.find((t) => t.id === tpl);
   const sendM = useMutation({
     mutationFn: () => sendCardMaxbotTemplate({ data: { opportunity_id: opportunityId, template_id: tpl, template_title: chosen?.title ?? tpl } }),

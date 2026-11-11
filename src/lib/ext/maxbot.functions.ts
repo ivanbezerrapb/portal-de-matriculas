@@ -297,7 +297,7 @@ export const listCardMaxbotTemplates = createServerFn({ method: "POST" })
     const all = await readAll(db);
     if (!all[account].token) throw new Error(`${ACCOUNT_LABEL[account]} não está configurado.`);
     const attendant = all[account].attendants?.[context.userId] ?? null;
-    return { account_label: ACCOUNT_LABEL[account], attendant, templates: await listFollowupTemplates(all[account]) };
+    return { account_label: ACCOUNT_LABEL[account], attendant, default_template_id: all[account].default_template?.id ?? null, templates: await listFollowupTemplates(all[account]) };
   });
 
 export const sendCardMaxbotTemplate = createServerFn({ method: "POST" })
@@ -319,7 +319,7 @@ export const sendCardMaxbotTemplate = createServerFn({ method: "POST" })
     const [aFirst, ...aRest] = att.name.trim().split(/\s+/);
     const json = await m.maxbotCall(s, {
       cmd: "open_followup", contact_id: Number(r.contactId), template_id: Number(data.template_id),
-      attendant_id: Number(att.id), ...(sector ? { sector_id: Number(sector) } : {}), scheduled: 0,
+      attendant_id: Number(att.id), ...(sector ? { sector_id: Number(sector) } : {}), scheduled: 0, date_time: new Date(Date.now() - 3 * 3600_000).toISOString().slice(0, 19).replace("T", " "),
       tag_name: first ?? "", tag_last_name: rest.join(" "), tag_atd_name: aFirst ?? "", tag_atd_last_name: aRest.join(" "),
     });
     const protocol = String(json["protocol"] ?? json["prot_id"] ?? "");
@@ -329,4 +329,31 @@ export const sendCardMaxbotTemplate = createServerFn({ method: "POST" })
     });
     await m.logActivity(db, context.userId, name, `Mensagem Maxbot enviada para ${opp.display_name ?? ""}`, { template: data.template_title, protocolo: protocol, atendente: att.name }, opp.school_id);
     return { ok: true, protocol };
+  });
+
+export const listMaxbotTemplatesAdmin = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((d) => z.object({ account: accountSchema }).parse(d))
+  .handler(async ({ data, context }) => {
+    await ensureAdmin(context);
+    const db = await admin();
+    const { readAll, listFollowupTemplates } = await import("./maxbot.server");
+    const all = await readAll(db);
+    const s = all[data.account];
+    return { current: s.default_template?.id ?? "", templates: s.token ? await listFollowupTemplates(s) : [] };
+  });
+
+export const saveMaxbotDefaultTemplate = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((d) => z.object({ account: accountSchema, id: z.string().max(50), title: z.string().max(200) }).parse(d))
+  .handler(async ({ data, context }) => {
+    await ensureAdmin(context);
+    const db = await admin();
+    const { readAll, writeAll, logActivity, ACCOUNT_LABEL } = await import("./maxbot.server");
+    const all = await readAll(db);
+    all[data.account] = { ...all[data.account], default_template: data.id ? { id: data.id, title: data.title } : null };
+    await writeAll(db, all);
+    const name = await actorName(db, context.userId);
+    await logActivity(db, context.userId, name, `Template padrão ${ACCOUNT_LABEL[data.account]} definido`, { template: data.title || "Nenhum" });
+    return { ok: true };
   });

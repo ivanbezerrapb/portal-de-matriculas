@@ -4,7 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { Eye, EyeOff, FlaskConical, PlugZap } from "lucide-react";
 import { toast } from "sonner";
-import { getMaxbotSettings, listMaxbotSegmentations, runMaxbotImport, saveMaxbotImport, saveMaxbotSettings, testMaxbotConnection } from "@/lib/ext/maxbot.functions";
+import { getMaxbotSettings, listMaxbotSegmentations, listMaxbotTemplatesAdmin, saveMaxbotDefaultTemplate, runMaxbotImport, saveMaxbotImport, saveMaxbotSettings, testMaxbotConnection } from "@/lib/ext/maxbot.functions";
 import { compareSchoolNames } from "@/lib/school-order";
 import { Badge, Button, Card, Input, Label, Select, Spinner } from "@/components/ui";
 
@@ -122,6 +122,7 @@ function AccountCard({ account, title, data, schools }: { account: Account; titl
           <PlugZap className="h-4 w-4" />{testing ? "Testando..." : "Testar conexão"}
         </Button>
       </div>
+      {data.token_set && <DefaultTemplate account={account} />}
       {data.token_set && <ImportSection account={account} title={title} data={data} schools={schools} />}
       <div className="space-y-1 border-t border-border pt-4 text-sm">
         <p><span className="text-muted-foreground">Última alteração:</span> {fmt(data.updated_at)}{data.updated_by_name ? ` por ${data.updated_by_name}` : ""}</p>
@@ -223,6 +224,40 @@ function ImportSection({ account, title, data, schools }: { account: Account; ti
         <span className="text-muted-foreground">Última importação:</span> {fmt(li?.at ?? null)}
         {li && <span className={li.ok ? " text-primary" : " text-destructive"}> — {li.message}{li.ok ? ` (encontrados ${li.found}, importados ${li.imported}, já existentes ${li.skipped})` : ""}</span>}
       </p>
+    </div>
+  );
+}
+
+function DefaultTemplate({ account }: { account: Account }) {
+  const listFn = useServerFn(listMaxbotTemplatesAdmin);
+  const saveFn = useServerFn(saveMaxbotDefaultTemplate);
+  const q = useQuery({ queryKey: ["maxbot-default-tpl", account], queryFn: () => listFn({ data: { account } }), retry: false });
+  const [sel, setSel] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const value = sel ?? q.data?.current ?? "";
+  const save = async () => {
+    setSaving(true);
+    try {
+      const t = q.data?.templates.find((x) => x.id === value);
+      await saveFn({ data: { account, id: value, title: t?.title ?? "" } });
+      toast.success("Template padrão salvo.");
+      q.refetch(); setSel(null);
+    } catch (e) { toast.error(e instanceof Error ? e.message : "Erro ao salvar."); }
+    finally { setSaving(false); }
+  };
+  return (
+    <div className="space-y-2 border-t border-border pt-4">
+      <Label>Template padrão do botão "Enviar mensagem"</Label>
+      {q.isLoading ? <Spinner /> : q.error ? <p className="text-sm text-destructive">Não foi possível carregar os templates.</p> : (
+        <div className="flex gap-2">
+          <Select value={value} onChange={(e) => setSel(e.target.value)}>
+            <option value="">Nenhum (escolher na hora)</option>
+            {q.data?.templates.map((t) => <option key={t.id} value={t.id}>{t.title}</option>)}
+          </Select>
+          <Button onClick={save} disabled={saving}>{saving ? "Salvando..." : "Salvar"}</Button>
+        </div>
+      )}
+      <p className="text-xs text-muted-foreground">Esse template já vem escolhido quando o atendente clica em Enviar mensagem. Ele ainda pode trocar.</p>
     </div>
   );
 }
