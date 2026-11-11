@@ -664,11 +664,12 @@ export function SubmissionsList({
                       });
                     }
                   : null;
+                const greenRow = listType === "leads" ? Boolean(checkIn) : enrolled;
                 return (
                   <tr
                     key={s.id}
-                    className={`border-b border-border last:border-0 ${listType !== "leads" && enrolled ? "enrolled-row hover:brightness-95" : "hover:bg-accent/40"}`}
-                    style={listType !== "leads" && enrolled ? { backgroundColor: "#bbf7d0" } : undefined}
+                    className={`border-b border-border last:border-0 ${greenRow ? "enrolled-row hover:brightness-95" : "hover:bg-accent/40"}`}
+                    style={greenRow ? { backgroundColor: "#bbf7d0" } : undefined}
                   >
                     <td className="px-4 py-2.5">
                       <input
