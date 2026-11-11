@@ -136,7 +136,7 @@ export const testMaxbotConnection = createServerFn({ method: "POST" })
       let json: Record<string, unknown> | null = null;
       try { json = JSON.parse(text); } catch { /* resposta não JSON */ }
       const status = json?.["status"];
-      const msg = typeof json?.["msg"] === "string" ? json.msg : typeof json?.["message"] === "string" ? json.message : "";
+      const msg = typeof json?.["msg"] === "string" ? json["msg"] : typeof json?.["message"] === "string" ? json["message"] : "";
       ok = res.ok && json !== null && status !== 0 && status !== "0" && status !== false && status !== "error";
       message = ok ? "Conectado ao Maxbot." : `O Maxbot recusou a conexão${msg ? `: ${msg}` : " (verifique o token)."}`;
       if (!res.ok) message = `O Maxbot respondeu com erro (${res.status}).`;
