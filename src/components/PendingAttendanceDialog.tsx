@@ -9,7 +9,7 @@ import { setLeadCheckIn } from "@/lib/ext/cadastros.functions";
 import { listCalendarEvents, markEnrollmentDone, markVisitNoShow, type CalendarEvent } from "@/lib/ext/calendario.functions";
 
 const SNOOZE_KEY = "pending-attendance-snooze";
-const SNOOZE_MS = 30 * 60 * 1000;
+const SNOOZE_MS = 60 * 60 * 1000;
 
 function waLink(phone: string | null) {
   const d = (phone ?? "").replace(/\D/g, "").replace(/^55(?=\d{10,11}$)/, "");
