@@ -147,7 +147,7 @@ function SeriesTick({
             height={badgeH}
             rx={badgeH / 2}
             ry={badgeH / 2}
-            fill="var(--primary)"
+            fill="var(--destructive)"
           />
           <text
             x={badgeX + badgeW / 2}
@@ -247,7 +247,7 @@ function NeighborhoodChart({
             <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm" style={{ background: "var(--chart-2)" }} />Atendimento iniciado</span>
             <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm" style={{ background: "var(--chart-4)" }} />{wonLabel}</span>
             <span className="flex items-center gap-1">
-              <span className="rounded-full bg-primary px-1.5 py-px text-[10px] font-bold leading-none text-pill-foreground">%</span>
+              <span className="rounded-full bg-destructive px-1.5 py-px text-[10px] font-bold leading-none text-pill-foreground">%</span>
               <span className="text-[11px] italic text-muted-foreground">conversão ({wonLabel.toLowerCase()} ÷ vinculados)</span>
             </span>
           </div>
