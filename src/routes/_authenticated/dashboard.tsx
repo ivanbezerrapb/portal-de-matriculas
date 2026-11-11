@@ -177,21 +177,31 @@ function SeriesChart({
 
 type NeighborhoodGroup = {
   school: string;
-  items: { label: string; city: string; count: number }[];
+  items: { label: string; city: string; count: number; started?: number }[];
 };
 
 function NeighborhoodChart({
   data,
   title = "Visitantes por bairro",
   emptyText = "Nenhum endereço no período.",
+  showStarted = false,
 }: {
   data: NeighborhoodGroup[];
   title?: string;
   emptyText?: string;
+  showStarted?: boolean;
 }) {
   return (
     <Card className="flex h-full min-w-0 flex-col p-4">
-      <h2 className="font-display text-sm font-semibold text-foreground">{title}</h2>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="font-display text-sm font-semibold text-foreground">{title}</h2>
+        {showStarted && (
+          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm bg-primary" />Vinculados</span>
+            <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm" style={{ background: "var(--chart-2)" }} />Iniciados</span>
+          </div>
+        )}
+      </div>
       {data.length === 0 ? (
         <div className="flex h-52 items-center justify-center text-sm text-muted-foreground">
           {emptyText}
@@ -213,9 +223,11 @@ function NeighborhoodChart({
                   <p className="mt-3 text-sm text-muted-foreground">{emptyText}</p>
                 ) : (
                   <ChartContainer
-                    config={{ count: { label: "Visitas", color: "var(--primary)" } }}
+                    config={showStarted
+                      ? { count: { label: "Vinculados", color: "var(--primary)" }, started: { label: "Iniciados", color: "var(--chart-2)" } }
+                      : { count: { label: "Visitas", color: "var(--primary)" } }}
                     className="mt-2 w-full aspect-auto"
-                    style={{ height: Math.max(140, group.items.length * 46) }}
+                    style={{ height: Math.max(140, group.items.length * (showStarted ? 64 : 46)) }}
                   >
                     <BarChart
                       data={group.items.map((item) => ({
@@ -246,6 +258,11 @@ function NeighborhoodChart({
                           fontSize={11}
                         />
                       </Bar>
+                      {showStarted && (
+                        <Bar dataKey="started" fill="var(--color-started)" radius={[0, 4, 4, 0]}>
+                          <LabelList dataKey="started" position="right" offset={6} className="fill-foreground" fontSize={11} />
+                        </Bar>
+                      )}
                     </BarChart>
                   </ChartContainer>
                 )}
@@ -869,6 +886,7 @@ function DashboardPage() {
             <NeighborhoodChart
               title="Quem mais atendeu (Coordenação)"
               emptyText="Sem dados"
+              showStarted
               data={(data.attendantsBySchool ?? []).map((g) => ({
                 school: g.school,
                 items: g.items.map((i) => ({ ...i, city: "" })),

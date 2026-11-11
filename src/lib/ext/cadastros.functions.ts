@@ -982,6 +982,39 @@ export const getDashboardStats = createServerFn({ method: "GET" })
       }
     }
 
+    // Cartões cujo atendimento já foi iniciado (saíram da 1ª etapa ao menos uma vez).
+    const startedSubs = new Set<string>();
+    {
+      const ids = rows.filter((r) => (r as unknown as { attendant: unknown }).attendant).map((r) => r.id as string);
+      const opps: { submission_id: string | null; funnel_id: string; stage_id: string; status: string; owner_confirmed_at: string | null }[] = [];
+      for (let i = 0; i < ids.length; i += 200) {
+        const { data: chunk } = await context.supabase
+          .from("opportunities")
+          .select("submission_id, funnel_id, stage_id, status, owner_confirmed_at")
+          .in("submission_id", ids.slice(i, i + 200));
+        opps.push(...((chunk ?? []) as typeof opps));
+      }
+      const funnelIds = [...new Set(opps.map((o) => o.funnel_id))];
+      const firstStage = new Map<string, string>();
+      if (funnelIds.length) {
+        const { data: stages } = await context.supabase
+          .from("funnel_stages")
+          .select("id, funnel_id, position")
+          .in("funnel_id", funnelIds)
+          .order("position", { ascending: true });
+        for (const st of (stages ?? []) as { id: string; funnel_id: string }[]) {
+          if (!firstStage.has(st.funnel_id)) firstStage.set(st.funnel_id, st.id);
+        }
+      }
+      for (const o of opps) {
+        if (!o.submission_id) continue;
+        if (o.status !== "open" || o.owner_confirmed_at || (firstStage.get(o.funnel_id) && o.stage_id !== firstStage.get(o.funnel_id))) {
+          startedSubs.add(o.submission_id);
+        }
+      }
+    }
+    const attendantStarted = new Map<string, Map<string, number>>();
+
     const attendantCounts = new Map<string, number>();
     const presenterCounts = new Map<string, number>();
     const attendantsBySchoolMap = new Map<string, Map<string, number>>();
@@ -997,6 +1030,11 @@ export const getDashboardStats = createServerFn({ method: "GET" })
         const m = attendantsBySchoolMap.get(sName) ?? new Map<string, number>();
         m.set(a, (m.get(a) ?? 0) + 1);
         attendantsBySchoolMap.set(sName, m);
+        if (startedSubs.has(row.id as string)) {
+          const sm = attendantStarted.get(sName) ?? new Map<string, number>();
+          sm.set(a, (sm.get(a) ?? 0) + 1);
+          attendantStarted.set(sName, sm);
+        }
       }
     }
     for (const s of bySchool.values()) {
@@ -1006,7 +1044,7 @@ export const getDashboardStats = createServerFn({ method: "GET" })
       .map(([school, m]) => ({
         school,
         items: [...m.entries()]
-          .map(([label, count]) => ({ label, count }))
+          .map(([label, count]) => ({ label, count, started: attendantStarted.get(school)?.get(label) ?? 0 }))
           .sort((x, y) => y.count - x.count || x.label.localeCompare(y.label, "pt-BR")),
       }))
       .sort((x, y) => x.school.localeCompare(y.school, "pt-BR"));
