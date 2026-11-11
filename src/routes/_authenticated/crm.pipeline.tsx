@@ -694,7 +694,7 @@ function PipelinePage() {
         const stage = stages.find((s) => s.id === card.stage_id);
         const cardSeries = card.series ?? [];
         const details = (card.details ?? []) as { label: string; value: string }[];
-        const wide = !!perms?.infoSchools?.includes(card.school_id) && !perms?.isAdmin;
+        const wide = !!perms?.isAdmin || !!perms?.infoSchools?.includes(card.school_id);
         const canEditData =
           !!perms &&
           (perms.isAdmin ||
