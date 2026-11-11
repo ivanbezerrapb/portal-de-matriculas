@@ -23,14 +23,16 @@ export function usePendingFunnel(enabled: boolean) {
     enabled,
     refetchInterval: 60 * 60 * 1000,
     queryFn: async () => {
-      const rows = (await listSubmissions({ data: { list_type: "visitantes" } })) as unknown as Row[];
+      const res = (await listSubmissions({ data: { list_type: "visitantes" } })) as unknown as Row[];
+      const rows = Array.isArray(res) ? res : [];
       return rows.filter((r) => !r.funnel?.funnel_id && !r.restricted && !r.enrolled);
     },
   });
 }
 
 export function PendingFunnelDialog({ enabled, blocked }: { enabled: boolean; blocked: boolean }) {
-  const { data = [], refetch } = usePendingFunnel(enabled);
+  const { data: raw, refetch } = usePendingFunnel(enabled);
+  const data = Array.isArray(raw) ? raw : [];
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [choice, setChoice] = useState<Record<string, { funnel?: string; owner?: string }>>({});
@@ -55,8 +57,9 @@ export function PendingFunnelDialog({ enabled, blocked }: { enabled: boolean; bl
 
   if (!open || !data.length) return null;
   const snooze = () => { localStorage.setItem(SNOOZE_KEY, String(Date.now() + SNOOZE_MS)); setOpen(false); };
-  const list = funnels as { id: string; name: string; school_id: string }[];
-  const ownerList = owners as { funnel_id: string; user_id: string; name: string }[];
+  const fd = funnels as unknown as { funnels?: { id: string; name: string; school_id: string }[] } | undefined;
+  const list = Array.isArray(fd?.funnels) ? fd!.funnels! : [];
+  const ownerList = (Array.isArray(owners) ? owners : []) as { funnel_id: string; user_id: string; name: string }[];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
