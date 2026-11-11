@@ -196,16 +196,19 @@ function OpportunityCustomer({
   opportunityId,
   submissionId,
   canEdit,
+  showBadge,
 }: {
   opportunityId: string;
   submissionId?: string | null;
   canEdit?: boolean;
+  showBadge?: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const { data, isLoading, error } = useQuery({
     queryKey: ["opp-customer", opportunityId],
     queryFn: () => getOpportunityCustomer({ data: { opportunity_id: opportunityId } }),
   });
+  const phoneIdx = data?.items.findIndex((it) => it.type === "phone" || /telefone|whats|celular/i.test(it.label)) ?? -1;
   return (
     <div className="mt-6 border-t border-border pt-4">
       <div className="flex items-center justify-between gap-2">
@@ -244,6 +247,7 @@ function OpportunityCustomer({
                         <MessageCircle className="h-4 w-4" />
                       </a>
                     )}
+                    {showBadge && j === 0 && i === phoneIdx && <MaxbotBadge opportunityId={opportunityId} />}
                   </div>
                 ))}
               </dd>
@@ -944,6 +948,7 @@ function PipelinePage() {
                   opportunityId={card.id}
                   submissionId={card.submission_id}
                   canEdit={canEditData}
+                  showBadge={!card.phone}
                 />
               )}
 
@@ -958,7 +963,7 @@ function PipelinePage() {
                 </Link>
               )}
 
-              {card.phone && <MaxbotSend opportunityId={card.id} />}
+              {(card.phone || card.submission_id) && <MaxbotSend opportunityId={card.id} />}
 
               </div>
               <div>
