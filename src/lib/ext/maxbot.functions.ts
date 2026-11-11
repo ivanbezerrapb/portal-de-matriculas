@@ -336,11 +336,20 @@ export const sendCardMaxbotTemplate = createServerFn({ method: "POST" })
     const sector = await m.attendantSector(s, att.id);
     const [first, ...rest] = (opp.display_name ?? "").trim().split(/\s+/);
     const [aFirst, ...aRest] = att.name.trim().split(/\s+/);
-    const json = await m.maxbotCall(s, {
+    const { maxbotSlot } = await import("./maxbot-slot");
+    const payload = (dt: string) => ({
       cmd: "open_followup", contact_id: Number(r.contactId), template_id: Number(data.template_id),
-      attendant_id: Number(att.id), ...(sector ? { sector_id: Number(sector) } : {}), scheduled: 0, date_time: new Date(Date.now() - 3 * 3600_000).toISOString().slice(0, 19).replace("T", " "),
+      attendant_id: Number(att.id), ...(sector ? { sector_id: Number(sector) } : {}), scheduled: 0, date_time: dt,
       tag_name: first ?? "", tag_last_name: rest.join(" "), tag_atd_name: aFirst ?? "", tag_atd_last_name: aRest.join(" "),
     });
+    let json: Record<string, unknown>;
+    try {
+      json = await m.maxbotCall(s, payload(maxbotSlot()));
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (!/past|passad|date|data|time|hor/i.test(msg) || /minute/i.test(msg)) throw e;
+      json = await m.maxbotCall(s, payload(maxbotSlot(new Date(), 30)));
+    }
     const protocol = String(json["protocol"] ?? json["prot_id"] ?? "");
     await db.from("crm_notes").insert({
       opportunity_id: opp.id, author_id: context.userId, author_name: name ?? "Usuário",
