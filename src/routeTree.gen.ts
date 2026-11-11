@@ -23,6 +23,7 @@ import { Route as AuthenticatedFormulariosRouteImport } from './routes/_authenti
 import { Route as AuthenticatedLeadsRouteImport } from './routes/_authenticated/leads'
 import { Route as AuthenticatedLogsAcessoRouteImport } from './routes/_authenticated/logs-acesso'
 import { Route as AuthenticatedLogsRegistroRouteImport } from './routes/_authenticated/logs-registro'
+import { Route as AuthenticatedMaxbotRouteImport } from './routes/_authenticated/maxbot'
 import { Route as AuthenticatedTemplatesRouteImport } from './routes/_authenticated/templates'
 import { Route as AuthenticatedUsuariosRouteImport } from './routes/_authenticated/usuarios'
 import { Route as FSlugRouteImport } from './routes/f/$slug'
@@ -111,6 +112,11 @@ const AuthenticatedLogsRegistroRoute =
     path: '/logs-registro',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedMaxbotRoute = AuthenticatedMaxbotRouteImport.update({
+  id: '/maxbot',
+  path: '/maxbot',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedTemplatesRoute = AuthenticatedTemplatesRouteImport.update({
   id: '/templates',
   path: '/templates',
@@ -203,6 +209,7 @@ export interface FileRoutesByFullPath {
   '/leads': typeof AuthenticatedLeadsRoute
   '/logs-acesso': typeof AuthenticatedLogsAcessoRoute
   '/logs-registro': typeof AuthenticatedLogsRegistroRoute
+  '/maxbot': typeof AuthenticatedMaxbotRoute
   '/templates': typeof AuthenticatedTemplatesRoute
   '/usuarios': typeof AuthenticatedUsuariosRoute
   '/f/$slug': typeof FSlugRoute
@@ -232,6 +239,7 @@ export interface FileRoutesByTo {
   '/leads': typeof AuthenticatedLeadsRoute
   '/logs-acesso': typeof AuthenticatedLogsAcessoRoute
   '/logs-registro': typeof AuthenticatedLogsRegistroRoute
+  '/maxbot': typeof AuthenticatedMaxbotRoute
   '/templates': typeof AuthenticatedTemplatesRoute
   '/usuarios': typeof AuthenticatedUsuariosRoute
   '/f/$slug': typeof FSlugRoute
@@ -263,6 +271,7 @@ export interface FileRoutesById {
   '/_authenticated/leads': typeof AuthenticatedLeadsRoute
   '/_authenticated/logs-acesso': typeof AuthenticatedLogsAcessoRoute
   '/_authenticated/logs-registro': typeof AuthenticatedLogsRegistroRoute
+  '/_authenticated/maxbot': typeof AuthenticatedMaxbotRoute
   '/_authenticated/templates': typeof AuthenticatedTemplatesRoute
   '/_authenticated/usuarios': typeof AuthenticatedUsuariosRoute
   '/f/$slug': typeof FSlugRoute
@@ -294,6 +303,7 @@ export interface FileRouteTypes {
     | '/leads'
     | '/logs-acesso'
     | '/logs-registro'
+    | '/maxbot'
     | '/templates'
     | '/usuarios'
     | '/f/$slug'
@@ -323,6 +333,7 @@ export interface FileRouteTypes {
     | '/leads'
     | '/logs-acesso'
     | '/logs-registro'
+    | '/maxbot'
     | '/templates'
     | '/usuarios'
     | '/f/$slug'
@@ -353,6 +364,7 @@ export interface FileRouteTypes {
     | '/_authenticated/leads'
     | '/_authenticated/logs-acesso'
     | '/_authenticated/logs-registro'
+    | '/_authenticated/maxbot'
     | '/_authenticated/templates'
     | '/_authenticated/usuarios'
     | '/f/$slug'
@@ -478,6 +490,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedLogsRegistroRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/maxbot': {
+      id: '/_authenticated/maxbot'
+      path: '/maxbot'
+      fullPath: '/maxbot'
+      preLoaderRoute: typeof AuthenticatedMaxbotRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/templates': {
       id: '/_authenticated/templates'
       path: '/templates'
@@ -590,6 +609,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedLeadsRoute: typeof AuthenticatedLeadsRoute
   AuthenticatedLogsAcessoRoute: typeof AuthenticatedLogsAcessoRoute
   AuthenticatedLogsRegistroRoute: typeof AuthenticatedLogsRegistroRoute
+  AuthenticatedMaxbotRoute: typeof AuthenticatedMaxbotRoute
   AuthenticatedTemplatesRoute: typeof AuthenticatedTemplatesRoute
   AuthenticatedUsuariosRoute: typeof AuthenticatedUsuariosRoute
   AuthenticatedArquivosConectaRoute: typeof AuthenticatedArquivosConectaRoute
@@ -615,6 +635,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedLeadsRoute: AuthenticatedLeadsRoute,
   AuthenticatedLogsAcessoRoute: AuthenticatedLogsAcessoRoute,
   AuthenticatedLogsRegistroRoute: AuthenticatedLogsRegistroRoute,
+  AuthenticatedMaxbotRoute: AuthenticatedMaxbotRoute,
   AuthenticatedTemplatesRoute: AuthenticatedTemplatesRoute,
   AuthenticatedUsuariosRoute: AuthenticatedUsuariosRoute,
   AuthenticatedArquivosConectaRoute: AuthenticatedArquivosConectaRoute,

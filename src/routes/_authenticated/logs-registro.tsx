@@ -43,6 +43,7 @@ const AREA: Record<string, string> = {
   shared_files: "Central de Arquivos",
   file_categories: "Categorias de arquivos",
   legacy_datasets: "Bancos anteriores",
+  maxbot_settings: "Maxbot",
 };
 const ACTION: Record<string, { label: string; cls: string }> = {
   insert: { label: "Criou", cls: "bg-primary/15 text-primary" },
