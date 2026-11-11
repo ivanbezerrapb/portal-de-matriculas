@@ -8,8 +8,8 @@ const SNOOZE_KEY = "pending-tasks-snooze";
 const SNOOZE_MS = 60 * 60 * 1000;
 
 export function PendingTasksDialog({ enabled }: { enabled: boolean }) {
-  const { data: att = [] } = usePendingAttendance(enabled);
-  const { data: fun } = usePendingFunnel(enabled);
+  const { data: att = [], refetch: refetchAtt } = usePendingAttendance(enabled);
+  const { data: fun, refetch: refetchFun } = usePendingFunnel(enabled);
   const nA = att.length;
   const nF = Array.isArray(fun) ? fun.length : 0;
   const total = nA + nF;
@@ -25,8 +25,15 @@ export function PendingTasksDialog({ enabled }: { enabled: boolean }) {
     if (!total) { setOpen(false); return; }
     const until = Number(localStorage.getItem(SNOOZE_KEY) ?? 0);
     if (until > Date.now() + SNOOZE_MS) localStorage.removeItem(SNOOZE_KEY);
-    if (!open && Date.now() >= Number(localStorage.getItem(SNOOZE_KEY) ?? 0)) {
-      setOpen(true);
+    const snoozed = Number(localStorage.getItem(SNOOZE_KEY) ?? 0);
+    if (!open && Date.now() >= snoozed) {
+      if (snoozed) {
+        localStorage.removeItem(SNOOZE_KEY);
+        Promise.all([refetchAtt(), refetchFun()]).then(([a, f]) => {
+          const n = (a.data?.length ?? 0) + (Array.isArray(f.data) ? f.data.length : 0);
+          if (n > 0) setOpen(true);
+        });
+      } else setOpen(true);
     }
   }, [total, tick]); // eslint-disable-line react-hooks/exhaustive-deps
 
