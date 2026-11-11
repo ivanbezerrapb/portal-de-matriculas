@@ -185,11 +185,13 @@ function NeighborhoodChart({
   title = "Visitantes por bairro",
   emptyText = "Nenhum endereço no período.",
   showStarted = false,
+  wonLabel = "Ganhos",
 }: {
   data: NeighborhoodGroup[];
   title?: string;
   emptyText?: string;
   showStarted?: boolean;
+  wonLabel?: string;
 }) {
   return (
     <Card className="flex h-full min-w-0 flex-col p-4">
@@ -199,7 +201,7 @@ function NeighborhoodChart({
           <div className="flex items-center gap-3 text-xs text-muted-foreground">
             <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm bg-primary" />Vinculados</span>
             <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm" style={{ background: "var(--chart-2)" }} />Iniciados</span>
-            <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm" style={{ background: "var(--chart-4)" }} />Ganhos</span>
+            <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm" style={{ background: "var(--chart-4)" }} />{wonLabel}</span>
           </div>
         )}
       </div>
@@ -225,7 +227,7 @@ function NeighborhoodChart({
                 ) : (
                   <ChartContainer
                     config={showStarted
-                      ? { count: { label: "Vinculados", color: "var(--primary)" }, started: { label: "Iniciados", color: "var(--chart-2)" }, won: { label: "Ganhos", color: "var(--chart-4)" } }
+                      ? { count: { label: "Vinculados", color: "var(--primary)" }, started: { label: "Iniciados", color: "var(--chart-2)" }, won: { label: wonLabel, color: "var(--chart-4)" } }
                       : { count: { label: "Visitas", color: "var(--primary)" } }}
                     className="mt-2 w-full aspect-auto"
                     style={{ height: Math.max(140, group.items.length * (showStarted ? 84 : 46)) }}
@@ -893,6 +895,7 @@ function DashboardPage() {
               title="Quem mais atendeu (Coordenação)"
               emptyText="Sem dados"
               showStarted
+              wonLabel="Matriculados"
               data={(data.attendantsBySchool ?? []).map((g) => ({
                 school: g.school,
                 items: g.items.map((i) => ({ ...i, city: "" })),
@@ -905,6 +908,7 @@ function DashboardPage() {
               title="Quem mais atendeu (Central de Informações)"
               emptyText="Sem dados"
               showStarted
+              wonLabel="Visitas realizadas"
               data={(data.leadOwnersBySchool ?? []).map((g) => ({
                 school: g.school,
                 items: g.items.map((i) => ({ ...i, city: "" })),
