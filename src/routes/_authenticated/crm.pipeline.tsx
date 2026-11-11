@@ -19,7 +19,9 @@ import { createTask, deleteTask, listTasks, setTaskDone } from "@/lib/ext/tarefa
 import { listTaskTypes } from "@/lib/ext/atividades.functions";
 import { CompleteTaskDialog } from "@/components/CompleteTaskDialog";
 import { createNote, deleteNote, listNotes } from "@/lib/ext/notas.functions";
-import { getMyPermissions } from "@/lib/ext/cadastros.functions";
+import { getMyPermissions, getSubmission, updateSubmission } from "@/lib/ext/cadastros.functions";
+import { isChildrenCountField, type FormField } from "@/lib/ext/model";
+import { FieldRenderer } from "@/components/FieldRenderer";
 import { setOpportunityVisit } from "@/lib/ext/pipeline.functions";
 import { Button, Card, EmptyState, Input, Label, Select, Spinner, Textarea } from "@/components/ui";
 
@@ -32,15 +34,99 @@ function whatsappHref(phone: string | null | undefined): string | null {
   return `https://wa.me/55${digits}`;
 }
 
-function OpportunityCustomer({ opportunityId }: { opportunityId: string }) {
+// Edição dos dados do cadastro direto no cartão (mesmos campos do formulário).
+function SubmissionEditForm({
+  submissionId,
+  onDone,
+}: {
+  submissionId: string;
+  onDone: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const { data, isLoading } = useQuery({
+    queryKey: ["submission", submissionId],
+    queryFn: () => getSubmission({ data: { id: submissionId } }),
+  });
+  const [values, setValues] = useState<Record<string, string | string[]>>({});
+  useEffect(() => {
+    if (!data) return;
+    const map: Record<string, string | string[]> = {};
+    for (const v of data.values) {
+      const field = (data.fields as FormField[]).find((f) => f.id === v.field_id);
+      let val: string | string[] = v.value ?? "";
+      if (field?.type === "multiple_choice") {
+        try {
+          val = JSON.parse(v.value ?? "[]");
+        } catch {
+          val = [];
+        }
+      }
+      map[v.field_id] = val;
+    }
+    setValues(map);
+  }, [data]);
+  const saveM = useMutation({
+    mutationFn: () => updateSubmission({ data: { id: submissionId, values } }),
+    onSuccess: (r) => {
+      toast.success(r.changed > 0 ? "Dados atualizados." : "Nada foi alterado.");
+      queryClient.invalidateQueries();
+      onDone();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+  if (isLoading || !data) return <div className="mt-2"><Spinner /></div>;
+  const fields = (data.fields as FormField[]).filter((f) => !isChildrenCountField(f));
+  return (
+    <form
+      className="mt-3 flex flex-col gap-4"
+      onSubmit={(e) => {
+        e.preventDefault();
+        saveM.mutate();
+      }}
+    >
+      {fields.map((field) => (
+        <FieldRenderer
+          key={field.id}
+          field={field}
+          value={values[field.id] ?? (field.type === "multiple_choice" ? [] : "")}
+          onChange={(v) => setValues((prev) => ({ ...prev, [field.id]: v }))}
+        />
+      ))}
+      <div className="flex gap-2">
+        <Button type="submit" disabled={saveM.isPending}>Salvar</Button>
+        <Button type="button" variant="ghost" onClick={onDone}>Cancelar</Button>
+      </div>
+    </form>
+  );
+}
+
+function OpportunityCustomer({
+  opportunityId,
+  submissionId,
+  canEdit,
+}: {
+  opportunityId: string;
+  submissionId?: string | null;
+  canEdit?: boolean;
+}) {
+  const [editing, setEditing] = useState(false);
   const { data, isLoading, error } = useQuery({
     queryKey: ["opp-customer", opportunityId],
     queryFn: () => getOpportunityCustomer({ data: { opportunity_id: opportunityId } }),
   });
   return (
     <div className="mt-6 border-t border-border pt-4">
-      <h3 className="font-display text-sm font-semibold text-foreground">Dados do cliente</h3>
-      {isLoading ? (
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="font-display text-sm font-semibold text-foreground">Dados do cliente</h3>
+        {canEdit && submissionId && !editing && (
+          <Button variant="secondary" onClick={() => setEditing(true)}>
+            Editar
+          </Button>
+        )}
+      </div>
+      {editing && submissionId ? (
+        <SubmissionEditForm submissionId={submissionId} onDone={() => setEditing(false)} />
+      ) : isLoading ? (
         <div className="mt-2"><Spinner /></div>
       ) : error ? (
         <p className="mt-2 text-sm text-destructive">Não foi possível carregar os dados.</p>
@@ -608,13 +694,23 @@ function PipelinePage() {
         const stage = stages.find((s) => s.id === card.stage_id);
         const cardSeries = card.series ?? [];
         const details = (card.details ?? []) as { label: string; value: string }[];
+        const wide = !!perms?.infoSchools?.includes(card.school_id) && !perms?.isAdmin;
+        const canEditData =
+          !!perms &&
+          (perms.isAdmin ||
+            perms.managerSchools.includes(card.school_id) ||
+            perms.infoSchools.includes(card.school_id));
         return (
           <div
-            className="fixed inset-0 z-50 flex justify-end bg-foreground/40"
+            className={`fixed inset-0 z-50 flex bg-foreground/40 ${wide ? "items-center justify-center p-4" : "justify-end"}`}
             onClick={() => setOpenCard(null)}
           >
             <div
-              className="h-full w-full max-w-md overflow-y-auto bg-card p-6 shadow-xl"
+              className={
+                wide
+                  ? "h-[92vh] w-full max-w-6xl overflow-y-auto rounded-xl bg-card p-6 shadow-xl"
+                  : "h-full w-full max-w-md overflow-y-auto bg-card p-6 shadow-xl"
+              }
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-start justify-between gap-3">
@@ -748,7 +844,15 @@ function PipelinePage() {
                 )}
               </dl>
 
-              {card.submission_id && <OpportunityCustomer opportunityId={card.id} />}
+              <div className={wide ? "grid gap-x-8 lg:grid-cols-2" : ""}>
+              <div>
+              {card.submission_id && (
+                <OpportunityCustomer
+                  opportunityId={card.id}
+                  submissionId={card.submission_id}
+                  canEdit={canEditData}
+                />
+              )}
 
               {card.submission_id &&
                 (perms?.isAdmin || (perms?.managerSchools.length ?? 0) > 0 || (perms?.operatorSchools.length ?? 0) > 0) && (
@@ -761,6 +865,8 @@ function PipelinePage() {
                 </Link>
               )}
 
+              </div>
+              <div>
               {card.submission_id && (
                 <OpportunityVisit
                   opportunityId={card.id}
@@ -773,6 +879,8 @@ function PipelinePage() {
               <OpportunityTasks opportunityId={card.id} canWrite={canWrite} />
 
               <OpportunityNotes opportunityId={card.id} canWrite={canWrite} />
+              </div>
+              </div>
 
               {card.status === "open"
                 ? canLose(card.school_id) && (
