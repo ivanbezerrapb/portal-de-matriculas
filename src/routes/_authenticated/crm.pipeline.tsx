@@ -889,7 +889,6 @@ function PipelinePage() {
                   <div className="mt-3 flex overflow-x-auto pb-1" aria-label="Etapas do funil">
                     {stages.map((s, idx) => {
                       const current = idx === curIdx;
-                      const past = curIdx >= 0 && idx < curIdx;
                       return (
                         <button
                           key={s.id}
@@ -897,18 +896,13 @@ function PipelinePage() {
                           title={current ? "Etapa atual" : canMoveHere ? `Mover para ${s.name}` : s.name}
                           disabled={!canMoveHere || current}
                           onClick={() => requestMove(card.id, s.id)}
-                          className={`relative shrink-0 whitespace-nowrap px-4 py-1.5 text-xs font-semibold transition ${idx > 0 ? "-ml-1" : ""} ${canMoveHere && !current ? "cursor-pointer hover:opacity-80" : "cursor-default"} ${!current && !past ? "bg-muted text-muted-foreground" : ""}`}
+                          className={`relative shrink-0 whitespace-nowrap px-4 py-1.5 text-xs font-semibold transition ${idx > 0 ? "-ml-1" : ""} ${canMoveHere && !current ? "cursor-pointer hover:opacity-80" : "cursor-default"} ${current ? "bg-stage-current text-stage-current-foreground" : "bg-muted text-muted-foreground"}`}
                           style={{
                             clipPath:
                               idx === 0
                                 ? "polygon(0 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 0 100%)"
                                 : "polygon(0 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 0 100%, 10px 50%)",
                             paddingLeft: idx === 0 ? 12 : 20,
-                            ...(current
-                              ? { backgroundColor: s.color, color: "hsl(0 0% 100%)" }
-                              : past
-                                ? { backgroundColor: `${s.color}26`, color: s.color }
-                                : {}),
                           }}
                         >
                           {s.name}

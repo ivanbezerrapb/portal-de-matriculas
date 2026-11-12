@@ -66,6 +66,8 @@
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
   --color-pill-foreground: var(--pill-foreground);
+  --color-stage-current: var(--stage-current);
+  --color-stage-current-foreground: var(--stage-current-foreground);
 }
 
 :root {
@@ -80,6 +82,9 @@
   --primary-foreground: oklch(0.99 0.002 260);
   /* Foreground of solid blue badges (conversion pills): always white. */
   --pill-foreground: oklch(1 0 0);
+  /* Etapa atual do funil no cartão: azul com letra branca. */
+  --stage-current: oklch(0.52 0.19 255);
+  --stage-current-foreground: oklch(1 0 0);
   --secondary: oklch(0.94 0.037 239);
   --secondary-foreground: oklch(0.35 0.097 286);
   --muted: oklch(0.958 0.007 266);
@@ -120,6 +125,8 @@
   --primary: oklch(0.929 0.013 255.508);
   --primary-foreground: oklch(0.208 0.042 265.755);
   --pill-foreground: oklch(1 0 0);
+  --stage-current: oklch(0.62 0.17 255);
+  --stage-current-foreground: oklch(1 0 0);
   --secondary: oklch(0.279 0.041 260.031);
   --secondary-foreground: oklch(0.984 0.003 247.858);
   --muted: oklch(0.279 0.041 260.031);
