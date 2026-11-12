@@ -4,7 +4,12 @@ import logo from "@/assets/grupo-inter-logo.png.asset.json";
 export type ListReportRow = {
   id: string; publicId: string; responsible: string; school: string; children: string;
   date: string; series: string; attendant: string; funnel: string; status: boolean; checkIn?: string;
+  enrolledCount: number;
 };
+
+export function enrolledTotal(rows: { enrolledCount?: number }[]): number {
+  return rows.reduce((total, r) => total + (Number(r.enrolledCount) || 0), 0);
+}
 
 export function ListReport({ title, school, listType, filters, rows, printedBy, printedAt }: {
   title: string; school: string; listType: "visitantes" | "leads"; filters: string[]; rows: ListReportRow[];
@@ -12,6 +17,8 @@ export function ListReport({ title, school, listType, filters, rows, printedBy, 
 }) {
   if (typeof document === "undefined") return null;
   const statusLabel = listType === "leads" ? "Check-in" : "Matrícula";
+  const total = enrolledTotal(rows);
+  const enrolledLabel = listType === "leads" ? "compareceram" : "matriculado";
   return createPortal(
     <div id="list-report">
       <style>{`
@@ -38,7 +45,7 @@ export function ListReport({ title, school, listType, filters, rows, printedBy, 
       <h1 style={{ fontSize: 22, fontWeight: 800, margin: "0 0 2px", color: "#2b2a6b" }}>{school}</h1>
       <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8 }}>{title}</div>
       <div style={{ marginBottom: 8 }}>
-        <strong>Filtros:</strong> {filters.length ? filters.join(" · ") : "Nenhum"} — <strong>{rows.length} cadastro{rows.length === 1 ? "" : "s"}</strong>
+        <strong>Filtros:</strong> {filters.length ? filters.join(" · ") : "Nenhum"} — <strong>{rows.length} cadastro{rows.length === 1 ? "" : "s"}</strong> · <strong>{total} {enrolledLabel}{total === 1 ? "" : "s"}</strong>
       </div>
       <table>
         <thead>

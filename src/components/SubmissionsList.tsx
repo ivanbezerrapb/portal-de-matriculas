@@ -240,12 +240,15 @@ export function SubmissionsList({
     if (fSeries) f.push(`Série: ${opt("f-ser", fSeries)}`);
     if (fStatus) f.push(`${listType === "leads" ? "Check-in" : "Matrícula"}: ${fStatus === "yes" ? "Sim" : "Não"}`);
     const rows = sortRows(filteredRows as unknown as NonNullable<typeof submissions>, sort, listType).map((s) => {
-      const x = s as unknown as FRow & { id: string; schools?: { name: string } | null; children_count?: number | null; created_at: string; check_in?: { checked_in_at: string } | null };
+      const x = s as unknown as FRow & { id: string; schools?: { name: string } | null; children_count?: number | null; created_at: string; enrollment_count?: number | null; check_in?: { checked_in_at: string } | null };
       return {
         id: x.id, publicId: x.public_id ?? "", responsible: x.responsible_name ?? "", school: x.schools?.name ?? "",
         children: x.children_count != null ? String(x.children_count) : "", date: fmt(x.created_at),
         series: (x.series ?? []).filter(Boolean).join(", "), attendant: x.attendant?.name ?? "",
         funnel: x.funnel?.funnel_name ?? "", status: listType === "leads" ? Boolean(x.check_in) : Boolean(x.enrolled),
+        enrolledCount: listType === "leads"
+          ? (x.check_in ? 1 : 0)
+          : (x.enrolled ? Number(x.enrollment_count ?? 0) : 0),
         checkIn: fmt(x.check_in?.checked_in_at),
       };
     });
