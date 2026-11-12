@@ -23,7 +23,7 @@ import { getMyPermissions, getSubmission, updateSubmission } from "@/lib/ext/cad
 import { isChildrenCountField, type FormField } from "@/lib/ext/model";
 import { FieldRenderer } from "@/components/FieldRenderer";
 import { setOpportunityVisit } from "@/lib/ext/pipeline.functions";
-import { getCardMaxbotStatus, listCardMaxbotTemplates, sendCardMaxbotTemplate } from "@/lib/ext/maxbot.functions";
+import { getCardMaxbotStatus, listCardMaxbotTemplates, sendCardMaxbotTemplate, transferCardMaxbotProtocol } from "@/lib/ext/maxbot.functions";
 import { Button, Card, EmptyState, Input, Label, Select, Spinner, Textarea } from "@/components/ui";
 
 // Monta o link do WhatsApp: DDI 55 + DDD e número do cadastro.
@@ -66,6 +66,7 @@ function MaxbotSend({ opportunityId }: { opportunityId: string }) {
   const [open, setOpen] = useState(false);
   const [tpl, setTpl] = useState("");
   const [asUser, setAsUser] = useState("");
+  const [busy, setBusy] = useState<{ attendant_name: string | null; prot_id: string | null } | null>(null);
   const tq = useQuery({
     queryKey: ["maxbot-templates", opportunityId],
     queryFn: () => listCardMaxbotTemplates({ data: { opportunity_id: opportunityId } }),
@@ -81,11 +82,21 @@ function MaxbotSend({ opportunityId }: { opportunityId: string }) {
   const sendM = useMutation({
     mutationFn: () => sendCardMaxbotTemplate({ data: { opportunity_id: opportunityId, template_id: tpl, template_title: chosen?.title ?? tpl, ...(sender ? { as_user_id: sender } : {}) } }),
     onSuccess: (r) => {
+      if (r.busy) { setOpen(false); setBusy({ attendant_name: r.attendant_name, prot_id: r.prot_id }); return; }
       toast.success(`Mensagem enviada${r.protocol ? ` (protocolo ${r.protocol})` : ""}.`);
       setOpen(false); setTpl(""); setAsUser("");
       qc.invalidateQueries({ queryKey: ["crm-notes", opportunityId] });
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Falha ao enviar."),
+  });
+  const trM = useMutation({
+    mutationFn: () => transferCardMaxbotProtocol({ data: { opportunity_id: opportunityId, prot_id: busy?.prot_id ?? "", ...(sender ? { as_user_id: sender } : {}) } }),
+    onSuccess: () => {
+      toast.success("Conversa transferida. O contato já aparece no seu painel do Maxbot.");
+      setBusy(null); setTpl(""); setAsUser("");
+      qc.invalidateQueries({ queryKey: ["crm-notes", opportunityId] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Falha ao transferir."),
   });
   const linked = status?.status === "linked";
   return (
@@ -132,6 +143,28 @@ function MaxbotSend({ opportunityId }: { opportunityId: string }) {
               <Button disabled={!chosen || !canSend || sendM.isPending} onClick={() => sendM.mutate()}>
                 {sendM.isPending ? "Enviando…" : "Sim, enviar"}
               </Button>
+            </div>
+          </div>
+        </div>
+      )}
+      {busy && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-foreground/40 p-4" onClick={() => setBusy(null)}>
+          <div className="w-full max-w-lg rounded-xl bg-card p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-display text-lg font-semibold text-foreground">Contato já em atendimento</h3>
+            <p className="mt-3 text-sm text-foreground">
+              Não foi possível enviar esta mensagem agora porque o contato já está em conversa aberta no Maxbot com o(a) atendente{" "}
+              <span className="font-semibold">{busy.attendant_name || "não identificado"}</span>.
+            </p>
+            {busy.prot_id ? (
+              <p className="mt-3 text-sm text-foreground">Deseja transferir esta conversa para o seu usuário no Maxbot?</p>
+            ) : (
+              <p className="mt-3 text-sm text-muted-foreground">Não foi possível identificar a conversa aberta para transferir. Tente novamente quando ela for encerrada.</p>
+            )}
+            <div className="mt-5 flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => setBusy(null)}>{busy.prot_id ? "Cancelar" : "Fechar"}</Button>
+              {busy.prot_id && (
+                <Button disabled={trM.isPending} onClick={() => trM.mutate()}>{trM.isPending ? "Transferindo…" : "Transferir para mim"}</Button>
+              )}
             </div>
           </div>
         </div>

@@ -349,11 +349,19 @@ export const sendCardMaxbotTemplate = createServerFn({ method: "POST" })
     });
     let json: Record<string, unknown>;
     try {
-      json = await m.maxbotCall(s, payload(maxbotSlot()));
+      try {
+        json = await m.maxbotCall(s, payload(maxbotSlot()));
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        if (!/past|passad|date|data|time|hor/i.test(msg) || /minute/i.test(msg) || isBusyError(msg)) throw e;
+        json = await m.maxbotCall(s, payload(maxbotSlot(new Date(), 30)));
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      if (!/past|passad|date|data|time|hor/i.test(msg) || /minute/i.test(msg)) throw e;
-      json = await m.maxbotCall(s, payload(maxbotSlot(new Date(), 30)));
+      if (!isBusyError(msg)) throw e;
+      const info = await findOpenProtocol(m, s, r.contactId, msg);
+      await m.logActivity(db, context.userId, name, `Maxbot: contato em conversa aberta (${opp.display_name ?? ""})`, { erro: msg, protocolo: info.prot_id ?? "", atendente: info.attendant_name ?? "" }, opp.school_id);
+      return { ok: false as const, busy: true as const, attendant_name: info.attendant_name, prot_id: info.prot_id, raw: msg, protocol: "" };
     }
     const protocol = String(json["protocol"] ?? json["prot_id"] ?? "");
     await db.from("crm_notes").insert({
@@ -361,7 +369,7 @@ export const sendCardMaxbotTemplate = createServerFn({ method: "POST" })
       body: `Template "${data.template_title}" enviado via ${m.ACCOUNT_LABEL[r.account]}${protocol ? ` (protocolo ${protocol})` : ""}${senderId !== context.userId ? ` em nome do atendente ${att.name}` : ""}.`,
     });
     await m.logActivity(db, context.userId, name, `Mensagem Maxbot enviada para ${opp.display_name ?? ""}`, { template: data.template_title, protocolo: protocol, atendente: att.name }, opp.school_id);
-    return { ok: true, protocol };
+    return { ok: true as const, busy: false as const, protocol, attendant_name: null, prot_id: null, raw: "" };
   });
 
 export const listMaxbotTemplatesAdmin = createServerFn({ method: "POST" })
@@ -390,5 +398,56 @@ export const saveMaxbotDefaultTemplate = createServerFn({ method: "POST" })
     await writeAll(db, all);
     const name = await actorName(db, context.userId);
     await logActivity(db, context.userId, name, `Template padrão ${ACCOUNT_LABEL[data.account]} definido`, { template: data.title || "Nenhum" });
+    return { ok: true };
+  });
+
+function isBusyError(msg: string) {
+  return /protoc|open|aberto|attendance|atendimento|in service|already|busy|em andamento/i.test(msg) && !/not found|required|minute|template must/i.test(msg);
+}
+
+async function findOpenProtocol(m: typeof import("./maxbot.server"), s: Parameters<typeof m.maxbotCall>[0], contactId: string, msg: string) {
+  let prot_id: string | null = msg.match(/(?:prot(?:ocol|ocolo)?[^0-9]{0,15})(\d{3,})/i)?.[1] ?? null;
+  let attendant_name: string | null = msg.match(/(?:attendant|atendente)[:\s]+([A-Za-zÀ-ú][A-Za-zÀ-ú ]{1,60})/i)?.[1]?.trim() ?? null;
+  for (const situation of ["2", "1", ""]) {
+    if (prot_id && attendant_name) break;
+    try {
+      const j = await m.maxbotCall(s, { cmd: "get_prot", contact_id: Number(contactId), ...(situation ? { situation } : {}) });
+      const rows = (Array.isArray(j["data"]) ? j["data"] : []) as Record<string, unknown>[];
+      const open = rows.find((p) => !/3|fech|clos/i.test(String(p["situation"] ?? p["status"] ?? "")));
+      if (open) {
+        prot_id ??= String(open["id"] ?? open["prot_id"] ?? "") || null;
+        attendant_name ??= String(open["attendant_name"] ?? "") || null;
+      }
+    } catch { /* ignora */ }
+  }
+  return { prot_id, attendant_name };
+}
+
+export const transferCardMaxbotProtocol = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((d) => oppSchema.extend({ prot_id: z.string().regex(/^\d+$/), as_user_id: z.string().uuid().optional() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const opp = await loadOpp(context, data.opportunity_id);
+    const db = await admin();
+    const m = await import("./maxbot.server");
+    const name = await actorName(db, context.userId);
+    const account = await m.accountForSchool(db, opp.school_id);
+    if (!account) throw new Error("Unidade sem conta Maxbot.");
+    const s = (await m.readAll(db))[account];
+    let targetId = context.userId;
+    if (data.as_user_id && data.as_user_id !== context.userId) {
+      const { getPerms } = await import("./server");
+      if ((await getPerms(context.supabase, context.userId)).isAdmin) targetId = data.as_user_id;
+    }
+    const att = s.attendants?.[targetId];
+    if (!att) throw new Error("Usuário não vinculado a um atendente do Maxbot.");
+    const sector = await m.attendantSector(s, att.id);
+    if (!sector) throw new Error("O atendente não tem setor no Maxbot.");
+    await m.maxbotCall(s, { cmd: "forward_prot", prot_id: Number(data.prot_id), sector_id: Number(sector), attendant_id: Number(att.id) });
+    await db.from("crm_notes").insert({
+      opportunity_id: opp.id, author_id: context.userId, author_name: name ?? "Usuário",
+      body: `Conversa do Maxbot (protocolo ${data.prot_id}) transferida para o atendente ${att.name}.`,
+    });
+    await m.logActivity(db, context.userId, name, `Conversa Maxbot transferida (${opp.display_name ?? ""})`, { protocolo: data.prot_id, atendente: att.name }, opp.school_id);
     return { ok: true };
   });
