@@ -224,7 +224,7 @@ export function SubmissionsList({
     setFFunnel(""); setFRestricted(""); setFAttendant(""); setFSeries(""); setFStatus("");
   };
 
-  const [report, setReport] = useState<{ rows: ListReportRow[]; filters: string[]; at: string } | null>(null);
+  const [report, setReport] = useState<{ rows: ListReportRow[]; filters: string[]; at: string; school: string } | null>(null);
   const fmt = (d?: string | null) => d ? new Date(d).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
   function printReport() {
     const opt = (id: string, sel: string) => (document.getElementById(id) as HTMLSelectElement | null)?.selectedOptions[0]?.text ?? sel;
@@ -249,7 +249,9 @@ export function SubmissionsList({
         checkIn: fmt(x.check_in?.checked_in_at),
       };
     });
-    setReport({ rows, filters: f, at: fmt(new Date().toISOString()) });
+    const schoolNames = Array.from(new Set(rows.map((r) => r.school).filter(Boolean)));
+    const school = schoolId ? opt("f-school", schoolId) : schoolNames.join(" · ");
+    setReport({ rows, filters: f, at: fmt(new Date().toISOString()), school });
     setTimeout(() => {
       document.body.classList.add("list-report-printing");
       const done = () => { document.body.classList.remove("list-report-printing"); window.removeEventListener("afterprint", done); };
@@ -493,7 +495,7 @@ export function SubmissionsList({
         </Button>
       </div>
       {report && (
-        <ListReport title={title} listType={listType} filters={report.filters} rows={report.rows}
+        <ListReport title={title} school={report.school} listType={listType} filters={report.filters} rows={report.rows}
           printedBy={(perms as { fullName?: string } | undefined)?.fullName ?? ""} printedAt={report.at} />
       )}
 

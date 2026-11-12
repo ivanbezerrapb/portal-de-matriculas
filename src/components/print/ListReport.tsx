@@ -6,8 +6,8 @@ export type ListReportRow = {
   date: string; series: string; attendant: string; funnel: string; status: boolean; checkIn?: string;
 };
 
-export function ListReport({ title, listType, filters, rows, printedBy, printedAt }: {
-  title: string; listType: "visitantes" | "leads"; filters: string[]; rows: ListReportRow[];
+export function ListReport({ title, school, listType, filters, rows, printedBy, printedAt }: {
+  title: string; school: string; listType: "visitantes" | "leads"; filters: string[]; rows: ListReportRow[];
   printedBy: string; printedAt: string;
 }) {
   if (typeof document === "undefined") return null;
@@ -33,10 +33,11 @@ export function ListReport({ title, listType, filters, rows, printedBy, printedA
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "2px solid #2b2a6b", paddingBottom: 6, marginBottom: 6 }}>
         <img src={logo.url} alt="Grupo Intereducacional" style={{ height: 34 }} />
         <div style={{ textAlign: "right" }}>
-          <div style={{ fontSize: 15, fontWeight: 700 }}>{title}</div>
           <div>Impresso em {printedAt}{printedBy ? ` por ${printedBy}` : ""}</div>
         </div>
       </div>
+      <h1 style={{ fontSize: 22, fontWeight: 800, margin: "0 0 2px", color: "#2b2a6b" }}>{school}</h1>
+      <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8 }}>{title}</div>
       <div style={{ marginBottom: 8 }}>
         <strong>Filtros:</strong> {filters.length ? filters.join(" · ") : "Nenhum"} — <strong>{rows.length} cadastro{rows.length === 1 ? "" : "s"}</strong>
       </div>
