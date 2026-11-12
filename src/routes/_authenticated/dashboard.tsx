@@ -315,12 +315,12 @@ function NeighborhoodChart({
                       </Bar>
                       {showStarted && (
                         <Bar dataKey="started" fill="var(--color-started)" radius={[0, 4, 4, 0]}>
-                          <LabelList dataKey="started" position="right" offset={6} className="fill-foreground" fontSize={11} />
+                          <LabelList valueAccessor={(e: any) => { const r = e?.payload ?? e; const v = Number(r?.started ?? 0); const c = Number(r?.count ?? 0); return c > 0 ? `${v} (${Math.round((v / c) * 100)}%)` : `${v}`; }} position="right" offset={6} className="fill-foreground" fontSize={11} />
                         </Bar>
                       )}
                       {showStarted && (
                         <Bar dataKey="won" fill="var(--color-won)" radius={[0, 4, 4, 0]}>
-                          <LabelList dataKey="won" position="right" offset={6} className="fill-foreground" fontSize={11} />
+                          <LabelList valueAccessor={(e: any) => { const r = e?.payload ?? e; const v = Number(r?.won ?? 0); const c = Number(r?.count ?? 0); return c > 0 ? `${v} (${Math.round((v / c) * 100)}%)` : `${v}`; }} position="right" offset={6} className="fill-foreground" fontSize={11} />
                         </Bar>
                       )}
                     </BarChart>
