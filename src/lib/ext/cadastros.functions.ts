@@ -110,15 +110,9 @@ export const listSubmissions = createServerFn({ method: "GET" })
     const valueMap = new Map<string, string>();
     const restrictedIds = new Set<string>();
     if (fieldIds.length > 0) {
-      const { data: vals } = await context.supabase
-        .from("submission_values")
-        .select("submission_id, field_id, value")
-        .eq("part", "")
-        .in(
-          "submission_id",
-          rows.map((r) => r.id),
-        )
-        .in("field_id", fieldIds);
+      const vals = await fetchValuesInBatches<{ submission_id: string; field_id: string; value: string | null }>(
+        context.supabase, "submission_id, field_id, value", rows.map((r) => r.id as string), fieldIds,
+      );
       for (const v of vals ?? []) {
         valueMap.set(`${v.submission_id}:${v.field_id}`, v.value ?? "");
         if (restrictionFieldIds.has(v.field_id) && norm(v.value ?? "") === "sim") {
@@ -1163,12 +1157,9 @@ export const getDashboardStats = createServerFn({ method: "GET" })
       ];
       if (responseFieldIds.length > 0) {
         const submissionIds = rows.map((r) => r.id as string);
-        const { data: values } = await context.supabase
-          .from("submission_values")
-          .select("submission_id, field_id, value, value_number")
-          .in("submission_id", submissionIds)
-          .in("field_id", responseFieldIds)
-          .eq("part", "");
+        const values = await fetchValuesInBatches<{ submission_id: string; field_id: string; value: string | null; value_number: number | null }>(
+          context.supabase, "submission_id, field_id, value, value_number", submissionIds, responseFieldIds,
+        );
 
         const countIds = new Set(countFieldIds);
         const childrenIds = new Set(childrenFields.map((f) => f.id as string));
@@ -1471,3 +1462,23 @@ export const removeSubmissionFromFunnel = createServerFn({ method: "POST" })
     }
     return { ok: true };
   });
+
+/** Lê submission_values em blocos e páginas (a API devolve no máximo 1000 linhas por consulta). */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function fetchValuesInBatches<T>(db: any, columns: string, submissionIds: string[], fieldIds: string[]): Promise<T[]> {
+  const out: T[] = [];
+  for (let i = 0; i < submissionIds.length; i += 150) {
+    const chunk = submissionIds.slice(i, i + 150);
+    for (let from = 0; ; from += 1000) {
+      const { data, error } = await db
+        .from("submission_values").select(columns)
+        .eq("part", "").in("submission_id", chunk).in("field_id", fieldIds)
+        .order("submission_id").order("field_id")
+        .range(from, from + 999);
+      if (error) throw new Error(error.message);
+      out.push(...((data ?? []) as T[]));
+      if (!data || data.length < 1000) break;
+    }
+  }
+  return out;
+}
