@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAuth } from "./auth";
+import { canCloseOpportunity } from "./close-access";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { FunnelStage, Opportunity } from "./model";
 
@@ -411,30 +412,29 @@ export const closeOpportunity = createServerFn({ method: "POST" })
       .parse(data),
   )
   .handler(async ({ data, context }) => {
-    if (data.result === "lost") {
-      // Perda: Admin, Gerente da unidade ou Central vinculada ao funil.
-      const { extAdmin, getPerms } = await import("./server");
-      const admin = extAdmin();
-      const perms = await getPerms(context.supabase, context.userId);
-      const { data: opp } = await admin
-        .from("opportunities")
-        .select("id, funnel_id, school_id, status")
-        .eq("id", data.id)
-        .maybeSingle();
-      if (!opp) throw new Error("Cartão não encontrado.");
-      if (opp.status !== "open") throw new Error("Este cartão já está fechado.");
-      let allowed = perms.isAdmin || perms.managerSchools.includes(opp.school_id);
-      if (!allowed && perms.infoSchools.includes(opp.school_id)) {
-        const { data: link } = await admin
-          .from("user_funnels")
-          .select("user_id")
-          .eq("funnel_id", opp.funnel_id)
-          .eq("user_id", context.userId)
-          .maybeSingle();
-        allowed = Boolean(link);
-      }
-      if (!allowed) throw new Error("Sem permissão para marcar este cartão como perdido.");
+    // Ganho e perda: Admin, Gerente da unidade ou Central vinculada ao funil.
+    const { extAdmin, getPerms } = await import("./server");
+    const admin = extAdmin();
+    const perms = await getPerms(context.supabase, context.userId);
+    const { data: opp } = await admin
+      .from("opportunities")
+      .select("id, funnel_id, school_id, status")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (!opp) throw new Error("Cartão não encontrado.");
+    if (opp.status !== "open") throw new Error("Este cartão já está fechado.");
+    const { data: link } = await admin
+      .from("user_funnels")
+      .select("user_id")
+      .eq("funnel_id", opp.funnel_id)
+      .eq("user_id", context.userId)
+      .maybeSingle();
+    if (!canCloseOpportunity(perms, opp.school_id, Boolean(link)))
+      throw new Error(
+        `Sem permissão para marcar este cartão como ${data.result === "won" ? "ganho" : "perdido"}.`,
+      );
 
+    if (data.result === "lost") {
       const { data: reason } = await admin
         .from("crm_close_reasons")
         .select("id, kind, label")
@@ -508,7 +508,7 @@ export const closeOpportunity = createServerFn({ method: "POST" })
     }
 
     const now = new Date().toISOString();
-    const { data: updated, error } = await context.supabase
+    const { data: updated, error } = await admin
       .from("opportunities")
       .update({
         status: data.result,
@@ -525,12 +525,12 @@ export const closeOpportunity = createServerFn({ method: "POST" })
     // Ganho no CRM = matrícula realizada no cadastro.
     if (updated?.submission_id) {
       const won = data.result === "won";
-      const { data: previousSubmission } = await context.supabase
+      const { data: previousSubmission } = await admin
         .from("submissions")
         .select("enrolled, enrollment_count")
         .eq("id", updated.submission_id)
         .single();
-      await context.supabase
+      await admin
         .from("submissions")
         .update({
           enrolled: won,
@@ -539,7 +539,7 @@ export const closeOpportunity = createServerFn({ method: "POST" })
           enrolled_by: won ? context.userId : null,
         })
         .eq("id", updated.submission_id);
-      await context.supabase.from("audit_log").insert({
+      await admin.from("audit_log").insert({
         submission_id: updated.submission_id,
         actor_id: context.userId,
         actor_email: context.userEmail,

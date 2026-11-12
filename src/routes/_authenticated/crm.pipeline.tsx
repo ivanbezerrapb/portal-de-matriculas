@@ -374,6 +374,8 @@ function PipelinePage() {
     ((perms?.isAdmin ?? false) ||
       (perms?.managerSchools ?? []).includes(schoolId) ||
       ((perms as { infoSchools?: string[] } | undefined)?.infoSchools ?? []).includes(schoolId));
+  // Ganho: mesma regra da perda (Admin, Gerente da unidade e Central de Informações).
+  const canWin = (schoolId: string) => canLose(schoolId);
 
   const funnelsQuery = useQuery({ queryKey: ["funnels"], queryFn: () => listFunnels() });
   const allFunnels = funnelsQuery.data?.funnels ?? [];
@@ -1032,7 +1034,7 @@ function PipelinePage() {
               {card.status === "open"
                 ? canLose(card.school_id) && (
                     <div className="mt-6 flex gap-2 border-t border-border pt-4">
-                      {canClose && (
+                      {canWin(card.school_id) && (
                         <Button
                           variant="outline"
                           className="flex-1 border-emerald-600/40 text-emerald-700 hover:bg-emerald-50"
