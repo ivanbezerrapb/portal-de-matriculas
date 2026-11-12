@@ -97,7 +97,39 @@ function formatPhone(raw: string) {
   if (d.length === 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
   return d;
 }
-const phoneKey = (v: string) => { let d = v.replace(/\D/g, ""); if (d.length >= 12 && d.startsWith("55")) d = d.slice(2); return d; };
+const phoneKey = (v: string) => { let d = v.replace(/\D/g, ""); if (d.length >= 12 && d.startsWith("55")) d = d.slice(2); return d.length >= 10 ? d.slice(0, 2) + d.slice(-8) : d; };
+
+async function fetchAll<T>(q: (from: number, to: number) => PromiseLike<{ data: T[] | null }>): Promise<T[]> {
+  const out: T[] = [];
+  for (let from = 0; ; from += 1000) {
+    const { data } = await q(from, from + 999);
+    out.push(...(data ?? []));
+    if (!data || data.length < 1000) break;
+  }
+  return out;
+}
+
+// Tudo que já existe no portal (qualquer lista, qualquer etapa): telefones (DDD + 8 últimos dígitos) e códigos.
+async function existingPortal(db: SupabaseClient) {
+  const phones = new Set<string>();
+  const codes = new Set<string>();
+  const opps = await fetchAll<{ phone: string | null; name: string | null }>((a, b) => db.from("opportunities").select("phone, name").range(a, b));
+  for (const o of opps) {
+    if (o.phone) phones.add(phoneKey(o.phone));
+    const m = o.name?.match(/\d+\/[A-Za-z]{2}\d{4}/); if (m) codes.add(m[0].toUpperCase());
+  }
+  const subs = await fetchAll<{ public_id: string | null }>((a, b) => db.from("submissions").select("public_id").range(a, b));
+  for (const x of subs) if (x.public_id) codes.add(x.public_id.toUpperCase());
+  const fields = await fetchAll<{ id: string; label: string }>((a, b) => db.from("form_fields").select("id, label").range(a, b));
+  const ids = fields.filter((f) => /telefone|whats|celular/i.test(f.label)).map((f) => f.id);
+  for (let i = 0; i < ids.length; i += 50) {
+    const chunk = ids.slice(i, i + 50);
+    const vals = await fetchAll<{ value: string | null }>((a, b) => db.from("submission_values").select("value").in("field_id", chunk).range(a, b));
+    for (const v of vals) if (v.value) phones.add(phoneKey(v.value));
+  }
+  phones.delete("");
+  return { phones, codes };
+}
 
 // Busca os contatos do período e cadastra na Lista de LEADS os que têm a etiqueta da unidade.
 export async function runImport(db: SupabaseClient, all: All, account: Account): Promise<ImportSummary> {
@@ -130,6 +162,8 @@ export async function runImport(db: SupabaseClient, all: All, account: Account):
   }
 
   const imported = (s.imported ??= {});
+  const linked = new Set(Object.values(s.contacts ?? {}).map(String));
+  const portal = await existingPortal(db);
   let found = 0, done = 0, skipped = 0;
   const formCache = new Map<string, { formId: string; fields: { id: string; label: string; type: string; options: string[] | null }[]; phones: Set<string> } | null>();
 
@@ -140,6 +174,11 @@ export async function runImport(db: SupabaseClient, all: All, account: Account):
     found++;
     const cid = String(c.id);
     if (imported[cid]) { skipped++; continue; }
+    // Já está no portal (card em qualquer etapa ou ficha em qualquer lista): só a etiqueta é tratada, nada é criado.
+    const fullName = [c.name, c.surname].filter(Boolean).join(" ");
+    const code = fullName.match(/\d+\/[A-Za-z]{2}\d{4}/)?.[0]?.toUpperCase();
+    const pk0 = phoneKey(c.whatsapp || c.mobile_phone || c.phone || "");
+    if (linked.has(cid) || (code && portal.codes.has(code)) || (pk0 && portal.phones.has(pk0))) { skipped++; imported[cid] = "existente"; continue; }
     const schoolId = hit[0];
 
     if (!formCache.has(schoolId)) {
@@ -189,7 +228,8 @@ export async function runImport(db: SupabaseClient, all: All, account: Account):
       await applyDestination(db, { submissionId: sub.id, formId: info.formId, schoolId, publicId: publicId as string, values });
     } catch { /* cadastro salvo mesmo sem destino */ }
     imported[cid] = sub.id;
-    if (pk) info.phones.add(pk);
+    if (pk) { info.phones.add(pk); portal.phones.add(pk); }
+    portal.codes.add(String(publicId).toUpperCase());
     done++;
     await logActivity(db, null, ACCOUNT_LABEL[account], `Lead importado do Maxbot: ${publicId} ${name}`, { contato_maxbot: cid, etiqueta: hit[1] }, schoolId);
   }
