@@ -2,7 +2,8 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
-import { AlertTriangle, ChevronDown, ChevronUp, ChevronsUpDown, Eye } from "lucide-react";
+import { AlertTriangle, Printer, ChevronDown, ChevronUp, ChevronsUpDown, Eye } from "lucide-react";
+import { ListReport, type ListReportRow } from "@/components/print/ListReport";
 import { PrintSheets, type PrintSheetsState } from "@/components/print/PrintSheets";
 import { formatAddress, parseAddress, parseChildren, type FormField } from "@/lib/ext/model";
 import {
@@ -222,6 +223,40 @@ export function SubmissionsList({
     setSearch(""); setSchoolId(""); setFormId(""); setFrom(""); setTo("");
     setFFunnel(""); setFRestricted(""); setFAttendant(""); setFSeries(""); setFStatus("");
   };
+
+  const [report, setReport] = useState<{ rows: ListReportRow[]; filters: string[]; at: string } | null>(null);
+  const fmt = (d?: string | null) => d ? new Date(d).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
+  function printReport() {
+    const opt = (id: string, sel: string) => (document.getElementById(id) as HTMLSelectElement | null)?.selectedOptions[0]?.text ?? sel;
+    const f: string[] = [];
+    if (search) f.push(`Busca: ${search}`);
+    if (schoolId) f.push(`Escola: ${opt("f-school", schoolId)}`);
+    if (formId) f.push(`Formulário: ${opt("f-form", formId)}`);
+    if (from) f.push(`De: ${from.split("-").reverse().join("/")}`);
+    if (to) f.push(`Até: ${to.split("-").reverse().join("/")}`);
+    if (fFunnel) f.push(`Funil: ${opt("f-funnel", fFunnel)}`);
+    if (fRestricted) f.push(`Pendência pedagógica: ${opt("f-restricted", fRestricted)}`);
+    if (fAttendant) f.push(`Atendimento: ${opt("f-att", fAttendant)}`);
+    if (fSeries) f.push(`Série: ${opt("f-ser", fSeries)}`);
+    if (fStatus) f.push(`${listType === "leads" ? "Check-in" : "Matrícula"}: ${fStatus === "yes" ? "Sim" : "Não"}`);
+    const rows = sortRows(filteredRows as unknown as NonNullable<typeof submissions>, sort, listType).map((s) => {
+      const x = s as unknown as FRow & { id: string; schools?: { name: string } | null; children_count?: number | null; created_at: string; check_in?: { checked_in_at: string } | null };
+      return {
+        id: x.id, publicId: x.public_id ?? "", responsible: x.responsible_name ?? "", school: x.schools?.name ?? "",
+        children: x.children_count != null ? String(x.children_count) : "", date: fmt(x.created_at),
+        series: (x.series ?? []).filter(Boolean).join(", "), attendant: x.attendant?.name ?? "",
+        funnel: x.funnel?.funnel_name ?? "", status: listType === "leads" ? Boolean(x.check_in) : Boolean(x.enrolled),
+        checkIn: fmt(x.check_in?.checked_in_at),
+      };
+    });
+    setReport({ rows, filters: f, at: fmt(new Date().toISOString()) });
+    setTimeout(() => {
+      document.body.classList.add("list-report-printing");
+      const done = () => { document.body.classList.remove("list-report-printing"); window.removeEventListener("afterprint", done); };
+      window.addEventListener("afterprint", done);
+      window.print();
+    }, 100);
+  }
 
   // Modelos de impressão do formulário dos itens selecionados (precisam ser do mesmo formulário)
   const selectedRows = (submissions ?? []).filter((s) => selected.has(s.id));
@@ -451,7 +486,16 @@ export function SubmissionsList({
           </div>
         </div>
       )}
-      <h1 className="font-display text-2xl font-bold text-foreground">{title}</h1>
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="font-display text-2xl font-bold text-foreground">{title}</h1>
+        <Button variant="outline" onClick={printReport} disabled={isLoading || filteredRows.length === 0}>
+          <Printer className="mr-2 h-4 w-4" /> Imprimir
+        </Button>
+      </div>
+      {report && (
+        <ListReport title={title} listType={listType} filters={report.filters} rows={report.rows}
+          printedBy={(perms as { fullName?: string } | undefined)?.fullName ?? ""} printedAt={report.at} />
+      )}
 
       <Card className="mt-6">
         <div
