@@ -42,3 +42,16 @@ describe("canCloseOpportunity", () => {
     expect(canCloseOpportunity(base, SCHOOL, true)).toBe(false);
   });
 });
+
+import { asksEnrollment } from "./close-access";
+describe("asksEnrollment", () => {
+  it("Visitantes pede matrícula", () => {
+    expect(asksEnrollment({ submission_id: "x", submissions: { list_type: "visitors" } })).toBe(true);
+  });
+  it("LEADS não pede matrícula", () => {
+    expect(asksEnrollment({ submission_id: "x", submissions: { list_type: "leads" } })).toBe(false);
+  });
+  it("sem ficha não pede", () => {
+    expect(asksEnrollment({ submission_id: null })).toBe(false);
+  });
+});

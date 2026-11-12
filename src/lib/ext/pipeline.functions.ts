@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAuth } from "./auth";
-import { canCloseOpportunity } from "./close-access";
+import { asksEnrollment, canCloseOpportunity } from "./close-access";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { FunnelStage, Opportunity } from "./model";
 
@@ -499,11 +499,12 @@ export const closeOpportunity = createServerFn({ method: "POST" })
 
     const { data: current, error: currentError } = await context.supabase
       .from("opportunities")
-      .select("submission_id")
+      .select("submission_id, submissions(list_type)")
       .eq("id", data.id)
       .single();
     if (currentError) throw new Error(currentError.message);
-    if (data.result === "won" && current.submission_id && data.enrollment_count == null) {
+    const tracksEnrollment = asksEnrollment(current as never);
+    if (data.result === "won" && tracksEnrollment && data.enrollment_count == null) {
       throw new Error("Informe a quantidade de matrículas efetivadas.");
     }
 
@@ -523,7 +524,7 @@ export const closeOpportunity = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
 
     // Ganho no CRM = matrícula realizada no cadastro.
-    if (updated?.submission_id) {
+    if (updated?.submission_id && tracksEnrollment) {
       const won = data.result === "won";
       const { data: previousSubmission } = await admin
         .from("submissions")
@@ -578,11 +579,11 @@ export const reopenOpportunity = createServerFn({ method: "POST" })
         updated_at: new Date().toISOString(),
       })
       .eq("id", data.id)
-      .select("submission_id")
+      .select("submission_id, submissions(list_type)")
       .maybeSingle();
     if (error) throw new Error(error.message);
 
-    if (updated?.submission_id) {
+    if (updated?.submission_id && asksEnrollment(updated as never)) {
       await context.supabase
         .from("submissions")
         .update({ enrolled: false, enrollment_count: 0, enrolled_at: null, enrolled_by: null })

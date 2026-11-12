@@ -28,3 +28,11 @@ export function canCloseOpportunityBySchool(
 ): boolean {
   return canCloseOpportunity(perms, schoolId, true);
 }
+
+// Ganho pede/grava matrícula só para cartões da Lista de Visitantes (não para LEADS).
+export function asksEnrollment(
+  opp: { submission_id: string | null; submissions?: { list_type: string | null } | null } | null,
+): boolean {
+  if (!opp?.submission_id) return false;
+  return opp.submissions?.list_type !== "leads";
+}

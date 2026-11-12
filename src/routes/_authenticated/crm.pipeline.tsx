@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { asksEnrollment } from "@/lib/ext/close-access";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { AlertTriangle, MessageCircle, Plus, Trash2 } from "lucide-react";
@@ -1155,8 +1156,8 @@ function PipelinePage() {
       {closing && (
         <CloseDialog
           result={closing.result}
-          linkedSubmission={Boolean(
-            opportunities.find((opportunity) => opportunity.id === closing.id)?.submission_id,
+          linkedSubmission={asksEnrollment(
+            opportunities.find((opportunity) => opportunity.id === closing.id) ?? null,
           )}
           childrenCount={
             opportunities.find((opportunity) => opportunity.id === closing.id)?.submissions
