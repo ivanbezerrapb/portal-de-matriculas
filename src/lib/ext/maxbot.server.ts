@@ -30,6 +30,7 @@ export type Stored = {
   attendants?: Record<string, { id: string; name: string }>; // portalUserId -> atendente Maxbot
   contacts?: Record<string, string>; // opportunityId -> contactId Maxbot
   named?: Record<string, string>; // contactId -> código da ficha já gravado no nome
+  tagged?: Record<string, string[]>; // contactId -> schoolIds cuja etiqueta já foi adicionada
   default_template?: { id: string; title: string } | null;
 };
 export type All = Record<Account, Stored>;
@@ -303,6 +304,31 @@ async function ensureContactName(db: SupabaseClient, account: Account, contactId
   } catch (e) { console.error("maxbot set_contact", contactId, e); }
 }
 
+// Acrescenta no contato a etiqueta da unidade do card (sem remover as outras).
+const segCache = new Map<string, { at: number; list: { id: string | number; title: string }[] }>();
+async function ensureContactSegmentation(db: SupabaseClient, account: Account, contactId: string, schoolId: string) {
+  try {
+    const st = (await readAll(db))[account];
+    const title = st.segmentations?.[schoolId];
+    if (!title || !st.token) return;
+    if (st.tagged?.[contactId]?.includes(schoolId)) return;
+    let c = segCache.get(account);
+    if (!c || Date.now() - c.at > 600_000) {
+      const json = await maxbotCall(st, { cmd: "get_segmentation" });
+      c = { at: Date.now(), list: (json["segmentation"] as { id: string | number; title: string }[] | undefined) ?? [] };
+      segCache.set(account, c);
+    }
+    const seg = c.list.find((x) => norm(x.title ?? "") === norm(title));
+    if (!seg) return;
+    await maxbotCall(st, { cmd: "add_contact_segmentation", contact_id: contactId, segmentation_ids: String(seg.id) });
+    const fresh = await readAll(db);
+    const prev = fresh[account].tagged ?? {};
+    fresh[account] = { ...fresh[account], tagged: { ...prev, [contactId]: [...(prev[contactId] ?? []), schoolId] } };
+    await writeAll(db, fresh);
+    await logActivity(db, null, ACCOUNT_LABEL[account], `Etiqueta "${title}" adicionada ao contato ${contactId}`, { contato_maxbot: contactId, etiqueta: title }, schoolId);
+  } catch (e) { console.error("maxbot add_contact_segmentation", contactId, e); }
+}
+
 export async function createContact(s: Stored, name: string, phone: string, email?: string | null): Promise<string> {
   const parts = name.trim().split(/\s+/);
   const json = await maxbotCall(s, {
@@ -340,7 +366,7 @@ export async function ensureOpportunityContact(
   const s = all[account];
   if (!s.token) return { status: "not_configured", contactId: null, account };
   const saved = s.contacts?.[opp.id];
-  if (saved) { await ensureContactName(db, account, saved, opp); return { status: "linked", contactId: saved, account }; }
+  if (saved) { await ensureContactName(db, account, saved, opp); await ensureContactSegmentation(db, account, saved, opp.school_id); return { status: "linked", contactId: saved, account }; }
   // Lead importado do Maxbot: o contato de origem já é conhecido.
   if (opp.submission_id) {
     const hit = Object.entries(s.imported ?? {}).find(([, sid]) => sid === opp.submission_id);
@@ -349,6 +375,7 @@ export async function ensureOpportunityContact(
       fresh[account] = { ...fresh[account], contacts: { ...(fresh[account].contacts ?? {}), [opp.id]: hit[0] } };
       await writeAll(db, fresh);
       await ensureContactName(db, account, hit[0], opp);
+      await ensureContactSegmentation(db, account, hit[0], opp.school_id);
       return { status: "linked", contactId: hit[0], account };
     }
   }
@@ -368,6 +395,7 @@ export async function ensureOpportunityContact(
   fresh[account] = { ...fresh[account], contacts: { ...(fresh[account].contacts ?? {}), [opp.id]: contactId } };
   await writeAll(db, fresh);
   await ensureContactName(db, account, contactId, opp);
+  await ensureContactSegmentation(db, account, contactId, opp.school_id);
   if (created) {
     await db.from("crm_notes").insert({ opportunity_id: opp.id, author_id: null, author_name: opts.actor || ACCOUNT_LABEL[account], body: `Contato cadastrado no ${ACCOUNT_LABEL[account]} (ID ${contactId}).` });
     await logActivity(db, null, opts.actor || ACCOUNT_LABEL[account], `Contato cadastrado no Maxbot: ${opp.display_name ?? ""}`, { contato_maxbot: contactId, card: opp.id }, opp.school_id);
@@ -384,7 +412,9 @@ export async function syncRecentOpportunities(db: SupabaseClient, days = 3) {
   for (const o of (data ?? []) as Opp[]) {
     if (!toMaxbotPhone(o.phone) && !o.submission_id) continue;
     const linkedAcc = ACCOUNTS.find((a) => all[a].contacts?.[o.id]);
-    if (linkedAcc && (!o.submission_id || all[linkedAcc].named?.[all[linkedAcc].contacts?.[o.id] ?? ""])) continue;
+    const cid = linkedAcc ? all[linkedAcc].contacts?.[o.id] ?? "" : "";
+    const tagDone = !linkedAcc || !all[linkedAcc].segmentations?.[o.school_id] || !!all[linkedAcc].tagged?.[cid]?.includes(o.school_id);
+    if (linkedAcc && tagDone && (!o.submission_id || all[linkedAcc].named?.[cid])) continue;
     try { const r = await ensureOpportunityContact(db, o, { register: true }); if (r.status === "linked") done++; }
     catch (e) { console.error("maxbot sync", o.id, e); }
   }
