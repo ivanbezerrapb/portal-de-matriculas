@@ -462,6 +462,22 @@ function PipelinePage() {
     setVisitKind(card?.submissions?.list_type === "leads" ? "visita" : "matricula");
     setVisitMove(move);
   }
+  function requestMove(cardId: string, stageId: string) {
+    const moving = opportunities.find((o) => o.id === cardId) as
+      | (typeof opportunities)[number] & { owner_confirmed_at?: string | null }
+      | undefined;
+    if (!moving || moving.stage_id === stageId) return;
+    const position = opportunities.filter((o) => o.stage_id === stageId).length;
+    const move = { id: cardId, stage_id: stageId, position };
+    if (!moving.owner_confirmed_at) {
+      setPendingMove(move);
+      setPendingOwner(moving.owner_id ?? "");
+    } else if (needsVisit(move.id, move.stage_id)) {
+      openVisitMove(move);
+    } else {
+      moveM.mutate(move);
+    }
+  }
   const visitMoveM = useMutation({
     mutationFn: async () => {
       if (!visitMove || !visitValue) throw new Error("Informe a data.");
@@ -646,18 +662,7 @@ function PipelinePage() {
                 onDrop={(e) => {
                   e.preventDefault();
                   if (!dragging || statusFilter !== "open" || !canWrite) return;
-                  const moving = opportunities.find((o) => o.id === dragging) as
-                    | (typeof opportunities)[number] & { owner_confirmed_at?: string | null }
-                    | undefined;
-                  const move = { id: dragging, stage_id: stage.id, position: cards.length };
-                  if (moving && moving.stage_id !== stage.id && !moving.owner_confirmed_at) {
-                    setPendingMove(move);
-                    setPendingOwner(moving.owner_id ?? "");
-                  } else if (needsVisit(move.id, move.stage_id)) {
-                    openVisitMove(move);
-                  } else {
-                    moveM.mutate(move);
-                  }
+                  requestMove(dragging, stage.id);
                   setDragging(null);
                 }}
               >
@@ -876,18 +881,43 @@ function PipelinePage() {
                 </Button>
               </div>
 
-              {stage && (
-                <span
-                  className="mt-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium"
-                  style={{ backgroundColor: `${stage.color}1a`, color: stage.color }}
-                >
-                  <span
-                    className="h-1.5 w-1.5 rounded-full"
-                    style={{ backgroundColor: stage.color }}
-                  />
-                  {stage.name}
-                </span>
-              )}
+              {stages.length > 0 && (() => {
+                const curIdx = stages.findIndex((s) => s.id === card.stage_id);
+                const canMoveHere =
+                  canWrite && statusFilter === "open" && card.status === "open" && !moveM.isPending;
+                return (
+                  <div className="mt-3 flex overflow-x-auto pb-1" aria-label="Etapas do funil">
+                    {stages.map((s, idx) => {
+                      const current = idx === curIdx;
+                      const past = curIdx >= 0 && idx < curIdx;
+                      return (
+                        <button
+                          key={s.id}
+                          type="button"
+                          title={current ? "Etapa atual" : canMoveHere ? `Mover para ${s.name}` : s.name}
+                          disabled={!canMoveHere || current}
+                          onClick={() => requestMove(card.id, s.id)}
+                          className={`relative shrink-0 whitespace-nowrap px-4 py-1.5 text-xs font-semibold transition ${idx > 0 ? "-ml-1" : ""} ${canMoveHere && !current ? "cursor-pointer hover:opacity-80" : "cursor-default"} ${!current && !past ? "bg-muted text-muted-foreground" : ""}`}
+                          style={{
+                            clipPath:
+                              idx === 0
+                                ? "polygon(0 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 0 100%)"
+                                : "polygon(0 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 0 100%, 10px 50%)",
+                            paddingLeft: idx === 0 ? 12 : 20,
+                            ...(current
+                              ? { backgroundColor: s.color, color: "hsl(0 0% 100%)" }
+                              : past
+                                ? { backgroundColor: `${s.color}26`, color: s.color }
+                                : {}),
+                          }}
+                        >
+                          {s.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
 
               <div className="mt-4">
                 <Label htmlFor="card-owner">Responsável</Label>
