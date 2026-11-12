@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAuth } from "./auth";
 import { asksEnrollment, canCloseOpportunity } from "./close-access";
+import { pickWonStage } from "./won-stage";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { FunnelStage, Opportunity } from "./model";
 
@@ -508,10 +509,14 @@ export const closeOpportunity = createServerFn({ method: "POST" })
       throw new Error("Informe a quantidade de matrículas efetivadas.");
     }
 
+    const { data: wonStages } = await admin.from("funnel_stages").select("id, name").eq("funnel_id", opp.funnel_id);
+    const listType = (current as { submissions?: { list_type?: string } | null }).submissions?.list_type;
+    const wonStage = pickWonStage((wonStages ?? []) as { id: string; name: string }[], listType);
     const now = new Date().toISOString();
     const { data: updated, error } = await admin
       .from("opportunities")
       .update({
+        ...(wonStage ? { stage_id: wonStage.id } : {}),
         status: data.result,
         close_reason_id: data.reason_id,
         close_note: data.note?.trim() || null,
