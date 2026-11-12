@@ -1,3 +1,4 @@
+import { sortFunnels } from "@/lib/funnel-order";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -205,7 +206,7 @@ function FunilPage() {
     reorderM.mutate({ funnel_id: funnelId, ids: next.map((s) => s.id) });
   }
 
-  const shownFunnels = funnels.filter(
+  const shownFunnels = sortFunnels(funnels).filter(
     (f) => (!fSchool || f.school_id === fSchool) && (!fKind || funnelListType(f.name) === fKind),
   );
   const loading = funnelsQuery.isLoading || schoolsQuery.isLoading;

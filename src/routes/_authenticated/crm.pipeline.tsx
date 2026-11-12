@@ -1,3 +1,4 @@
+import { groupFunnels } from "@/lib/funnel-order";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { asksEnrollment } from "@/lib/ext/close-access";
@@ -616,10 +617,14 @@ function PipelinePage() {
               }
             >
               <option value="">Selecione um funil…</option>
-              {funnels.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.name}
-                </option>
+              {groupFunnels(funnels).map((g) => (
+                <optgroup key={g.label} label={g.label}>
+                  {g.items.map((f) => (
+                    <option key={f.id} value={f.id}>
+                      {f.name}
+                    </option>
+                  ))}
+                </optgroup>
               ))}
             </Select>
           </div>
