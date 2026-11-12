@@ -15,6 +15,7 @@ import {
   FolderOpen,
   Kanban,
   CalendarDays,
+  BarChart3,
   ListTodo,
   Settings,
   LayoutDashboard,
@@ -237,6 +238,19 @@ function AuthenticatedLayout() {
         ]
       : []),
     { to: "/calendario", label: "Calendário", icon: CalendarDays },
+    ...(isAdmin || isDirecao || isManager
+      ? [
+          {
+            key: "relatorios",
+            label: "Relatórios",
+            icon: BarChart3,
+            children: [
+              { to: "/relatorios/matriculados", label: "Matriculados", icon: BarChart3 },
+              { to: "/relatorios/atendimento", label: "Atendimento", icon: BarChart3 },
+            ],
+          } as NavGroup,
+        ]
+      : []),
     ...((fileAccess?.viewBrands.length ?? 0) > 0
       ? [
           {

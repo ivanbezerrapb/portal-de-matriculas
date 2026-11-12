@@ -37,6 +37,8 @@ import { Route as AuthenticatedCrmPipelineRouteImport } from './routes/_authenti
 import { Route as AuthenticatedCrmTarefasRouteImport } from './routes/_authenticated/crm.tarefas'
 import { Route as AuthenticatedFormulariosFormIdRouteImport } from './routes/_authenticated/formularios_.$formId'
 import { Route as AuthenticatedImprimirTemplateIdRouteImport } from './routes/_authenticated/imprimir.$templateId'
+import { Route as AuthenticatedRelatoriosAtendimentoRouteImport } from './routes/_authenticated/relatorios.atendimento'
+import { Route as AuthenticatedRelatoriosMatriculadosRouteImport } from './routes/_authenticated/relatorios.matriculados'
 import { Route as ApiPublicConfigRouteImport } from './routes/api/public/config'
 import { Route as ApiPublicMaxbotImportRouteImport } from './routes/api/public/maxbot-import'
 
@@ -190,6 +192,18 @@ const AuthenticatedImprimirTemplateIdRoute =
     path: '/imprimir/$templateId',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedRelatoriosAtendimentoRoute =
+  AuthenticatedRelatoriosAtendimentoRouteImport.update({
+    id: '/relatorios/atendimento',
+    path: '/relatorios/atendimento',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedRelatoriosMatriculadosRoute =
+  AuthenticatedRelatoriosMatriculadosRouteImport.update({
+    id: '/relatorios/matriculados',
+    path: '/relatorios/matriculados',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const ApiPublicConfigRoute = ApiPublicConfigRouteImport.update({
   id: '/api/public/config',
   path: '/api/public/config',
@@ -229,6 +243,8 @@ export interface FileRoutesByFullPath {
   '/crm/tarefas': typeof AuthenticatedCrmTarefasRoute
   '/formularios/$formId': typeof AuthenticatedFormulariosFormIdRoute
   '/imprimir/$templateId': typeof AuthenticatedImprimirTemplateIdRoute
+  '/relatorios/atendimento': typeof AuthenticatedRelatoriosAtendimentoRoute
+  '/relatorios/matriculados': typeof AuthenticatedRelatoriosMatriculadosRoute
   '/api/public/config': typeof ApiPublicConfigRoute
   '/api/public/maxbot-import': typeof ApiPublicMaxbotImportRoute
 }
@@ -260,6 +276,8 @@ export interface FileRoutesByTo {
   '/crm/tarefas': typeof AuthenticatedCrmTarefasRoute
   '/formularios/$formId': typeof AuthenticatedFormulariosFormIdRoute
   '/imprimir/$templateId': typeof AuthenticatedImprimirTemplateIdRoute
+  '/relatorios/atendimento': typeof AuthenticatedRelatoriosAtendimentoRoute
+  '/relatorios/matriculados': typeof AuthenticatedRelatoriosMatriculadosRoute
   '/api/public/config': typeof ApiPublicConfigRoute
   '/api/public/maxbot-import': typeof ApiPublicMaxbotImportRoute
 }
@@ -293,6 +311,8 @@ export interface FileRoutesById {
   '/_authenticated/crm/tarefas': typeof AuthenticatedCrmTarefasRoute
   '/_authenticated/formularios_/$formId': typeof AuthenticatedFormulariosFormIdRoute
   '/_authenticated/imprimir/$templateId': typeof AuthenticatedImprimirTemplateIdRoute
+  '/_authenticated/relatorios/atendimento': typeof AuthenticatedRelatoriosAtendimentoRoute
+  '/_authenticated/relatorios/matriculados': typeof AuthenticatedRelatoriosMatriculadosRoute
   '/api/public/config': typeof ApiPublicConfigRoute
   '/api/public/maxbot-import': typeof ApiPublicMaxbotImportRoute
 }
@@ -326,6 +346,8 @@ export interface FileRouteTypes {
     | '/crm/tarefas'
     | '/formularios/$formId'
     | '/imprimir/$templateId'
+    | '/relatorios/atendimento'
+    | '/relatorios/matriculados'
     | '/api/public/config'
     | '/api/public/maxbot-import'
   fileRoutesByTo: FileRoutesByTo
@@ -357,6 +379,8 @@ export interface FileRouteTypes {
     | '/crm/tarefas'
     | '/formularios/$formId'
     | '/imprimir/$templateId'
+    | '/relatorios/atendimento'
+    | '/relatorios/matriculados'
     | '/api/public/config'
     | '/api/public/maxbot-import'
   id:
@@ -389,6 +413,8 @@ export interface FileRouteTypes {
     | '/_authenticated/crm/tarefas'
     | '/_authenticated/formularios_/$formId'
     | '/_authenticated/imprimir/$templateId'
+    | '/_authenticated/relatorios/atendimento'
+    | '/_authenticated/relatorios/matriculados'
     | '/api/public/config'
     | '/api/public/maxbot-import'
   fileRoutesById: FileRoutesById
@@ -601,6 +627,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedImprimirTemplateIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/relatorios/atendimento': {
+      id: '/_authenticated/relatorios/atendimento'
+      path: '/relatorios/atendimento'
+      fullPath: '/relatorios/atendimento'
+      preLoaderRoute: typeof AuthenticatedRelatoriosAtendimentoRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/relatorios/matriculados': {
+      id: '/_authenticated/relatorios/matriculados'
+      path: '/relatorios/matriculados'
+      fullPath: '/relatorios/matriculados'
+      preLoaderRoute: typeof AuthenticatedRelatoriosMatriculadosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/api/public/config': {
       id: '/api/public/config'
       path: '/api/public/config'
@@ -642,6 +682,8 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedCrmTarefasRoute: typeof AuthenticatedCrmTarefasRoute
   AuthenticatedFormulariosFormIdRoute: typeof AuthenticatedFormulariosFormIdRoute
   AuthenticatedImprimirTemplateIdRoute: typeof AuthenticatedImprimirTemplateIdRoute
+  AuthenticatedRelatoriosAtendimentoRoute: typeof AuthenticatedRelatoriosAtendimentoRoute
+  AuthenticatedRelatoriosMatriculadosRoute: typeof AuthenticatedRelatoriosMatriculadosRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -669,6 +711,10 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCrmTarefasRoute: AuthenticatedCrmTarefasRoute,
   AuthenticatedFormulariosFormIdRoute: AuthenticatedFormulariosFormIdRoute,
   AuthenticatedImprimirTemplateIdRoute: AuthenticatedImprimirTemplateIdRoute,
+  AuthenticatedRelatoriosAtendimentoRoute:
+    AuthenticatedRelatoriosAtendimentoRoute,
+  AuthenticatedRelatoriosMatriculadosRoute:
+    AuthenticatedRelatoriosMatriculadosRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
