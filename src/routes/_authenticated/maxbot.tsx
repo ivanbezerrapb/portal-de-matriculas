@@ -199,6 +199,9 @@ function ImportSection({ account, title, data, schools }: { account: Account; ti
             {map[sc.id] && !options.some((o) => o.title === map[sc.id]) && <option value={map[sc.id]}>{map[sc.id]}</option>}
             {options.map((o) => <option key={o.id} value={o.title}>{o.title}</option>)}
           </Select>
+          {map[sc.id] && segs.data && !options.some((o) => o.title === map[sc.id]) && (
+            <p className="text-xs text-destructive">Essa etiqueta não existe mais com esse nome no Maxbot. Escolha a etiqueta certa e salve.</p>
+          )}
         </div>
       ))}
       <div className="space-y-1">

@@ -46,12 +46,14 @@ export const getMaxbotSettings = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     await ensureAdmin(context);
     const db = await admin();
-    const { readAll } = await import("./maxbot.server");
+    const { readAll, missingSegmentations } = await import("./maxbot.server");
     const all = await readAll(db);
+    const miss = async (a: "conecta" | "interactivo") => { try { return await missingSegmentations(all[a]); } catch { return []; } };
+    const [mc, mi] = await Promise.all([miss("conecta"), miss("interactivo")]);
     const { data: schools } = await db.from("schools").select("id, name, brand");
     return {
-      conecta: publicView(all.conecta),
-      interactivo: publicView(all.interactivo),
+      conecta: { ...publicView(all.conecta), missing_segmentations: mc },
+      interactivo: { ...publicView(all.interactivo), missing_segmentations: mi },
       schools: ((schools ?? []) as { id: string; name: string; brand: string | null }[]),
     };
   });

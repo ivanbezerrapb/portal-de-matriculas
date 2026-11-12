@@ -306,6 +306,13 @@ async function ensureContactName(db: SupabaseClient, account: Account, contactId
 
 // Acrescenta no contato a etiqueta da unidade do card (sem remover as outras).
 const segCache = new Map<string, { at: number; list: { id: string | number; title: string }[] }>();
+const missingLogged = new Set<string>();
+export async function missingSegmentations(s: Stored): Promise<string[]> {
+  if (!s.token) return [];
+  const json = await maxbotCall(s, { cmd: "get_segmentation" });
+  const titles = new Set(((json["segmentation"] as { title: string }[] | undefined) ?? []).map((x) => norm(x.title ?? "")));
+  return Object.entries(s.segmentations ?? {}).filter(([, t]) => t && !titles.has(norm(t))).map(([id]) => id);
+}
 async function ensureContactSegmentation(db: SupabaseClient, account: Account, contactId: string, schoolId: string) {
   try {
     const st = (await readAll(db))[account];
@@ -319,7 +326,11 @@ async function ensureContactSegmentation(db: SupabaseClient, account: Account, c
       segCache.set(account, c);
     }
     const seg = c.list.find((x) => norm(x.title ?? "") === norm(title));
-    if (!seg) return;
+    if (!seg) {
+      const k = `${account}:${schoolId}`;
+      if (!missingLogged.has(k)) { missingLogged.add(k); await logActivity(db, null, ACCOUNT_LABEL[account], `Etiqueta "${title}" não encontrada no Maxbot`, { etiqueta: title }, schoolId); }
+      return;
+    }
     await maxbotCall(st, { cmd: "add_contact_segmentation", contact_id: contactId, segmentation_ids: String(seg.id) });
     const fresh = await readAll(db);
     const prev = fresh[account].tagged ?? {};
@@ -417,6 +428,24 @@ export async function syncRecentOpportunities(db: SupabaseClient, days = 3) {
     if (linkedAcc && tagDone && (!o.submission_id || all[linkedAcc].named?.[cid])) continue;
     try { const r = await ensureOpportunityContact(db, o, { register: true }); if (r.status === "linked") done++; }
     catch (e) { console.error("maxbot sync", o.id, e); }
+  }
+  // Contatos já vinculados (cards antigos) que ainda não têm a etiqueta da unidade.
+  const pending: string[] = [];
+  for (const a of ACCOUNTS) for (const [oppId, cid] of Object.entries(all[a].contacts ?? {})) pending.push(oppId);
+  const seen = new Set(((data ?? []) as Opp[]).map((o) => o.id));
+  const ids = pending.filter((id) => !seen.has(id));
+  let tagged = 0;
+  for (let i = 0; i < ids.length && tagged < 100; i += 200) {
+    const { data: olds } = await db.from("opportunities").select("id, school_id, name, phone, email, submission_id").in("id", ids.slice(i, i + 200));
+    for (const o of (olds ?? []) as Opp[]) {
+      if (tagged >= 100) break;
+      const a = ACCOUNTS.find((x) => all[x].contacts?.[o.id])!;
+      const cid = all[a].contacts?.[o.id] ?? "";
+      if (!cid) continue;
+      if (!all[a].segmentations?.[o.school_id] || all[a].tagged?.[cid]?.includes(o.school_id)) continue;
+      if (missingLogged.has(`${a}:${o.school_id}`)) continue;
+      await ensureContactSegmentation(db, a, cid, o.school_id); tagged++;
+    }
   }
   return done;
 }
