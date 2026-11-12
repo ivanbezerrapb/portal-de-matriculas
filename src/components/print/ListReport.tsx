@@ -27,7 +27,6 @@ export function ListReport({ title, school, listType, filters, rows, printedBy, 
           #list-report tr { break-inside: avoid; }
           #list-report th { background: #2b2a6b; color: #fff; text-align: left; padding: 5px 6px; font-size: 9px; text-transform: uppercase; }
           #list-report td { border-bottom: 1px solid #ddd; padding: 5px 6px; vertical-align: top; }
-          #list-report tr.ok td { background: #c9f5d6; }
         }
       `}</style>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "2px solid #2b2a6b", paddingBottom: 6, marginBottom: 6 }}>
@@ -52,7 +51,7 @@ export function ListReport({ title, school, listType, filters, rows, printedBy, 
         </thead>
         <tbody>
           {rows.map((r) => (
-            <tr key={r.id} className={r.status ? "ok" : ""}>
+            <tr key={r.id}>
               <td style={{ fontFamily: "monospace" }}>{r.publicId}</td><td>{r.responsible}</td><td>{r.school}</td>
               {listType === "visitantes" && <td>{r.children}</td>}
               <td>{r.date}</td><td>{r.series}</td><td>{r.attendant}</td><td>{r.funnel}</td>
