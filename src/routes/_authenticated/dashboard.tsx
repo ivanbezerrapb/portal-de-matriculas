@@ -19,6 +19,7 @@ import { useState } from "react";
 import { getDashboardStats, getMyPermissions } from "@/lib/ext/cadastros.functions";
 import { listSchools } from "@/lib/ext/escolas.functions";
 import { compareSchoolNames } from "@/lib/school-order";
+import { getDashboardBacklog } from "@/lib/ext/dashboard-extra.functions";
 import { getLegacyYearStats } from "@/lib/ext/legado.functions";
 import { Button, Card, Spinner } from "@/components/ui";
 import {
@@ -802,6 +803,12 @@ function DashboardPage() {
     refetchIntervalInBackground: false,
   });
 
+  const { data: backlog } = useQuery({
+    queryKey: ["dashboard-backlog", selected],
+    queryFn: () => getDashboardBacklog({ data: { schoolIds: selected } }),
+    refetchInterval: 60_000,
+  });
+
   function toggleSchool(id: string) {
     setSelected((prev) => (prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]));
   }
@@ -971,8 +978,78 @@ function DashboardPage() {
               }))}
             />
           </div>
+
+          <div className="mt-3 grid gap-3 @min-[52rem]/dashboard:grid-cols-2">
+            <CountBlock
+              title="Cards não iniciados (1ª etapa)"
+              subtitle="Cards abertos parados na primeira etapa do funil"
+              tone="primary"
+              groups={backlog?.notStarted}
+            />
+            <CountBlock
+              title="Tarefas atrasadas (Central de Informações)"
+              subtitle="Tarefas não concluídas com data vencida, por atendente"
+              tone="destructive"
+              groups={backlog?.overdueTasks}
+            />
+          </div>
         </>
       )}
     </div>
+  );
+}
+
+function CountBlock({
+  title,
+  subtitle,
+  tone,
+  groups,
+}: {
+  title: string;
+  subtitle: string;
+  tone: "primary" | "destructive";
+  groups?: { school: string; items: { label: string; count: number }[] }[];
+}) {
+  const total = (groups ?? []).reduce((n, g) => n + g.items.reduce((m, i) => m + i.count, 0), 0);
+  const max = Math.max(1, ...(groups ?? []).flatMap((g) => g.items.map((i) => i.count)));
+  return (
+    <Card className="p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="font-display text-sm font-semibold text-foreground">{title}</h2>
+          <p className="text-xs text-muted-foreground">{subtitle}</p>
+        </div>
+        <span className={`font-display text-2xl font-semibold ${tone === "destructive" ? "text-destructive" : "text-primary"}`}>
+          {groups ? total : "…"}
+        </span>
+      </div>
+      {!groups ? (
+        <div className="mt-4 flex justify-center"><Spinner /></div>
+      ) : groups.length === 0 ? (
+        <p className="mt-4 text-sm text-muted-foreground">Nenhum registro</p>
+      ) : (
+        <div className="mt-4 grid gap-4 @min-[36rem]/dashboard:grid-cols-2">
+          {groups.map((g) => (
+            <div key={g.school}>
+              <p className="mb-2 text-sm font-medium text-primary">{g.school}</p>
+              <ul className="space-y-1.5">
+                {g.items.map((i) => (
+                  <li key={i.label} className="flex items-center gap-2 text-xs">
+                    <span className="w-32 shrink-0 truncate text-muted-foreground" title={i.label}>{i.label}</span>
+                    <div className="h-4 flex-1 overflow-hidden rounded bg-muted">
+                      <div
+                        className={`h-full rounded ${tone === "destructive" ? "bg-destructive" : "bg-primary"}`}
+                        style={{ width: `${(i.count / max) * 100}%` }}
+                      />
+                    </div>
+                    <span className="w-8 text-right font-semibold text-foreground">{i.count}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
   );
 }
