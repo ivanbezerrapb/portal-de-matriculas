@@ -979,7 +979,7 @@ function DashboardPage() {
             />
           </div>
 
-          <div className="mt-3 grid gap-3 @min-[52rem]/dashboard:grid-cols-2">
+          <div className="mt-3 flex flex-col gap-3">
             <CountBlock
               title="Cards não iniciados (1ª etapa)"
               subtitle="Cards abertos parados na primeira etapa do funil"
@@ -987,7 +987,7 @@ function DashboardPage() {
               groups={backlog?.notStarted}
             />
             <CountBlock
-              title="Tarefas atrasadas (Central de Informações)"
+              title="Tarefas atrasadas (Central de Informações e Coordenação)"
               subtitle="Tarefas não concluídas com data vencida, por atendente"
               tone="destructive"
               groups={backlog?.overdueTasks}
@@ -1008,7 +1008,7 @@ function CountBlock({
   title: string;
   subtitle: string;
   tone: "primary" | "destructive";
-  groups: { school: string; items: { label: string; count: number }[] }[] | undefined;
+  groups: { school: string; items: { label: string; count: number; tag?: string }[] }[] | undefined;
 }) {
   const total = (groups ?? []).reduce((n, g) => n + g.items.reduce((m, i) => m + i.count, 0), 0);
   const max = Math.max(1, ...(groups ?? []).flatMap((g) => g.items.map((i) => i.count)));
@@ -1028,14 +1028,19 @@ function CountBlock({
       ) : groups.length === 0 ? (
         <p className="mt-4 text-sm text-muted-foreground">Nenhum registro</p>
       ) : (
-        <div className="mt-4 grid gap-4 @min-[36rem]/dashboard:grid-cols-2">
+        <div className="mt-4 grid gap-4 @min-[36rem]/dashboard:grid-cols-2 @min-[52rem]/dashboard:grid-cols-3">
           {groups.map((g) => (
             <div key={g.school}>
               <p className="mb-2 text-sm font-medium text-primary">{g.school}</p>
               <ul className="space-y-1.5">
                 {g.items.map((i) => (
-                  <li key={i.label} className="flex items-center gap-2 text-xs">
-                    <span className="w-32 shrink-0 truncate text-muted-foreground" title={i.label}>{i.label}</span>
+                  <li key={`${i.label}|${i.tag ?? ""}`} className="flex items-center gap-2 text-xs">
+                    <span className="w-36 shrink-0 truncate text-muted-foreground" title={i.label}>{i.label}</span>
+                    {i.tag ? (
+                      <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                        {i.tag}
+                      </span>
+                    ) : null}
                     <div className="h-4 flex-1 overflow-hidden rounded bg-muted">
                       <div
                         className={`h-full rounded ${tone === "destructive" ? "bg-destructive" : "bg-primary"}`}
