@@ -1008,7 +1008,7 @@ function CountBlock({
   title: string;
   subtitle: string;
   tone: "primary" | "destructive";
-  groups?: { school: string; items: { label: string; count: number }[] }[];
+  groups: { school: string; items: { label: string; count: number }[] }[] | undefined;
 }) {
   const total = (groups ?? []).reduce((n, g) => n + g.items.reduce((m, i) => m + i.count, 0), 0);
   const max = Math.max(1, ...(groups ?? []).flatMap((g) => g.items.map((i) => i.count)));
