@@ -36,3 +36,19 @@ export function asksEnrollment(
   if (!opp?.submission_id) return false;
   return opp.submissions?.list_type !== "leads";
 }
+
+// Transferência de cartão entre funis: mesmas pessoas que podem fechar,
+// só para cartão aberto e funil de destino diferente na mesma escola.
+export function canTransferOpportunity(
+  perms: CloseAccessPerms,
+  opp: { school_id: string; funnel_id: string; status: string },
+  target: { id: string; school_id: string },
+  linkedToFunnel: boolean,
+): string | null {
+  if (opp.status !== "open") return "Só é possível transferir cartões abertos.";
+  if (target.id === opp.funnel_id) return "O cartão já está neste funil.";
+  if (target.school_id !== opp.school_id) return "O funil de destino precisa ser da mesma unidade.";
+  if (!canCloseOpportunity(perms, opp.school_id, linkedToFunnel))
+    return "Sem permissão para transferir este cartão.";
+  return null;
+}

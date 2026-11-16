@@ -1,7 +1,7 @@
 import { groupFunnels } from "@/lib/funnel-order";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { asksEnrollment } from "@/lib/ext/close-access";
+import { asksEnrollment, canCloseOpportunityBySchool } from "@/lib/ext/close-access";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { AlertTriangle, MessageCircle, Plus, Trash2 } from "lucide-react";
@@ -15,6 +15,7 @@ import {
   moveOpportunity,
   reopenOpportunity,
   setOpportunityOwner,
+  transferOpportunity,
 } from "@/lib/ext/pipeline.functions";
 import { listCloseReasons } from "@/lib/ext/motivos.functions";
 import { createTask, deleteTask, listTasks, setTaskDone } from "@/lib/ext/tarefas.functions";
@@ -1043,6 +1044,14 @@ function PipelinePage() {
               )}
 
               {(card.phone || card.submission_id) && <MaxbotSend opportunityId={card.id} />}
+              {card.status === "open" && perms && canCloseOpportunityBySchool(perms, card.school_id) && (
+                <TransferFunnel
+                  opportunityId={card.id}
+                  currentFunnelId={card.funnel_id}
+                  funnels={allFunnels.filter((f) => f.school_id === card.school_id && f.id !== card.funnel_id)}
+                  onDone={() => setOpenCard(null)}
+                />
+              )}
 
               </div>
               <div>
@@ -1597,5 +1606,69 @@ function OpportunityVisit({ opportunityId, visitAt, canWrite, kind }: { opportun
         </div>
       ) : null}
     </div>
+  );
+}
+
+function TransferFunnel({
+  opportunityId,
+  funnels,
+  onDone,
+}: {
+  opportunityId: string;
+  currentFunnelId: string;
+  funnels: { id: string; name: string }[];
+  onDone: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [target, setTarget] = useState("");
+  const [note, setNote] = useState("");
+  const mutation = useMutation({
+    mutationFn: () => transferOpportunity({ data: { id: opportunityId, funnel_id: target, note } }),
+    onSuccess: () => {
+      toast.success("Cartão transferido.");
+      setOpen(false);
+      void queryClient.invalidateQueries({ queryKey: ["pipeline"] });
+      void queryClient.invalidateQueries({ queryKey: ["crm-notes", opportunityId] });
+      onDone();
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Não foi possível transferir."),
+  });
+  if (funnels.length === 0) return null;
+  return (
+    <>
+      <Button variant="outline" className="mt-3 w-full" onClick={() => setOpen(true)}>
+        Transferir
+      </Button>
+      {open && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-foreground/40 p-4" onClick={() => setOpen(false)}>
+          <div className="w-full max-w-md rounded-xl bg-card p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold">Transferir para outro funil</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              O cartão irá para a primeira etapa do funil escolhido, mantendo histórico e tarefas.
+            </p>
+            <Label className="mt-4 block">Funil de destino</Label>
+            <Select value={target} onChange={(e) => setTarget(e.target.value)}>
+              <option value="">Selecione…</option>
+              {groupFunnels(funnels).map((g) => (
+                <optgroup key={g.label} label={g.label}>
+                  {g.items.map((f) => (
+                    <option key={f.id} value={f.id}>{f.name}</option>
+                  ))}
+                </optgroup>
+              ))}
+            </Select>
+            <Label className="mt-3 block">Observação (opcional)</Label>
+            <Textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} />
+            <div className="mt-4 flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button>
+              <Button disabled={!target || mutation.isPending} onClick={() => mutation.mutate()}>
+                {mutation.isPending ? "Transferindo…" : "Transferir"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

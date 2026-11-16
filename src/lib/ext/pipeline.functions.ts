@@ -762,3 +762,84 @@ export const setOpportunityVisit = createServerFn({ method: "POST" })
     }
     return { ok: true };
   });
+
+// Transfere o cartão para a 1ª etapa de outro funil da mesma unidade.
+export const transferOpportunity = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((data) =>
+    z
+      .object({ id: z.string().uuid(), funnel_id: z.string().uuid(), note: z.string().optional().nullable() })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    const { extAdmin, getPerms } = await import("./server");
+    const { canTransferOpportunity } = await import("./close-access");
+    const admin = extAdmin();
+    const perms = await getPerms(context.supabase, context.userId);
+    const { data: opp } = await admin
+      .from("opportunities")
+      .select("id, funnel_id, school_id, status, owner_id")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (!opp) throw new Error("Cartão não encontrado.");
+    const { data: target } = await admin
+      .from("funnels")
+      .select("id, name, school_id")
+      .eq("id", data.funnel_id)
+      .maybeSingle();
+    if (!target) throw new Error("Funil de destino não encontrado.");
+    const { data: link } = await admin
+      .from("user_funnels")
+      .select("user_id")
+      .eq("funnel_id", opp.funnel_id)
+      .eq("user_id", context.userId)
+      .maybeSingle();
+    const denied = canTransferOpportunity(perms, opp, target, Boolean(link));
+    if (denied) throw new Error(denied);
+
+    const { data: firstStage } = await admin
+      .from("funnel_stages")
+      .select("id")
+      .eq("funnel_id", target.id)
+      .order("position")
+      .limit(1)
+      .maybeSingle();
+    if (!firstStage) throw new Error("O funil de destino não tem etapas.");
+    const { data: source } = await admin.from("funnels").select("name").eq("id", opp.funnel_id).maybeSingle();
+
+    let ownerStays = false;
+    if (opp.owner_id) {
+      const { data: ol } = await admin
+        .from("user_funnels")
+        .select("user_id")
+        .eq("funnel_id", target.id)
+        .eq("user_id", opp.owner_id)
+        .maybeSingle();
+      ownerStays = Boolean(ol);
+    }
+    const { count } = await admin
+      .from("opportunities")
+      .select("id", { count: "exact", head: true })
+      .eq("stage_id", firstStage.id);
+    const now = new Date().toISOString();
+    const update: Record<string, unknown> = {
+      funnel_id: target.id,
+      stage_id: firstStage.id,
+      position: count ?? 0,
+      updated_at: now,
+    };
+    if (!ownerStays) update["owner_confirmed_at"] = null;
+    const { error } = await admin.from("opportunities").update(update).eq("id", opp.id);
+    if (error) throw new Error(error.message);
+
+    const { data: profile } = await admin.from("profiles").select("full_name").eq("id", context.userId).maybeSingle();
+    const authorName = profile?.full_name || context.userEmail || "Usuário";
+    const body = `Transferido do funil ${source?.name ?? "?"} para o funil ${target.name} por ${authorName}${data.note?.trim() ? `. ${data.note.trim()}` : ""}`;
+    await admin.from("crm_notes").insert({ opportunity_id: opp.id, author_id: context.userId, author_name: authorName, body });
+    await admin.from("activity_logs").insert({
+      actor_id: context.userId, actor_name: authorName, action: "update", table_name: "opportunities",
+      record_id: opp.id, school_id: opp.school_id, label: body,
+      new_data: { funnel_id: target.id, stage_id: firstStage.id },
+    });
+    return { ok: true };
+  });
