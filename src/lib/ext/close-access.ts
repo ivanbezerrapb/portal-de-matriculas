@@ -37,10 +37,23 @@ export function asksEnrollment(
   return opp.submissions?.list_type !== "leads";
 }
 
-// Transferência de cartão entre funis: mesmas pessoas que podem fechar,
+// Transferência de cartão entre funis: Admin, Gerentes, Coordenação e Central da unidade,
 // só para cartão aberto e funil de destino diferente na mesma escola.
+export function canTransferBySchool(
+  perms: CloseAccessPerms & { operatorSchools?: string[] },
+  schoolId: string,
+): boolean {
+  if (perms.isAdmin) return true;
+  if (perms.isDirecao) return false;
+  return (
+    perms.managerSchools.includes(schoolId) ||
+    perms.infoSchools.includes(schoolId) ||
+    (perms.operatorSchools ?? []).includes(schoolId)
+  );
+}
+
 export function canTransferOpportunity(
-  perms: CloseAccessPerms,
+  perms: CloseAccessPerms & { operatorSchools?: string[] },
   opp: { school_id: string; funnel_id: string; status: string },
   target: { id: string; school_id: string },
   linkedToFunnel: boolean,
@@ -48,7 +61,8 @@ export function canTransferOpportunity(
   if (opp.status !== "open") return "Só é possível transferir cartões abertos.";
   if (target.id === opp.funnel_id) return "O cartão já está neste funil.";
   if (target.school_id !== opp.school_id) return "O funil de destino precisa ser da mesma unidade.";
-  if (!canCloseOpportunity(perms, opp.school_id, linkedToFunnel))
+  void linkedToFunnel;
+  if (!canTransferBySchool(perms, opp.school_id))
     return "Sem permissão para transferir este cartão.";
   return null;
 }

@@ -17,9 +17,11 @@ describe("transferir cartão de funil", () => {
   it("Direção não transfere", () => {
     expect(canTransferOpportunity({ ...base, isDirecao: true }, opp, { id: "f2", school_id: "s1" }, true)).not.toBeNull();
   });
-  it("Central só transfere se vinculada ao funil de origem", () => {
-    const p = { ...base, infoSchools: ["s1"] };
-    expect(canTransferOpportunity(p, opp, { id: "f2", school_id: "s1" }, false)).not.toBeNull();
-    expect(canTransferOpportunity(p, opp, { id: "f2", school_id: "s1" }, true)).toBeNull();
+  it("Central, Gerente e Coordenação da unidade transferem", () => {
+    for (const p of [{ ...base, infoSchools: ["s1"] }, { ...base, managerSchools: ["s1"] }, { ...base, operatorSchools: ["s1"] }])
+      expect(canTransferOpportunity(p, opp, { id: "f2", school_id: "s1" }, false)).toBeNull();
+  });
+  it("Coordenação de outra unidade não transfere", () => {
+    expect(canTransferOpportunity({ ...base, operatorSchools: ["s2"] }, opp, { id: "f2", school_id: "s1" }, false)).not.toBeNull();
   });
 });

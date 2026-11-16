@@ -1,7 +1,7 @@
 import { groupFunnels } from "@/lib/funnel-order";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { asksEnrollment, canCloseOpportunityBySchool } from "@/lib/ext/close-access";
+import { asksEnrollment, canTransferBySchool } from "@/lib/ext/close-access";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { AlertTriangle, MessageCircle, Plus, Trash2 } from "lucide-react";
@@ -887,12 +887,14 @@ function PipelinePage() {
                 </Button>
               </div>
 
+              <div className="mt-3 flex items-center gap-3">
+              <div className="min-w-0 flex-1">
               {stages.length > 0 && (() => {
                 const curIdx = stages.findIndex((s) => s.id === card.stage_id);
                 const canMoveHere =
                   canWrite && statusFilter === "open" && card.status === "open" && !moveM.isPending;
                 return (
-                  <div className="mt-3 flex overflow-x-auto pb-1" aria-label="Etapas do funil">
+                  <div className="flex overflow-x-auto pb-1" aria-label="Etapas do funil">
                     {stages.map((s, idx) => {
                       const current = idx === curIdx;
                       return (
@@ -918,6 +920,16 @@ function PipelinePage() {
                   </div>
                 );
               })()}
+              </div>
+              {card.status === "open" && perms && canTransferBySchool(perms, card.school_id) && (
+                <TransferFunnel
+                  opportunityId={card.id}
+                  currentFunnelId={card.funnel_id}
+                  funnels={allFunnels.filter((f) => f.school_id === card.school_id && f.id !== card.funnel_id)}
+                  onDone={() => setOpenCard(null)}
+                />
+              )}
+              </div>
 
               <div className="mt-4">
                 <Label htmlFor="card-owner">Responsável</Label>
@@ -1044,14 +1056,6 @@ function PipelinePage() {
               )}
 
               {(card.phone || card.submission_id) && <MaxbotSend opportunityId={card.id} />}
-              {card.status === "open" && perms && canCloseOpportunityBySchool(perms, card.school_id) && (
-                <TransferFunnel
-                  opportunityId={card.id}
-                  currentFunnelId={card.funnel_id}
-                  funnels={allFunnels.filter((f) => f.school_id === card.school_id && f.id !== card.funnel_id)}
-                  onDone={() => setOpenCard(null)}
-                />
-              )}
 
               </div>
               <div>
@@ -1637,7 +1641,7 @@ function TransferFunnel({
   if (funnels.length === 0) return null;
   return (
     <>
-      <Button variant="outline" className="mt-3 w-full" onClick={() => setOpen(true)}>
+      <Button variant="outline" className="shrink-0" onClick={() => setOpen(true)}>
         Transferir
       </Button>
       {open && (
