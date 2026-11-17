@@ -48,7 +48,7 @@ export const listCalendarEvents = createServerFn({ method: "GET" })
 
     const { data: opps } = await admin
       .from("opportunities")
-      .select("id, name, phone, visit_at, school_id, funnel_id, submission_id, submissions!inner(public_id, form_id, list_type, enrolled, enrolled_at)")
+      .select("id, name, phone, visit_at, school_id, funnel_id, submission_id, owner:owner_id(full_name), submissions!inner(public_id, form_id, list_type, enrolled, enrolled_at, attendant:presenters!submissions_attendant_id_fkey(name))")
       .not("visit_at", "is", null)
       .in("school_id", schoolIds)
       .gte("visit_at", data.from)
@@ -56,7 +56,8 @@ export const listCalendarEvents = createServerFn({ method: "GET" })
     type Opp = {
       id: string; name: string; phone: string | null; visit_at: string; school_id: string;
       funnel_id: string; submission_id: string;
-      submissions: { public_id: string; form_id: string; list_type: string | null; enrolled: boolean | null; enrolled_at: string | null };
+      owner?: { full_name: string | null } | null;
+      submissions: { public_id: string; form_id: string; list_type: string | null; enrolled: boolean | null; enrolled_at: string | null; attendant?: { name: string | null } | null };
     };
     const fullSchools = new Set([...perms.managerSchools, ...perms.operatorSchools]);
     const rows = ((opps ?? []) as unknown as Opp[]).filter((o) => {
@@ -157,7 +158,7 @@ export const listCalendarEvents = createServerFn({ method: "GET" })
         id: o.id,
         kind: isVisit ? "visita" : "matricula",
         series: seriesBySub.get(o.submission_id) ?? [],
-        scheduled_by: scheduledBy.get(o.id) ?? null,
+        scheduled_by: scheduledBy.get(o.id) ?? o.owner?.full_name ?? o.submissions.attendant?.name ?? null,
         at: o.visit_at,
         title: name && name !== o.submissions.public_id ? `${o.submissions.public_id} · ${name}` : o.submissions.public_id,
         school_id: o.school_id,
