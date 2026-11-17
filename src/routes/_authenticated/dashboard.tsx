@@ -1006,9 +1006,9 @@ function DashboardPage() {
   );
 }
 
-type VisitG = { school: string; scheduled: number; done: number; due: number; rate: number | null };
+type VisitG = { school: string; interested: number; scheduled: number; done: number; due: number; rate: number | null };
 function LeadVisitsBlock({ data }: { data: { groups: VisitG[]; total: VisitG } | undefined }) {
-  const max = Math.max(1, ...(data?.groups ?? []).map((g) => g.scheduled));
+  const max = Math.max(1, ...(data?.groups ?? []).map((g) => Math.max(g.interested, g.scheduled)));
   return (
     <Card className="p-4">
       <h2 className="font-display text-sm font-semibold text-foreground">Visitas (funis LEADS)</h2>
@@ -1021,7 +1021,7 @@ function LeadVisitsBlock({ data }: { data: { groups: VisitG[]; total: VisitG } |
             <div className="flex items-baseline justify-between">
               <p className="text-sm font-medium text-primary">Visitas agendadas e realizadas</p>
               <span className="text-xs text-muted-foreground">
-                <b className="text-foreground">{data.total.scheduled}</b> agendadas · <b className="text-foreground">{data.total.done}</b> realizadas
+                <b className="text-foreground">{data.total.interested}</b> interessados · <b className="text-foreground">{data.total.scheduled}</b> agendadas · <b className="text-foreground">{data.total.done}</b> realizadas
               </span>
             </div>
             {data.groups.length === 0 ? <p className="mt-3 text-sm text-muted-foreground">Nenhuma visita</p> : (
@@ -1029,7 +1029,7 @@ function LeadVisitsBlock({ data }: { data: { groups: VisitG[]; total: VisitG } |
                 {data.groups.map((g) => (
                   <li key={g.school} className="text-xs">
                     <p className="mb-1 font-medium text-foreground">{g.school}</p>
-                    {[["Agendadas", g.scheduled, "bg-primary/40"], ["Realizadas", g.done, "bg-primary"]].map(([l, n, c]) => (
+                    {[["Interessados", g.interested, "bg-primary/20"], ["Agendadas", g.scheduled, "bg-primary/40"], ["Realizadas", g.done, "bg-primary"]].map(([l, n, c]) => (
                       <div key={l as string} className="mb-1 flex items-center gap-2">
                         <span className="w-20 shrink-0 text-muted-foreground">{l}</span>
                         <div className="h-4 flex-1 overflow-hidden rounded bg-muted">

@@ -122,6 +122,8 @@ export const getLeadVisitStats = createServerFn({ method: "GET" })
       missed.push(...((rows ?? []) as typeof missed));
     }
     const schoolOf = new Map(opps.map((o) => [o.id as string, (o.schools?.name as string) ?? "Sem escola"]));
+    const interested = new Map<string, number>();
+    for (const s of schoolOf.values()) interested.set(s, (interested.get(s) ?? 0) + 1);
     const recs = [] as { school: string; at: string; done: boolean; missed: boolean }[];
     for (const o of opps) {
       const done = checks.get(o.submission_id);
@@ -129,5 +131,5 @@ export const getLeadVisitStats = createServerFn({ method: "GET" })
       if (at) recs.push({ school: schoolOf.get(o.id)!, at, done: Boolean(done), missed: false });
     }
     for (const m of missed) recs.push({ school: schoolOf.get(m.opportunity_id) ?? "Sem escola", at: m.created_at, done: false, missed: true });
-    return summarizeVisits(recs, Date.now());
+    return summarizeVisits(recs, Date.now(), interested);
   });

@@ -20,4 +20,16 @@ describe("summarizeVisits", () => {
     const r = summarizeVisits([{ school: "Bessa", at: "2026-12-01T12:00:00Z", done: false, missed: false }], now);
     expect(r.total.rate).toBeNull();
   });
+  it("soma interessados por escola, incluindo quem não tem visita", () => {
+    const r = summarizeVisits(
+      [{ school: "Centro", at: "2026-11-10T12:00:00Z", done: true, missed: false }],
+      now,
+      new Map([["Centro", 12], ["Bessa", 5]]),
+    );
+    expect(r.total.interested).toBe(17);
+    expect(r.groups.map((g) => [g.school, g.interested, g.scheduled])).toEqual([
+      ["Centro", 12, 1],
+      ["Bessa", 5, 0],
+    ]);
+  });
 });
