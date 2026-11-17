@@ -16,6 +16,7 @@ import {
   reopenOpportunity,
   setOpportunityOwner,
   transferOpportunity,
+  listTransferTargets,
 } from "@/lib/ext/pipeline.functions";
 import { listCloseReasons } from "@/lib/ext/motivos.functions";
 import { createTask, deleteTask, listTasks, setTaskDone } from "@/lib/ext/tarefas.functions";
@@ -927,7 +928,6 @@ function PipelinePage() {
                 <TransferFunnel
                   opportunityId={card.id}
                   currentFunnelId={card.funnel_id}
-                  funnels={allFunnels.filter((f) => f.school_id === card.school_id && f.id !== card.funnel_id)}
                   onDone={() => setOpenCard(null)}
                 />
               )}
@@ -1624,12 +1624,10 @@ function OpportunityVisit({ opportunityId, visitAt, canWrite, kind }: { opportun
 
 function TransferFunnel({
   opportunityId,
-  funnels,
   onDone,
 }: {
   opportunityId: string;
   currentFunnelId: string;
-  funnels: { id: string; name: string }[];
   onDone: () => void;
 }) {
   const queryClient = useQueryClient();
@@ -1647,7 +1645,12 @@ function TransferFunnel({
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Não foi possível transferir."),
   });
-  if (funnels.length === 0) return null;
+  const targetsQuery = useQuery({
+    queryKey: ["transfer-targets", opportunityId],
+    queryFn: () => listTransferTargets({ data: { id: opportunityId } }),
+    enabled: open,
+  });
+  const funnels = targetsQuery.data ?? [];
   return (
     <>
       <Button variant="outline" className="shrink-0" onClick={() => setOpen(true)}>
@@ -1660,6 +1663,9 @@ function TransferFunnel({
             <p className="mt-1 text-sm text-muted-foreground">
               O cartão irá para a primeira etapa do funil escolhido, mantendo histórico e tarefas.
             </p>
+            {targetsQuery.isSuccess && funnels.length === 0 && (
+              <p className="mt-4 text-sm text-muted-foreground">Não há outro funil nesta unidade.</p>
+            )}
             <Label className="mt-4 block">Funil de destino</Label>
             <Select value={target} onChange={(e) => setTarget(e.target.value)}>
               <option value="">Selecione…</option>

@@ -851,3 +851,27 @@ export const transferOpportunity = createServerFn({ method: "POST" })
     });
     return { ok: true };
   });
+
+// Funis da mesma unidade para onde o cartão pode ser transferido.
+export const listTransferTargets = createServerFn({ method: "GET" })
+  .middleware([requireAuth])
+  .inputValidator((data) => z.object({ id: z.string().uuid() }).parse(data))
+  .handler(async ({ data, context }) => {
+    const { extAdmin, getPerms } = await import("./server");
+    const { canTransferBySchool } = await import("./close-access");
+    const admin = extAdmin();
+    const perms = await getPerms(context.supabase, context.userId);
+    const { data: opp } = await admin
+      .from("opportunities")
+      .select("funnel_id, school_id")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (!opp || !canTransferBySchool(perms, opp.school_id)) return [];
+    const { data: funnels } = await admin
+      .from("funnels")
+      .select("id, name, school_id")
+      .eq("school_id", opp.school_id)
+      .neq("id", opp.funnel_id)
+      .order("name");
+    return (funnels ?? []) as { id: string; name: string; school_id: string }[];
+  });
