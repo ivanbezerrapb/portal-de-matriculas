@@ -81,3 +81,53 @@ export const getDashboardBacklog = createServerFn({ method: "GET" })
     }
     return { notStarted, overdueTasks: groupOverdueTasks(cards, tasks, names) };
   });
+
+// Visitas dos funis LEADS: agendadas, realizadas (check-in) e taxa de comparecimento.
+export const getLeadVisitStats = createServerFn({ method: "GET" })
+  .middleware([requireAuth])
+  .inputValidator((d) => z.object({ schoolIds: z.array(z.string().uuid()).optional() }).parse(d ?? {}))
+  .handler(async ({ data, context }) => {
+    const { getPerms, extAdmin } = await import("./server");
+    const { summarizeVisits } = await import("./lead-visits-logic");
+    const p = await getPerms(context.supabase, context.userId);
+    let schoolIds = data.schoolIds ?? [];
+    if (!p.isAdmin && !p.isDirecao) {
+      const own = [...new Set([...p.managerSchools, ...p.infoSchools, ...p.operatorSchools])];
+      schoolIds = schoolIds.length ? schoolIds.filter((id) => own.includes(id)) : own;
+      if (!schoolIds.length) return summarizeVisits([], Date.now());
+    }
+    const admin = extAdmin();
+    const opps = await fetchAll<any>((a, b) => {
+      let q = admin
+        .from("opportunities")
+        .select("id, visit_at, submission_id, schools(name), submissions!inner(list_type)")
+        .eq("submissions.list_type", "leads");
+      if (schoolIds.length) q = q.in("school_id", schoolIds);
+      return q.order("id").range(a, b);
+    });
+    const subIds = opps.map((o) => o.submission_id as string).filter(Boolean);
+    const oppIds = opps.map((o) => o.id as string);
+    const checks = new Map<string, string>();
+    for (let i = 0; i < subIds.length; i += 150) {
+      const { data: rows } = await admin
+        .from("audit_log").select("submission_id, created_at")
+        .eq("action", "check_in").in("submission_id", subIds.slice(i, i + 150));
+      for (const r of (rows ?? []) as { submission_id: string; created_at: string }[]) checks.set(r.submission_id, r.created_at);
+    }
+    const missed: { opportunity_id: string; created_at: string }[] = [];
+    for (let i = 0; i < oppIds.length; i += 150) {
+      const { data: rows } = await admin
+        .from("crm_notes").select("opportunity_id, created_at")
+        .like("body", "Faltou à visita agendada%").in("opportunity_id", oppIds.slice(i, i + 150));
+      missed.push(...((rows ?? []) as typeof missed));
+    }
+    const schoolOf = new Map(opps.map((o) => [o.id as string, (o.schools?.name as string) ?? "Sem escola"]));
+    const recs = [] as { school: string; at: string; done: boolean; missed: boolean }[];
+    for (const o of opps) {
+      const done = checks.get(o.submission_id);
+      const at = (o.visit_at as string | null) ?? done;
+      if (at) recs.push({ school: schoolOf.get(o.id)!, at, done: Boolean(done), missed: false });
+    }
+    for (const m of missed) recs.push({ school: schoolOf.get(m.opportunity_id) ?? "Sem escola", at: m.created_at, done: false, missed: true });
+    return summarizeVisits(recs, Date.now());
+  });

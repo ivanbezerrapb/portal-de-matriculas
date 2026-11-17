@@ -19,7 +19,7 @@ import { useState } from "react";
 import { getDashboardStats, getMyPermissions } from "@/lib/ext/cadastros.functions";
 import { listSchools } from "@/lib/ext/escolas.functions";
 import { compareSchoolNames } from "@/lib/school-order";
-import { getDashboardBacklog } from "@/lib/ext/dashboard-extra.functions";
+import { getDashboardBacklog, getLeadVisitStats } from "@/lib/ext/dashboard-extra.functions";
 import { getLegacyYearStats } from "@/lib/ext/legado.functions";
 import { Button, Card, Spinner } from "@/components/ui";
 import {
@@ -809,6 +809,12 @@ function DashboardPage() {
     refetchInterval: 60_000,
   });
 
+  const { data: visits } = useQuery({
+    queryKey: ["dashboard-lead-visits", selected],
+    queryFn: () => getLeadVisitStats({ data: { schoolIds: selected } }),
+    refetchInterval: 60_000,
+  });
+
   function toggleSchool(id: string) {
     setSelected((prev) => (prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]));
   }
@@ -992,10 +998,77 @@ function DashboardPage() {
               tone="destructive"
               groups={backlog?.overdueTasks}
             />
+            <LeadVisitsBlock data={visits} />
           </div>
         </>
       )}
     </div>
+  );
+}
+
+type VisitG = { school: string; scheduled: number; done: number; due: number; rate: number | null };
+function LeadVisitsBlock({ data }: { data: { groups: VisitG[]; total: VisitG } | undefined }) {
+  const max = Math.max(1, ...(data?.groups ?? []).map((g) => g.scheduled));
+  return (
+    <Card className="p-4">
+      <h2 className="font-display text-sm font-semibold text-foreground">Visitas (funis LEADS)</h2>
+      <p className="text-xs text-muted-foreground">Indicadores exclusivos dos funis de LEADS</p>
+      {!data ? (
+        <div className="mt-4 flex justify-center"><Spinner /></div>
+      ) : (
+        <div className="mt-4 grid gap-6 md:grid-cols-2">
+          <div>
+            <div className="flex items-baseline justify-between">
+              <p className="text-sm font-medium text-primary">Visitas agendadas e realizadas</p>
+              <span className="text-xs text-muted-foreground">
+                <b className="text-foreground">{data.total.scheduled}</b> agendadas · <b className="text-foreground">{data.total.done}</b> realizadas
+              </span>
+            </div>
+            {data.groups.length === 0 ? <p className="mt-3 text-sm text-muted-foreground">Nenhuma visita</p> : (
+              <ul className="mt-3 space-y-3">
+                {data.groups.map((g) => (
+                  <li key={g.school} className="text-xs">
+                    <p className="mb-1 font-medium text-foreground">{g.school}</p>
+                    {[["Agendadas", g.scheduled, "bg-primary/40"], ["Realizadas", g.done, "bg-primary"]].map(([l, n, c]) => (
+                      <div key={l as string} className="mb-1 flex items-center gap-2">
+                        <span className="w-20 shrink-0 text-muted-foreground">{l}</span>
+                        <div className="h-4 flex-1 overflow-hidden rounded bg-muted">
+                          <div className={`h-full rounded ${c}`} style={{ width: `${((n as number) / max) * 100}%` }} />
+                        </div>
+                        <span className="w-8 text-right font-semibold text-foreground">{n}</span>
+                      </div>
+                    ))}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <div>
+            <div className="flex items-baseline justify-between">
+              <p className="text-sm font-medium text-primary">Taxa de comparecimento</p>
+              <span className="rounded-full bg-destructive px-2 py-0.5 text-xs font-semibold text-destructive-foreground">
+                {data.total.rate === null ? "—" : `${data.total.rate}%`}
+              </span>
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">Realizadas ÷ visitas com data já passada</p>
+            <ul className="mt-3 space-y-2">
+              {data.groups.map((g) => (
+                <li key={g.school} className="flex items-center gap-2 text-xs">
+                  <span className="w-28 shrink-0 truncate text-foreground">{g.school}</span>
+                  <div className="h-4 flex-1 overflow-hidden rounded bg-muted">
+                    <div className="h-full rounded bg-primary" style={{ width: `${g.rate ?? 0}%` }} />
+                  </div>
+                  <span className="text-muted-foreground">{g.done}/{g.due}</span>
+                  <span className="w-12 rounded-full bg-destructive px-1.5 py-0.5 text-center font-semibold text-destructive-foreground">
+                    {g.rate === null ? "—" : `${g.rate}%`}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
+    </Card>
   );
 }
 
