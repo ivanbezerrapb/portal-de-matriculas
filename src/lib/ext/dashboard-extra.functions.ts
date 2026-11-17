@@ -125,11 +125,17 @@ export const getLeadVisitStats = createServerFn({ method: "GET" })
     const interested = new Map<string, number>();
     for (const s of schoolOf.values()) interested.set(s, (interested.get(s) ?? 0) + 1);
     const recs = [] as { school: string; at: string; done: boolean; missed: boolean }[];
+    // 1 registro por lead: agendamento e reagendamentos contam uma vez só.
+    const lastMiss = new Map<string, string>();
+    for (const m of missed) {
+      const prev = lastMiss.get(m.opportunity_id);
+      if (!prev || m.created_at > prev) lastMiss.set(m.opportunity_id, m.created_at);
+    }
     for (const o of opps) {
       const done = checks.get(o.submission_id);
-      const at = (o.visit_at as string | null) ?? done;
-      if (at) recs.push({ school: schoolOf.get(o.id)!, at, done: Boolean(done), missed: false });
+      const miss = lastMiss.get(o.id as string);
+      const at = (o.visit_at as string | null) ?? done ?? miss;
+      if (at) recs.push({ school: schoolOf.get(o.id)!, at, done: Boolean(done), missed: !done && !o.visit_at && Boolean(miss) });
     }
-    for (const m of missed) recs.push({ school: schoolOf.get(m.opportunity_id) ?? "Sem escola", at: m.created_at, done: false, missed: true });
     return summarizeVisits(recs, Date.now(), interested);
   });

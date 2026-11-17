@@ -19,7 +19,7 @@ const blank = (school: string): VisitGroup => ({
   rate: null,
 });
 
-// Interessados = total de leads; agendadas = todas as visitas; realizadas = check-in;
+// Interessados = total de leads; agendadas = leads com visita (1 por lead); realizadas = check-in;
 // taxa = realizadas ÷ visitas com data já passada.
 export function summarizeVisits(
   recs: VisitRec[],
