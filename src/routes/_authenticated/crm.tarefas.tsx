@@ -256,7 +256,7 @@ function TarefasPage() {
                   {t.opportunities && (
                     <Link
                       to="/crm/pipeline"
-                      search={{ funil: undefined, card: t.opportunities.id }}
+                      search={{ funil: t.opportunities.funnel_id ?? undefined, card: t.opportunities.id }}
                     >
                       <Button variant="outline" className="text-xs">
                         Abrir
