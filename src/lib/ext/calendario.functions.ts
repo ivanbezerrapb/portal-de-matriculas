@@ -16,6 +16,7 @@ export type CalendarEvent = {
   can_check_in: boolean;
   kind: "visita" | "matricula";
   series?: string[];
+  scheduled_by?: string | null;
 };
 
 function norm(v: string) {
@@ -126,6 +127,20 @@ export const listCalendarEvents = createServerFn({ method: "GET" })
       }
     }
 
+    // Quem agendou: nota mais recente "... agendada para ... — por X." de cada cartão.
+    const scheduledBy = new Map<string, string>();
+    const oppIds = rows.map((o) => o.id);
+    for (let i = 0; i < oppIds.length; i += 150) {
+      const { data: notes } = await admin
+        .from("crm_notes")
+        .select("opportunity_id, author_name, created_at")
+        .like("body", "% agendada para %")
+        .in("opportunity_id", oppIds.slice(i, i + 150))
+        .order("created_at", { ascending: true });
+      for (const n of (notes ?? []) as { opportunity_id: string; author_name: string | null }[])
+        if (n.author_name) scheduledBy.set(n.opportunity_id, n.author_name);
+    }
+
     const now = Date.now();
     const events: CalendarEvent[] = rows.map((o) => {
       const isVisit = o.submissions.list_type === "leads";
@@ -142,6 +157,7 @@ export const listCalendarEvents = createServerFn({ method: "GET" })
         id: o.id,
         kind: isVisit ? "visita" : "matricula",
         series: seriesBySub.get(o.submission_id) ?? [],
+        scheduled_by: scheduledBy.get(o.id) ?? null,
         at: o.visit_at,
         title: name && name !== o.submissions.public_id ? `${o.submissions.public_id} · ${name}` : o.submissions.public_id,
         school_id: o.school_id,

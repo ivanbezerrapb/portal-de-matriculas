@@ -280,6 +280,7 @@ function CalendarPage() {
             <dl className="mt-3 space-y-1 text-sm">
               <div><dt className="inline text-muted-foreground">Quando: </dt><dd className="inline">{format(new Date(selected.at), "dd/MM/yyyy 'às' HH:mm")}</dd></div>
               <div><dt className="inline text-muted-foreground">Unidade: </dt><dd className="inline">{selected.school_name}</dd></div>
+              <div><dt className="inline text-muted-foreground">Agendado por: </dt><dd className="inline">{selected.scheduled_by ?? "—"}</dd></div>
               <div><dt className="inline text-muted-foreground">Série: </dt><dd className="inline">{(selected.series ?? []).length ? (selected.series ?? []).join(", ") : "—"}</dd></div>
               {selected.checked_in_at && (
                 <div className="font-medium text-emerald-700">
