@@ -25,6 +25,15 @@ export const getDashboardBacklog = createServerFn({ method: "GET" })
   .inputValidator((d) => z.object({ schoolIds: z.array(z.string().uuid()).optional() }).parse(d ?? {}))
   .handler(async ({ data, context }) => {
     const db = context.supabase;
+    {
+      const { getPerms } = await import("./server");
+      const p = await getPerms(db, context.userId);
+      if (!p.isAdmin && !p.isDirecao) {
+        const own = [...new Set([...p.managerSchools, ...p.infoSchools, ...p.operatorSchools])];
+        const req = data.schoolIds?.length ? data.schoolIds.filter((id) => own.includes(id)) : own;
+        data = { ...data, schoolIds: req.length ? req : ["00000000-0000-0000-0000-000000000000"] };
+      }
+    }
     const opps = await fetchAll<any>((a, b) => {
       let q = db.from("opportunities")
         .select("id, funnel_id, stage_id, owner_id, schools(name), funnels(name), submissions(list_type)")

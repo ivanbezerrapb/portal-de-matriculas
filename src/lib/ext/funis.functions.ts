@@ -28,6 +28,21 @@ export const listFunnels = createServerFn({ method: "GET" })
     ]);
     if (error) throw new Error(error.message);
     if (schoolsError) throw new Error(schoolsError.message);
+    {
+      // Gerente (sem ser Admin/Direção) vê só os funis da própria unidade.
+      const { getPerms } = await import("./server");
+      const p = await getPerms(context.supabase, context.userId);
+      if (!p.isAdmin && !p.isDirecao && p.managerSchools.length > 0 && funnels) {
+        const keep = funnels.filter(
+          (f: Funnel) =>
+            p.managerSchools.includes(f.school_id) ||
+            p.infoSchools.includes(f.school_id) ||
+            p.operatorSchools.includes(f.school_id) ||
+            p.funnelIds.includes(f.id),
+        );
+        funnels.splice(0, funnels.length, ...keep);
+      }
+    }
     const schoolName = new Map(
       (schools ?? []).map((s: { id: string; name: string }) => [s.id, s.name]),
     );

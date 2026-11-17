@@ -215,7 +215,7 @@ function AuthenticatedLayout() {
           } as NavGroup,
         ]
       : []),
-    ...(isAdmin || isDirecao || isInfo
+    ...(isAdmin || isDirecao || isInfo || isManager
       ? [
           {
             key: "crm",

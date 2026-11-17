@@ -201,9 +201,21 @@ export const getLegacyYearStats = createServerFn({ method: "GET" })
     if (error) throw new Error(error.message);
     if (!datasets || datasets.length === 0) return [] as LegacyYearStats[];
 
-    const filter = (data.schoolNames ?? [])
+    let filter = (data.schoolNames ?? [])
       .map((n) => n.trim().toLowerCase())
       .filter((n) => n.length > 0);
+    {
+      // Quem não é Admin/Direção só enxerga as próprias unidades.
+      const { getPerms } = await import("./server");
+      const p = await getPerms(context.supabase, context.userId);
+      if (!p.isAdmin && !p.isDirecao) {
+        const own = [...new Set([...p.managerSchools, ...p.infoSchools, ...p.operatorSchools])];
+        const { data: sc } = await context.supabase.from("schools").select("id, name").in("id", own.length ? own : ["00000000-0000-0000-0000-000000000000"]);
+        const mine = ((sc ?? []) as { name: string }[]).map((s) => s.name.trim().toLowerCase());
+        filter = filter.length ? filter.filter((n) => mine.includes(n)) : mine;
+        if (filter.length === 0) filter = ["__nenhuma__"];
+      }
+    }
 
     const byYear = new Map<number, LegacyYearStats>();
     for (const year of data.years) {
