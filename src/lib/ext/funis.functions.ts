@@ -307,3 +307,27 @@ export const listFunnelOwners = createServerFn({ method: "GET" })
       name: names.get(r.user_id) || "Sem nome",
     }));
   });
+
+// Central de Informações de cada unidade — opções de "Responsável" no card.
+export const listSchoolInfoUsers = createServerFn({ method: "GET" })
+  .middleware([requireAuth])
+  .handler(async ({ context }) => {
+    const { data: visible } = await context.supabase.from("funnels").select("school_id");
+    const schoolIds = [...new Set(((visible ?? []) as { school_id: string }[]).map((f) => f.school_id))];
+    if (!schoolIds.length) return [] as { school_id: string; user_id: string; name: string }[];
+    const { extAdmin } = await import("./server");
+    const admin = extAdmin();
+    const { data: roles } = await admin
+      .from("user_roles")
+      .select("user_id, school_id")
+      .eq("role", "info_center")
+      .in("school_id", schoolIds);
+    const rows = (roles ?? []) as { user_id: string; school_id: string }[];
+    if (!rows.length) return [] as { school_id: string; user_id: string; name: string }[];
+    const { data: profiles } = await admin
+      .from("profiles")
+      .select("id, full_name")
+      .in("id", [...new Set(rows.map((r) => r.user_id))]);
+    const names = new Map(((profiles ?? []) as { id: string; full_name: string | null }[]).map((p) => [p.id, p.full_name ?? ""]));
+    return rows.map((r) => ({ school_id: r.school_id, user_id: r.user_id, name: names.get(r.user_id) || "Sem nome" }));
+  });

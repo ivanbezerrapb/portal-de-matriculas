@@ -58,7 +58,15 @@ async function validateOwner(
     .eq("user_id", ownerId)
     .maybeSingle();
   if (error) throw new Error(error.message);
-  if (!data) throw new Error("Este responsável não está vinculado ao funil.");
+  if (!data) {
+    // Também vale qualquer Central de Informações da mesma unidade do funil.
+    const admin = extAdmin();
+    const { data: f } = await admin.from("funnels").select("school_id").eq("id", funnelId).maybeSingle();
+    const { data: r } = f
+      ? await admin.from("user_roles").select("user_id").eq("user_id", ownerId).eq("role", "info_center").eq("school_id", (f as { school_id: string }).school_id).maybeSingle()
+      : { data: null };
+    if (!r) throw new Error("Este responsável não é da Central de Informações desta unidade.");
+  }
   return ownerId;
 }
 

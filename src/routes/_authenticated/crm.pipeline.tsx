@@ -5,7 +5,7 @@ import { asksEnrollment, canTransferBySchool } from "@/lib/ext/close-access";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { AlertTriangle, MessageCircle, Plus, Trash2 } from "lucide-react";
-import { listFunnelOwners, listFunnels } from "@/lib/ext/funis.functions";
+import { listFunnelOwners, listFunnels, listSchoolInfoUsers } from "@/lib/ext/funis.functions";
 import {
   closeOpportunity,
   createOpportunity,
@@ -386,6 +386,8 @@ function PipelinePage() {
   // Responsáveis (Central de Informações) vinculados a cada funil.
   const ownersQuery = useQuery({ queryKey: ["funnel-owners"], queryFn: () => listFunnelOwners() });
   const owners = ownersQuery.data ?? [];
+  const schoolInfoQuery = useQuery({ queryKey: ["school-info-users"], queryFn: () => listSchoolInfoUsers() });
+  const schoolInfo = schoolInfoQuery.data ?? [];
   const canFilterOwner =
     (perms?.isAdmin || perms?.isDirecao || (perms?.managerSchools.length ?? 0) > 0) ?? false;
   const [ownerFilter, setOwnerFilter] = useState("all");
@@ -942,11 +944,18 @@ function PipelinePage() {
                   }
                 >
                   <option value="">Sem responsável</option>
-                  {owners
-                    .filter((owner) => owner.funnel_id === card.funnel_id)
-                    .map((owner) => (
-                      <option key={owner.user_id} value={owner.user_id}>
-                        {owner.name}
+                  {Array.from(
+                    new Map(
+                      [
+                        ...owners.filter((owner) => owner.funnel_id === card.funnel_id),
+                        ...schoolInfo.filter((u) => u.school_id === card.school_id),
+                      ].map((u) => [u.user_id, u.name] as const),
+                    ).entries(),
+                  )
+                    .sort((a, b) => a[1].localeCompare(b[1], "pt"))
+                    .map(([id, name]) => (
+                      <option key={id} value={id}>
+                        {name}
                       </option>
                     ))}
                 </Select>
