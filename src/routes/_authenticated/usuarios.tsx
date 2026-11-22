@@ -15,7 +15,6 @@ import {
   resetUserPassword,
   updateUser,
 } from "@/lib/ext/usuarios.functions";
-import { getMaxbotUserLinks, saveMaxbotUserLink } from "@/lib/ext/maxbot.functions";
 import { listSchools } from "@/lib/ext/escolas.functions";
 import { listFunnels } from "@/lib/ext/funis.functions";
 import { ROLE_LABELS } from "@/lib/ext/model";
@@ -54,11 +53,6 @@ function UsersPage() {
     queryFn: () => listFunnels(),
   });
   const funnels = funnelsData?.funnels ?? [];
-  const { data: maxbot } = useQuery({
-    queryKey: ["maxbot-user-links"],
-    queryFn: () => getMaxbotUserLinks(),
-    staleTime: 60_000,
-  });
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -441,19 +435,6 @@ function UsersPage() {
                       Salvar
                     </Button>
                   </div>
-                  {maxbot && <MaxbotLinkEditor userId={u.id} data={maxbot} />}
-                </div>
-              )}
-
-              {maxbot && (["conecta", "interactivo"] as const).some((a) => maxbot[a].links[u.id]) && (
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {(["conecta", "interactivo"] as const).map((a) =>
-                    maxbot[a].links[u.id] ? (
-                      <Badge key={a} color="green">
-                        Maxbot {a === "conecta" ? "Conecta" : "Interactivo"} · {maxbot[a].links[u.id]!.name}
-                      </Badge>
-                    ) : null,
-                  )}
                 </div>
               )}
 
@@ -630,64 +611,6 @@ function UsersPage() {
           ))}
         </div>
       )}
-    </div>
-  );
-}
-
-type MaxbotLinks = Awaited<ReturnType<typeof getMaxbotUserLinks>>;
-function MaxbotLinkEditor({ userId, data }: { userId: string; data: MaxbotLinks }) {
-  const qc = useQueryClient();
-  const [sel, setSel] = useState({
-    conecta: data.conecta.links[userId]?.id ?? "",
-    interactivo: data.interactivo.links[userId]?.id ?? "",
-  });
-  const mut = useMutation({
-    mutationFn: () => {
-      const pick = (a: "conecta" | "interactivo") => {
-        if (!data[a].token_set) return undefined;
-        const at = data[a].attendants.find((x) => x.id === sel[a]);
-        return sel[a] && at ? { id: at.id, name: at.name } : null;
-      };
-      return saveMaxbotUserLink({ data: { userId, conecta: pick("conecta"), interactivo: pick("interactivo") } });
-    },
-    onSuccess: () => {
-      toast.success("Vínculo com o Maxbot salvo.");
-      qc.invalidateQueries({ queryKey: ["maxbot-user-links"] });
-    },
-    onError: (e) => toast.error(e.message),
-  });
-  const ownerOf = (a: "conecta" | "interactivo", attId: string) =>
-    Object.entries(data[a].links).find(([uid, l]) => l.id === attId && uid !== userId);
-  return (
-    <div className="sm:col-span-3 rounded-md border border-border p-3">
-      <p className="mb-2 text-sm font-medium text-foreground">Atendente no Maxbot</p>
-      <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
-        {(["conecta", "interactivo"] as const).map((a) => (
-          <div key={a}>
-            <Label>{a === "conecta" ? "Maxbot Conecta" : "Maxbot Interactivo"}</Label>
-            {!data[a].token_set ? (
-              <p className="text-xs text-muted-foreground">Conta sem token configurado.</p>
-            ) : data[a].error ? (
-              <p className="text-xs text-destructive">{data[a].error}</p>
-            ) : (
-              <Select value={sel[a]} onChange={(e) => setSel((p) => ({ ...p, [a]: e.target.value }))}>
-                <option value="">Não vinculado</option>
-                {data[a].attendants.map((at) => {
-                  const taken = ownerOf(a, at.id);
-                  return (
-                    <option key={at.id} value={at.id} disabled={Boolean(taken)}>
-                      {at.name} (ID {at.id}){at.active ? "" : " (inativo)"}{taken ? " — já vinculado" : ""}
-                    </option>
-                  );
-                })}
-              </Select>
-            )}
-          </div>
-        ))}
-        <Button disabled={mut.isPending} onClick={() => mut.mutate()}>
-          Salvar vínculo
-        </Button>
-      </div>
     </div>
   );
 }

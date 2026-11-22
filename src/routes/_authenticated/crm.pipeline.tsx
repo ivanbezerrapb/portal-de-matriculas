@@ -27,7 +27,6 @@ import { getMyPermissions, getSubmission, updateSubmission } from "@/lib/ext/cad
 import { isChildrenCountField, type FormField } from "@/lib/ext/model";
 import { FieldRenderer } from "@/components/FieldRenderer";
 import { setOpportunityVisit } from "@/lib/ext/pipeline.functions";
-import { getCardMaxbotStatus, listCardMaxbotTemplates, sendCardMaxbotTemplate, transferCardMaxbotProtocol } from "@/lib/ext/maxbot.functions";
 import { Button, Card, EmptyState, Input, Label, Select, Spinner, Textarea } from "@/components/ui";
 
 // Monta o link do WhatsApp: DDI 55 + DDD e número do cadastro.
@@ -37,144 +36,6 @@ function whatsappHref(phone: string | null | undefined): string | null {
   if (digits.startsWith("0")) digits = digits.replace(/^0+/, "");
   if (digits.length < 10 || digits.length > 11) return null;
   return `https://wa.me/55${digits}`;
-}
-
-// Situação do contato no Maxbot (consulta e, se faltar, cadastra ao abrir o card).
-function useMaxbotStatus(opportunityId: string) {
-  return useQuery({
-    queryKey: ["maxbot-card", opportunityId],
-    queryFn: () => getCardMaxbotStatus({ data: { opportunity_id: opportunityId } }),
-    staleTime: 60_000,
-    retry: false,
-  });
-}
-
-function MaxbotBadge({ opportunityId }: { opportunityId: string }) {
-  const { data, isLoading, isError, error } = useMaxbotStatus(opportunityId);
-  if (isError)
-    return <span title={error instanceof Error ? error.message : undefined} className="inline-flex items-center rounded-full bg-destructive px-2 py-0.5 text-[11px] font-semibold text-destructive-foreground">Erro no Maxbot</span>;
-  if (isLoading) return <span className="text-[11px] text-muted-foreground">Maxbot…</span>;
-  if (data?.status === "linked")
-    return (
-      <span title={`Cadastrado no ${data.account_label ?? "Maxbot"} (ID ${data.contact_id})`} className="inline-flex items-center rounded-full bg-success px-2 py-0.5 text-[11px] font-semibold text-success-foreground">
-        Maxbot
-      </span>
-    );
-  const label = data?.status === "not_configured" ? "Maxbot não configurado" : data?.status === "no_phone" ? "Telefone inválido p/ Maxbot" : data?.status === "error" ? "Erro no Maxbot" : "Sem Maxbot";
-  return <span title={data?.error ?? undefined} className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">{label}</span>;
-}
-
-function MaxbotSend({ opportunityId }: { opportunityId: string }) {
-  const qc = useQueryClient();
-  const { data: status, refetch, isFetching } = useMaxbotStatus(opportunityId);
-  const [open, setOpen] = useState(false);
-  const [tpl, setTpl] = useState("");
-  const [asUser, setAsUser] = useState("");
-  const [busy, setBusy] = useState<{ attendant_name: string | null; prot_id: string | null } | null>(null);
-  const tq = useQuery({
-    queryKey: ["maxbot-templates", opportunityId],
-    queryFn: () => listCardMaxbotTemplates({ data: { opportunity_id: opportunityId } }),
-    enabled: open,
-    retry: false,
-  });
-  useEffect(() => { if (open && !tpl && tq.data?.default_template_id && tq.data.templates.some((t) => t.id === tq.data!.default_template_id)) setTpl(tq.data.default_template_id); }, [open, tq.data, tpl]);
-  const chosen = tq.data?.templates.find((t) => t.id === tpl);
-  const isAdm = !!tq.data?.is_admin;
-  const selfId = tq.data?.attendants.find((a) => a.attendant_name === tq.data?.attendant?.name && tq.data?.attendant)?.user_id ?? "";
-  const sender = isAdm ? (asUser || selfId) : "";
-  const canSend = isAdm ? !!sender : !!tq.data?.attendant;
-  const sendM = useMutation({
-    mutationFn: () => sendCardMaxbotTemplate({ data: { opportunity_id: opportunityId, template_id: tpl, template_title: chosen?.title ?? tpl, ...(sender ? { as_user_id: sender } : {}) } }),
-    onSuccess: (r) => {
-      if (r.busy) { setOpen(false); setBusy({ attendant_name: r.attendant_name, prot_id: r.prot_id }); return; }
-      toast.success(`Mensagem enviada${r.protocol ? ` (protocolo ${r.protocol})` : ""}.`);
-      setOpen(false); setTpl(""); setAsUser("");
-      qc.invalidateQueries({ queryKey: ["crm-notes", opportunityId] });
-    },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Falha ao enviar."),
-  });
-  const trM = useMutation({
-    mutationFn: () => transferCardMaxbotProtocol({ data: { opportunity_id: opportunityId, prot_id: busy?.prot_id ?? "", ...(sender ? { as_user_id: sender } : {}) } }),
-    onSuccess: () => {
-      toast.success("Conversa transferida. O contato já aparece no seu painel do Maxbot.");
-      setBusy(null); setTpl(""); setAsUser("");
-      qc.invalidateQueries({ queryKey: ["crm-notes", opportunityId] });
-    },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Falha ao transferir."),
-  });
-  const linked = status?.status === "linked";
-  return (
-    <div className="mt-3 flex flex-wrap items-center gap-2">
-      <Button onClick={() => setOpen(true)} disabled={!linked}>
-        <MessageCircle className="mr-1 h-4 w-4" /> Enviar mensagem
-      </Button>
-      {(status?.status === "missing" || status?.status === "error") && (
-        <Button variant="secondary" disabled={isFetching} onClick={() => refetch()}>Cadastrar no Maxbot</Button>
-      )}
-      {open && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-foreground/40 p-4" onClick={() => setOpen(false)}>
-          <div className="w-full max-w-lg rounded-xl bg-card p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-display text-lg font-semibold text-foreground">Confirmar envio pelo Maxbot</h3>
-            {tq.isLoading ? <div className="mt-4"><Spinner /></div> : tq.error ? (
-              <p className="mt-3 text-sm text-destructive">{tq.error instanceof Error ? tq.error.message : "Falha ao carregar templates."}</p>
-            ) : tq.data && (
-              <div className="mt-3 space-y-3 text-sm">
-                <p className="text-muted-foreground">Conta: <span className="text-foreground">{tq.data.account_label}</span></p>
-                {isAdm ? (
-                  <div>
-                    <Label htmlFor="mb-as">Enviar como</Label>
-                    <Select id="mb-as" value={sender} onChange={(e) => setAsUser(e.target.value)}>
-                      <option value="">Selecione…</option>
-                      {tq.data.attendants.map((a) => <option key={a.user_id} value={a.user_id}>{a.user_name} — atendente {a.attendant_name}</option>)}
-                    </Select>
-                    {tq.data.attendants.length === 0 && <p className="mt-1 text-xs text-destructive">Nenhum usuário vinculado a atendente desta conta.</p>}
-                  </div>
-                ) : tq.data.attendant ? (
-                  <p className="text-muted-foreground">Enviando como: <span className="text-foreground">{tq.data.attendant.name}</span></p>
-                ) : (
-                  <p className="text-destructive">Seu usuário não está vinculado a um atendente deste Maxbot. Peça ao administrador em Configurações › Usuários.</p>
-                )}
-                {chosen ? (
-                  <p className="text-foreground">Tem certeza que deseja enviar o template <span className="font-semibold">"{chosen.title}"</span> para este contato?</p>
-                ) : (
-                  <p className="text-destructive">{tq.data.default_template_id ? "O template padrão não pode ser disparado. Escolha um template de Follow-up ou Aviso em Configurações › MAXBOT." : "Nenhum template padrão definido. Peça ao administrador em Configurações › MAXBOT."}</p>
-                )}
-                {chosen && <div className="whitespace-pre-wrap rounded-lg bg-muted p-3 text-foreground">{chosen.msg}</div>}
-              </div>
-            )}
-            <div className="mt-5 flex justify-end gap-2">
-              <Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button>
-              <Button disabled={!chosen || !canSend || sendM.isPending} onClick={() => sendM.mutate()}>
-                {sendM.isPending ? "Enviando…" : "Sim, enviar"}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-      {busy && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-foreground/40 p-4" onClick={() => setBusy(null)}>
-          <div className="w-full max-w-lg rounded-xl bg-card p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-display text-lg font-semibold text-foreground">Contato já em atendimento</h3>
-            <p className="mt-3 text-sm text-foreground">
-              Não foi possível enviar esta mensagem agora porque o contato já está em conversa aberta no Maxbot com o(a) atendente{" "}
-              <span className="font-semibold">{busy.attendant_name || "não identificado"}</span>.
-            </p>
-            {busy.prot_id ? (
-              <p className="mt-3 text-sm text-foreground">Deseja transferir esta conversa para o seu usuário no Maxbot?</p>
-            ) : (
-              <p className="mt-3 text-sm text-muted-foreground">Não foi possível identificar a conversa aberta para transferir. Tente novamente quando ela for encerrada.</p>
-            )}
-            <div className="mt-5 flex justify-end gap-2">
-              <Button variant="ghost" onClick={() => setBusy(null)}>{busy.prot_id ? "Cancelar" : "Fechar"}</Button>
-              {busy.prot_id && (
-                <Button disabled={trM.isPending} onClick={() => trM.mutate()}>{trM.isPending ? "Transferindo…" : "Transferir para mim"}</Button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
 }
 
 // Edição dos dados do cadastro direto no cartão (mesmos campos do formulário).
@@ -247,19 +108,16 @@ function OpportunityCustomer({
   opportunityId,
   submissionId,
   canEdit,
-  showBadge,
 }: {
   opportunityId: string;
   submissionId?: string | null;
   canEdit?: boolean;
-  showBadge?: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const { data, isLoading, error } = useQuery({
     queryKey: ["opp-customer", opportunityId],
     queryFn: () => getOpportunityCustomer({ data: { opportunity_id: opportunityId } }),
   });
-  const phoneIdx = data?.items.findIndex((it) => it.type === "phone" || /telefone|whats|celular/i.test(it.label)) ?? -1;
   return (
     <div className="mt-6 border-t border-border pt-4">
       <div className="flex items-center justify-between gap-2">
@@ -298,7 +156,6 @@ function OpportunityCustomer({
                         <MessageCircle className="h-4 w-4" />
                       </a>
                     )}
-                    {showBadge && j === 0 && i === phoneIdx && <MaxbotBadge opportunityId={opportunityId} />}
                   </div>
                 ))}
               </dd>
@@ -979,7 +836,6 @@ function PipelinePage() {
                           <MessageCircle className="h-4 w-4" />
                         </a>
                       )}
-                      <MaxbotBadge opportunityId={card.id} />
                     </dd>
                   </div>
                 )}
@@ -1049,7 +905,6 @@ function PipelinePage() {
                   opportunityId={card.id}
                   submissionId={card.submission_id}
                   canEdit={canEditData}
-                  showBadge={!card.phone}
                 />
               )}
 
@@ -1064,7 +919,6 @@ function PipelinePage() {
                 </Link>
               )}
 
-              {(card.phone || card.submission_id) && <MaxbotSend opportunityId={card.id} />}
 
               </div>
               <div>

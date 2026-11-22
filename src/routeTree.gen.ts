@@ -24,7 +24,6 @@ import { Route as AuthenticatedFormulariosRouteImport } from './routes/_authenti
 import { Route as AuthenticatedLeadsRouteImport } from './routes/_authenticated/leads'
 import { Route as AuthenticatedLogsAcessoRouteImport } from './routes/_authenticated/logs-acesso'
 import { Route as AuthenticatedLogsRegistroRouteImport } from './routes/_authenticated/logs-registro'
-import { Route as AuthenticatedMaxbotRouteImport } from './routes/_authenticated/maxbot'
 import { Route as AuthenticatedTemplatesRouteImport } from './routes/_authenticated/templates'
 import { Route as AuthenticatedUsuariosRouteImport } from './routes/_authenticated/usuarios'
 import { Route as FSlugRouteImport } from './routes/f/$slug'
@@ -41,7 +40,6 @@ import { Route as AuthenticatedImprimirTemplateIdRouteImport } from './routes/_a
 import { Route as AuthenticatedRelatoriosAtendimentoRouteImport } from './routes/_authenticated/relatorios.atendimento'
 import { Route as AuthenticatedRelatoriosMatriculadosRouteImport } from './routes/_authenticated/relatorios.matriculados'
 import { Route as ApiPublicConfigRouteImport } from './routes/api/public/config'
-import { Route as ApiPublicMaxbotImportRouteImport } from './routes/api/public/maxbot-import'
 import { Route as ApiPublicV1AgendamentosRouteImport } from './routes/api/public/v1/agendamentos'
 import { Route as ApiPublicV1EscolasRouteImport } from './routes/api/public/v1/escolas'
 import { Route as ApiPublicV1EtapaRouteImport } from './routes/api/public/v1/etapa'
@@ -126,11 +124,6 @@ const AuthenticatedLogsRegistroRoute =
     path: '/logs-registro',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedMaxbotRoute = AuthenticatedMaxbotRouteImport.update({
-  id: '/maxbot',
-  path: '/maxbot',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
 const AuthenticatedTemplatesRoute = AuthenticatedTemplatesRouteImport.update({
   id: '/templates',
   path: '/templates',
@@ -220,11 +213,6 @@ const ApiPublicConfigRoute = ApiPublicConfigRouteImport.update({
   path: '/api/public/config',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicMaxbotImportRoute = ApiPublicMaxbotImportRouteImport.update({
-  id: '/api/public/maxbot-import',
-  path: '/api/public/maxbot-import',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiPublicV1AgendamentosRoute = ApiPublicV1AgendamentosRouteImport.update({
   id: '/api/public/v1/agendamentos',
   path: '/api/public/v1/agendamentos',
@@ -266,7 +254,6 @@ export interface FileRoutesByFullPath {
   '/leads': typeof AuthenticatedLeadsRoute
   '/logs-acesso': typeof AuthenticatedLogsAcessoRoute
   '/logs-registro': typeof AuthenticatedLogsRegistroRoute
-  '/maxbot': typeof AuthenticatedMaxbotRoute
   '/templates': typeof AuthenticatedTemplatesRoute
   '/usuarios': typeof AuthenticatedUsuariosRoute
   '/f/$slug': typeof FSlugRoute
@@ -283,7 +270,6 @@ export interface FileRoutesByFullPath {
   '/relatorios/atendimento': typeof AuthenticatedRelatoriosAtendimentoRoute
   '/relatorios/matriculados': typeof AuthenticatedRelatoriosMatriculadosRoute
   '/api/public/config': typeof ApiPublicConfigRoute
-  '/api/public/maxbot-import': typeof ApiPublicMaxbotImportRoute
   '/api/public/v1/agendamentos': typeof ApiPublicV1AgendamentosRoute
   '/api/public/v1/escolas': typeof ApiPublicV1EscolasRoute
   '/api/public/v1/etapa': typeof ApiPublicV1EtapaRoute
@@ -305,7 +291,6 @@ export interface FileRoutesByTo {
   '/leads': typeof AuthenticatedLeadsRoute
   '/logs-acesso': typeof AuthenticatedLogsAcessoRoute
   '/logs-registro': typeof AuthenticatedLogsRegistroRoute
-  '/maxbot': typeof AuthenticatedMaxbotRoute
   '/templates': typeof AuthenticatedTemplatesRoute
   '/usuarios': typeof AuthenticatedUsuariosRoute
   '/f/$slug': typeof FSlugRoute
@@ -322,7 +307,6 @@ export interface FileRoutesByTo {
   '/relatorios/atendimento': typeof AuthenticatedRelatoriosAtendimentoRoute
   '/relatorios/matriculados': typeof AuthenticatedRelatoriosMatriculadosRoute
   '/api/public/config': typeof ApiPublicConfigRoute
-  '/api/public/maxbot-import': typeof ApiPublicMaxbotImportRoute
   '/api/public/v1/agendamentos': typeof ApiPublicV1AgendamentosRoute
   '/api/public/v1/escolas': typeof ApiPublicV1EscolasRoute
   '/api/public/v1/etapa': typeof ApiPublicV1EtapaRoute
@@ -346,7 +330,6 @@ export interface FileRoutesById {
   '/_authenticated/leads': typeof AuthenticatedLeadsRoute
   '/_authenticated/logs-acesso': typeof AuthenticatedLogsAcessoRoute
   '/_authenticated/logs-registro': typeof AuthenticatedLogsRegistroRoute
-  '/_authenticated/maxbot': typeof AuthenticatedMaxbotRoute
   '/_authenticated/templates': typeof AuthenticatedTemplatesRoute
   '/_authenticated/usuarios': typeof AuthenticatedUsuariosRoute
   '/f/$slug': typeof FSlugRoute
@@ -363,7 +346,6 @@ export interface FileRoutesById {
   '/_authenticated/relatorios/atendimento': typeof AuthenticatedRelatoriosAtendimentoRoute
   '/_authenticated/relatorios/matriculados': typeof AuthenticatedRelatoriosMatriculadosRoute
   '/api/public/config': typeof ApiPublicConfigRoute
-  '/api/public/maxbot-import': typeof ApiPublicMaxbotImportRoute
   '/api/public/v1/agendamentos': typeof ApiPublicV1AgendamentosRoute
   '/api/public/v1/escolas': typeof ApiPublicV1EscolasRoute
   '/api/public/v1/etapa': typeof ApiPublicV1EtapaRoute
@@ -387,7 +369,6 @@ export interface FileRouteTypes {
     | '/leads'
     | '/logs-acesso'
     | '/logs-registro'
-    | '/maxbot'
     | '/templates'
     | '/usuarios'
     | '/f/$slug'
@@ -404,7 +385,6 @@ export interface FileRouteTypes {
     | '/relatorios/atendimento'
     | '/relatorios/matriculados'
     | '/api/public/config'
-    | '/api/public/maxbot-import'
     | '/api/public/v1/agendamentos'
     | '/api/public/v1/escolas'
     | '/api/public/v1/etapa'
@@ -426,7 +406,6 @@ export interface FileRouteTypes {
     | '/leads'
     | '/logs-acesso'
     | '/logs-registro'
-    | '/maxbot'
     | '/templates'
     | '/usuarios'
     | '/f/$slug'
@@ -443,7 +422,6 @@ export interface FileRouteTypes {
     | '/relatorios/atendimento'
     | '/relatorios/matriculados'
     | '/api/public/config'
-    | '/api/public/maxbot-import'
     | '/api/public/v1/agendamentos'
     | '/api/public/v1/escolas'
     | '/api/public/v1/etapa'
@@ -466,7 +444,6 @@ export interface FileRouteTypes {
     | '/_authenticated/leads'
     | '/_authenticated/logs-acesso'
     | '/_authenticated/logs-registro'
-    | '/_authenticated/maxbot'
     | '/_authenticated/templates'
     | '/_authenticated/usuarios'
     | '/f/$slug'
@@ -483,7 +460,6 @@ export interface FileRouteTypes {
     | '/_authenticated/relatorios/atendimento'
     | '/_authenticated/relatorios/matriculados'
     | '/api/public/config'
-    | '/api/public/maxbot-import'
     | '/api/public/v1/agendamentos'
     | '/api/public/v1/escolas'
     | '/api/public/v1/etapa'
@@ -498,7 +474,6 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   FSlugRoute: typeof FSlugRoute
   ApiPublicConfigRoute: typeof ApiPublicConfigRoute
-  ApiPublicMaxbotImportRoute: typeof ApiPublicMaxbotImportRoute
   ApiPublicV1AgendamentosRoute: typeof ApiPublicV1AgendamentosRoute
   ApiPublicV1EscolasRoute: typeof ApiPublicV1EscolasRoute
   ApiPublicV1EtapaRoute: typeof ApiPublicV1EtapaRoute
@@ -613,13 +588,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedLogsRegistroRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/maxbot': {
-      id: '/_authenticated/maxbot'
-      path: '/maxbot'
-      fullPath: '/maxbot'
-      preLoaderRoute: typeof AuthenticatedMaxbotRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/templates': {
       id: '/_authenticated/templates'
       path: '/templates'
@@ -732,13 +700,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicConfigRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/maxbot-import': {
-      id: '/api/public/maxbot-import'
-      path: '/api/public/maxbot-import'
-      fullPath: '/api/public/maxbot-import'
-      preLoaderRoute: typeof ApiPublicMaxbotImportRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/public/v1/agendamentos': {
       id: '/api/public/v1/agendamentos'
       path: '/api/public/v1/agendamentos'
@@ -789,7 +750,6 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedLeadsRoute: typeof AuthenticatedLeadsRoute
   AuthenticatedLogsAcessoRoute: typeof AuthenticatedLogsAcessoRoute
   AuthenticatedLogsRegistroRoute: typeof AuthenticatedLogsRegistroRoute
-  AuthenticatedMaxbotRoute: typeof AuthenticatedMaxbotRoute
   AuthenticatedTemplatesRoute: typeof AuthenticatedTemplatesRoute
   AuthenticatedUsuariosRoute: typeof AuthenticatedUsuariosRoute
   AuthenticatedArquivosConectaRoute: typeof AuthenticatedArquivosConectaRoute
@@ -818,7 +778,6 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedLeadsRoute: AuthenticatedLeadsRoute,
   AuthenticatedLogsAcessoRoute: AuthenticatedLogsAcessoRoute,
   AuthenticatedLogsRegistroRoute: AuthenticatedLogsRegistroRoute,
-  AuthenticatedMaxbotRoute: AuthenticatedMaxbotRoute,
   AuthenticatedTemplatesRoute: AuthenticatedTemplatesRoute,
   AuthenticatedUsuariosRoute: AuthenticatedUsuariosRoute,
   AuthenticatedArquivosConectaRoute: AuthenticatedArquivosConectaRoute,
@@ -848,7 +807,6 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   FSlugRoute: FSlugRoute,
   ApiPublicConfigRoute: ApiPublicConfigRoute,
-  ApiPublicMaxbotImportRoute: ApiPublicMaxbotImportRoute,
   ApiPublicV1AgendamentosRoute: ApiPublicV1AgendamentosRoute,
   ApiPublicV1EscolasRoute: ApiPublicV1EscolasRoute,
   ApiPublicV1EtapaRoute: ApiPublicV1EtapaRoute,
