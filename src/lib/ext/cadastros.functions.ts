@@ -927,20 +927,37 @@ export const getDashboardStats = createServerFn({ method: "GET" })
     const start = `${campaignYear - 1}-08-01T00:00:00`;
     const end = `${campaignYear}-08-01T00:00:00`;
 
-    let query = context.supabase
-      .from("submissions")
-      .select(
-        "id, form_id, school_id, created_at, enrolled, enrollment_count, schools(name), attendant:presenters!submissions_attendant_id_fkey(name), presenter:presenters!submissions_presenter_id_fkey(name), enroller:presenters!submissions_enroller_id_fkey(name)",
-      )
-      .eq("list_type", "visitantes")
-      .gte("created_at", start)
-      .lt("created_at", end)
-      .order("created_at", { ascending: false });
-    if (data.schoolIds && data.schoolIds.length > 0) {
-      query = query.in("school_id", data.schoolIds);
+    const submissions: {
+      id: string;
+      form_id: string;
+      school_id: string;
+      created_at: string;
+      enrolled: boolean | null;
+      enrollment_count: number | null;
+      schools: unknown;
+      attendant: unknown;
+      presenter: unknown;
+      enroller: unknown;
+    }[] = [];
+    for (let from = 0; ; from += 1000) {
+      let query = context.supabase
+        .from("submissions")
+        .select(
+          "id, form_id, school_id, created_at, enrolled, enrollment_count, schools(name), attendant:presenters!submissions_attendant_id_fkey(name), presenter:presenters!submissions_presenter_id_fkey(name), enroller:presenters!submissions_enroller_id_fkey(name)",
+        )
+        .eq("list_type", "visitantes")
+        .gte("created_at", start)
+        .lt("created_at", end)
+        .order("created_at", { ascending: false })
+        .range(from, from + 999);
+      if (data.schoolIds && data.schoolIds.length > 0) {
+        query = query.in("school_id", data.schoolIds);
+      }
+      const { data: page, error } = await query;
+      if (error) throw new Error(error.message);
+      submissions.push(...((page ?? []) as typeof submissions));
+      if (!page || page.length < 1000) break;
     }
-    const { data: submissions, error } = await query;
-    if (error) throw new Error(error.message);
 
     let lossesQuery = context.supabase
       .from("opportunities")
@@ -1211,11 +1228,22 @@ export const getDashboardStats = createServerFn({ method: "GET" })
     const neighborhoods: { school: string; items: NeighborhoodItem[] }[] = [];
     if (rows.length > 0) {
       const submissionIds = rows.map((r) => r.id as string);
-      const { data: addressValues } = await context.supabase
-        .from("submission_values")
-        .select("submission_id, part, value")
-        .in("submission_id", submissionIds)
-        .in("part", ["bairro", "cidade"]);
+      const addressValues: { submission_id: string; part: string; value: string | null }[] = [];
+      for (let i = 0; i < submissionIds.length; i += 150) {
+        const chunk = submissionIds.slice(i, i + 150);
+        for (let from = 0; ; from += 1000) {
+          const { data, error } = await context.supabase
+            .from("submission_values")
+            .select("submission_id, part, value")
+            .in("submission_id", chunk)
+            .in("part", ["bairro", "cidade"])
+            .order("submission_id")
+            .range(from, from + 999);
+          if (error) throw new Error(error.message);
+          addressValues.push(...((data ?? []) as typeof addressValues));
+          if (!data || data.length < 1000) break;
+        }
+      }
 
       const bairroBySub = new Map<string, string>();
       const cidadeBySub = new Map<string, string>();
