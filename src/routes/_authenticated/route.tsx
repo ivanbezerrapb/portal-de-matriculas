@@ -40,7 +40,7 @@ import { ForcePasswordChange } from "@/components/ForcePasswordChange";
 import { usePendingAttendance } from "@/components/PendingAttendanceDialog";
 import { PendingTasksDialog } from "@/components/PendingTasksDialog";
 import { usePendingFunnel } from "@/components/PendingFunnelDialog";
-import { History, KeyRound, MessageCircle } from "lucide-react";
+import { History, KeyRound, MessageCircle, Code2 } from "lucide-react";
 import { Button, Card, Spinner } from "@/components/ui";
 import whiteLogoAsset from "@/assets/grupo-inter-logo-branca.png.asset.json";
 import symbolAsset from "@/assets/grupo-inter-simbolo.png.asset.json";
@@ -283,6 +283,7 @@ function AuthenticatedLayout() {
               { to: "/logs-acesso", label: "Log de Acesso", icon: KeyRound },
               { to: "/logs-registro", label: "Log de Registro", icon: History },
               { to: "/maxbot", label: "MAXBOT", icon: MessageCircle },
+              { to: "/api", label: "API", icon: Code2 },
             ],
           } as NavGroup,
         ]

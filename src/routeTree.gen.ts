@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as SlugRouteImport } from './routes/$slug'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AuthenticatedApiRouteImport } from './routes/_authenticated/api'
 import { Route as AuthenticatedApresentacaoRouteImport } from './routes/_authenticated/apresentacao'
 import { Route as AuthenticatedBancosAnterioresRouteImport } from './routes/_authenticated/bancos-anteriores'
 import { Route as AuthenticatedCadastrosRouteImport } from './routes/_authenticated/cadastros'
@@ -41,6 +42,11 @@ import { Route as AuthenticatedRelatoriosAtendimentoRouteImport } from './routes
 import { Route as AuthenticatedRelatoriosMatriculadosRouteImport } from './routes/_authenticated/relatorios.matriculados'
 import { Route as ApiPublicConfigRouteImport } from './routes/api/public/config'
 import { Route as ApiPublicMaxbotImportRouteImport } from './routes/api/public/maxbot-import'
+import { Route as ApiPublicV1AgendamentosRouteImport } from './routes/api/public/v1/agendamentos'
+import { Route as ApiPublicV1EscolasRouteImport } from './routes/api/public/v1/escolas'
+import { Route as ApiPublicV1EtapaRouteImport } from './routes/api/public/v1/etapa'
+import { Route as ApiPublicV1LeadsRouteImport } from './routes/api/public/v1/leads'
+import { Route as ApiPublicV1NotasRouteImport } from './routes/api/public/v1/notas'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -60,6 +66,11 @@ const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedApiRoute = AuthenticatedApiRouteImport.update({
+  id: '/api',
+  path: '/api',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedApresentacaoRoute =
   AuthenticatedApresentacaoRouteImport.update({
@@ -214,11 +225,37 @@ const ApiPublicMaxbotImportRoute = ApiPublicMaxbotImportRouteImport.update({
   path: '/api/public/maxbot-import',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicV1AgendamentosRoute = ApiPublicV1AgendamentosRouteImport.update({
+  id: '/api/public/v1/agendamentos',
+  path: '/api/public/v1/agendamentos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicV1EscolasRoute = ApiPublicV1EscolasRouteImport.update({
+  id: '/api/public/v1/escolas',
+  path: '/api/public/v1/escolas',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicV1EtapaRoute = ApiPublicV1EtapaRouteImport.update({
+  id: '/api/public/v1/etapa',
+  path: '/api/public/v1/etapa',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicV1LeadsRoute = ApiPublicV1LeadsRouteImport.update({
+  id: '/api/public/v1/leads',
+  path: '/api/public/v1/leads',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicV1NotasRoute = ApiPublicV1NotasRouteImport.update({
+  id: '/api/public/v1/notas',
+  path: '/api/public/v1/notas',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/$slug': typeof SlugRoute
   '/auth': typeof AuthRoute
+  '/api': typeof AuthenticatedApiRoute
   '/apresentacao': typeof AuthenticatedApresentacaoRoute
   '/bancos-anteriores': typeof AuthenticatedBancosAnterioresRoute
   '/cadastros': typeof AuthenticatedCadastrosRoute
@@ -247,11 +284,17 @@ export interface FileRoutesByFullPath {
   '/relatorios/matriculados': typeof AuthenticatedRelatoriosMatriculadosRoute
   '/api/public/config': typeof ApiPublicConfigRoute
   '/api/public/maxbot-import': typeof ApiPublicMaxbotImportRoute
+  '/api/public/v1/agendamentos': typeof ApiPublicV1AgendamentosRoute
+  '/api/public/v1/escolas': typeof ApiPublicV1EscolasRoute
+  '/api/public/v1/etapa': typeof ApiPublicV1EtapaRoute
+  '/api/public/v1/leads': typeof ApiPublicV1LeadsRoute
+  '/api/public/v1/notas': typeof ApiPublicV1NotasRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/$slug': typeof SlugRoute
   '/auth': typeof AuthRoute
+  '/api': typeof AuthenticatedApiRoute
   '/apresentacao': typeof AuthenticatedApresentacaoRoute
   '/bancos-anteriores': typeof AuthenticatedBancosAnterioresRoute
   '/cadastros': typeof AuthenticatedCadastrosRoute
@@ -280,6 +323,11 @@ export interface FileRoutesByTo {
   '/relatorios/matriculados': typeof AuthenticatedRelatoriosMatriculadosRoute
   '/api/public/config': typeof ApiPublicConfigRoute
   '/api/public/maxbot-import': typeof ApiPublicMaxbotImportRoute
+  '/api/public/v1/agendamentos': typeof ApiPublicV1AgendamentosRoute
+  '/api/public/v1/escolas': typeof ApiPublicV1EscolasRoute
+  '/api/public/v1/etapa': typeof ApiPublicV1EtapaRoute
+  '/api/public/v1/leads': typeof ApiPublicV1LeadsRoute
+  '/api/public/v1/notas': typeof ApiPublicV1NotasRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -287,6 +335,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/$slug': typeof SlugRoute
   '/auth': typeof AuthRoute
+  '/_authenticated/api': typeof AuthenticatedApiRoute
   '/_authenticated/apresentacao': typeof AuthenticatedApresentacaoRoute
   '/_authenticated/bancos-anteriores': typeof AuthenticatedBancosAnterioresRoute
   '/_authenticated/cadastros': typeof AuthenticatedCadastrosRoute
@@ -315,6 +364,11 @@ export interface FileRoutesById {
   '/_authenticated/relatorios/matriculados': typeof AuthenticatedRelatoriosMatriculadosRoute
   '/api/public/config': typeof ApiPublicConfigRoute
   '/api/public/maxbot-import': typeof ApiPublicMaxbotImportRoute
+  '/api/public/v1/agendamentos': typeof ApiPublicV1AgendamentosRoute
+  '/api/public/v1/escolas': typeof ApiPublicV1EscolasRoute
+  '/api/public/v1/etapa': typeof ApiPublicV1EtapaRoute
+  '/api/public/v1/leads': typeof ApiPublicV1LeadsRoute
+  '/api/public/v1/notas': typeof ApiPublicV1NotasRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -322,6 +376,7 @@ export interface FileRouteTypes {
     | '/'
     | '/$slug'
     | '/auth'
+    | '/api'
     | '/apresentacao'
     | '/bancos-anteriores'
     | '/cadastros'
@@ -350,11 +405,17 @@ export interface FileRouteTypes {
     | '/relatorios/matriculados'
     | '/api/public/config'
     | '/api/public/maxbot-import'
+    | '/api/public/v1/agendamentos'
+    | '/api/public/v1/escolas'
+    | '/api/public/v1/etapa'
+    | '/api/public/v1/leads'
+    | '/api/public/v1/notas'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/$slug'
     | '/auth'
+    | '/api'
     | '/apresentacao'
     | '/bancos-anteriores'
     | '/cadastros'
@@ -383,12 +444,18 @@ export interface FileRouteTypes {
     | '/relatorios/matriculados'
     | '/api/public/config'
     | '/api/public/maxbot-import'
+    | '/api/public/v1/agendamentos'
+    | '/api/public/v1/escolas'
+    | '/api/public/v1/etapa'
+    | '/api/public/v1/leads'
+    | '/api/public/v1/notas'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/$slug'
     | '/auth'
+    | '/_authenticated/api'
     | '/_authenticated/apresentacao'
     | '/_authenticated/bancos-anteriores'
     | '/_authenticated/cadastros'
@@ -417,6 +484,11 @@ export interface FileRouteTypes {
     | '/_authenticated/relatorios/matriculados'
     | '/api/public/config'
     | '/api/public/maxbot-import'
+    | '/api/public/v1/agendamentos'
+    | '/api/public/v1/escolas'
+    | '/api/public/v1/etapa'
+    | '/api/public/v1/leads'
+    | '/api/public/v1/notas'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -427,6 +499,11 @@ export interface RootRouteChildren {
   FSlugRoute: typeof FSlugRoute
   ApiPublicConfigRoute: typeof ApiPublicConfigRoute
   ApiPublicMaxbotImportRoute: typeof ApiPublicMaxbotImportRoute
+  ApiPublicV1AgendamentosRoute: typeof ApiPublicV1AgendamentosRoute
+  ApiPublicV1EscolasRoute: typeof ApiPublicV1EscolasRoute
+  ApiPublicV1EtapaRoute: typeof ApiPublicV1EtapaRoute
+  ApiPublicV1LeadsRoute: typeof ApiPublicV1LeadsRoute
+  ApiPublicV1NotasRoute: typeof ApiPublicV1NotasRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -458,6 +535,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/api': {
+      id: '/_authenticated/api'
+      path: '/api'
+      fullPath: '/api'
+      preLoaderRoute: typeof AuthenticatedApiRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/apresentacao': {
       id: '/_authenticated/apresentacao'
@@ -655,10 +739,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicMaxbotImportRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/v1/agendamentos': {
+      id: '/api/public/v1/agendamentos'
+      path: '/api/public/v1/agendamentos'
+      fullPath: '/api/public/v1/agendamentos'
+      preLoaderRoute: typeof ApiPublicV1AgendamentosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/v1/escolas': {
+      id: '/api/public/v1/escolas'
+      path: '/api/public/v1/escolas'
+      fullPath: '/api/public/v1/escolas'
+      preLoaderRoute: typeof ApiPublicV1EscolasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/v1/etapa': {
+      id: '/api/public/v1/etapa'
+      path: '/api/public/v1/etapa'
+      fullPath: '/api/public/v1/etapa'
+      preLoaderRoute: typeof ApiPublicV1EtapaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/v1/leads': {
+      id: '/api/public/v1/leads'
+      path: '/api/public/v1/leads'
+      fullPath: '/api/public/v1/leads'
+      preLoaderRoute: typeof ApiPublicV1LeadsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/v1/notas': {
+      id: '/api/public/v1/notas'
+      path: '/api/public/v1/notas'
+      fullPath: '/api/public/v1/notas'
+      preLoaderRoute: typeof ApiPublicV1NotasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedApiRoute: typeof AuthenticatedApiRoute
   AuthenticatedApresentacaoRoute: typeof AuthenticatedApresentacaoRoute
   AuthenticatedBancosAnterioresRoute: typeof AuthenticatedBancosAnterioresRoute
   AuthenticatedCadastrosRoute: typeof AuthenticatedCadastrosRoute
@@ -687,6 +807,7 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedApiRoute: AuthenticatedApiRoute,
   AuthenticatedApresentacaoRoute: AuthenticatedApresentacaoRoute,
   AuthenticatedBancosAnterioresRoute: AuthenticatedBancosAnterioresRoute,
   AuthenticatedCadastrosRoute: AuthenticatedCadastrosRoute,
@@ -728,6 +849,11 @@ const rootRouteChildren: RootRouteChildren = {
   FSlugRoute: FSlugRoute,
   ApiPublicConfigRoute: ApiPublicConfigRoute,
   ApiPublicMaxbotImportRoute: ApiPublicMaxbotImportRoute,
+  ApiPublicV1AgendamentosRoute: ApiPublicV1AgendamentosRoute,
+  ApiPublicV1EscolasRoute: ApiPublicV1EscolasRoute,
+  ApiPublicV1EtapaRoute: ApiPublicV1EtapaRoute,
+  ApiPublicV1LeadsRoute: ApiPublicV1LeadsRoute,
+  ApiPublicV1NotasRoute: ApiPublicV1NotasRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
