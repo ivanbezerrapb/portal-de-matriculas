@@ -1118,6 +1118,8 @@ export const getDashboardStats = createServerFn({ method: "GET" })
 
     const seriesCounts = new Map<string, number>();
     const sourceCounts = new Map<string, number>();
+    const originCounts = new Map<string, number>();
+    const originSeen = new Set<string>();
     const lossReasonCounts = new Map<string, number>();
     for (const loss of losses ?? []) {
       const reason = loss.crm_close_reasons as { label?: string } | null;
@@ -1149,11 +1151,15 @@ export const getDashboardStats = createServerFn({ method: "GET" })
       const sourceFields = (fields ?? []).filter((f) =>
         normalize(f.label as string).includes("como conheceu"),
       );
+      const originFields = (fields ?? []).filter((f) =>
+        normalize(f.label as string).includes("origem"),
+      );
 
       const responseFieldIds = [
         ...countFieldIds,
         ...childrenFields.map((f) => f.id as string),
         ...sourceFields.map((f) => f.id as string),
+        ...originFields.map((f) => f.id as string),
       ];
       if (responseFieldIds.length > 0) {
         const submissionIds = rows.map((r) => r.id as string);
@@ -1164,6 +1170,7 @@ export const getDashboardStats = createServerFn({ method: "GET" })
         const countIds = new Set(countFieldIds);
         const childrenIds = new Set(childrenFields.map((f) => f.id as string));
         const sourceIds = new Set(sourceFields.map((f) => f.id as string));
+        const originIds = new Set(originFields.map((f) => f.id as string));
         const submissionSchools = new Map(
           rows.map((row) => [row.id as string, row.school_id as string]),
         );
@@ -1200,6 +1207,20 @@ export const getDashboardStats = createServerFn({ method: "GET" })
             for (const answer of answers) {
               const label = answer.trim();
               if (label) sourceCounts.set(label, (sourceCounts.get(label) ?? 0) + 1);
+            }
+          }
+          if (originIds.has(v.field_id as string) && v.value && !originSeen.has(v.submission_id as string)) {
+            let answers: string[] = [];
+            try {
+              const parsed = JSON.parse(v.value);
+              answers = Array.isArray(parsed) ? parsed.map(String) : [String(parsed)];
+            } catch {
+              answers = [v.value];
+            }
+            const label = answers.map((a) => a.trim()).filter(Boolean)[0];
+            if (label) {
+              originSeen.add(v.submission_id as string);
+              originCounts.set(label, (originCounts.get(label) ?? 0) + 1);
             }
           }
         }
@@ -1295,6 +1316,14 @@ export const getDashboardStats = createServerFn({ method: "GET" })
       sources: [...sourceCounts.entries()]
         .map(([label, count]) => ({ label, count }))
         .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, "pt-BR")),
+      origins: (() => {
+        const missing = rows.length - originSeen.size;
+        const list = [...originCounts.entries()]
+          .map(([label, count]) => ({ label, count }))
+          .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, "pt-BR"));
+        if (list.length > 0 && missing > 0) list.push({ label: "Não informado", count: missing });
+        return list;
+      })(),
       lossReasons: [...lossReasonCounts.entries()]
         .map(([label, count]) => ({ label, count }))
         .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, "pt-BR")),
