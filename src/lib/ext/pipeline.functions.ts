@@ -239,6 +239,21 @@ export const listPipeline = createServerFn({ method: "GET" })
     const { extAdmin: extAdm } = await import("./server");
     const { readCampaigns } = await import("./campaign.server");
     const campaigns = await readCampaigns(extAdm()).catch(() => ({}) as Record<string, string>);
+    // Campanha também reconhecida pela Origem do contato ("Campanha - Nome").
+    const { campaignFromOrigin } = await import("./api-logic");
+    const originCampaign = new Map<string, string>();
+    const subIds = [...new Set(((opportunities ?? []) as { submission_id: string | null }[]).map((o) => o.submission_id).filter((x): x is string => Boolean(x)))];
+    for (let i = 0; i < subIds.length; i += 150) {
+      const { data: vals } = await extAdm()
+        .from("submission_values")
+        .select("submission_id, value")
+        .in("submission_id", subIds.slice(i, i + 150))
+        .ilike("value", "campanha%");
+      for (const v of (vals ?? []) as { submission_id: string; value: unknown }[]) {
+        const c = campaignFromOrigin(v.value);
+        if (c && !originCampaign.has(v.submission_id)) originCampaign.set(v.submission_id, c);
+      }
+    }
     return {
       stages: (stages ?? []) as FunnelStage[],
       opportunities: (opportunities ?? []).map((opportunity: any) => ({
@@ -250,7 +265,7 @@ export const listPipeline = createServerFn({ method: "GET" })
           : opportunity.name,
         series: seriesBySubmission.get(opportunity.submission_id) ?? [],
         restricted: restrictedSubs.has(opportunity.submission_id),
-        campaign: campaigns[opportunity.id] ?? null,
+        campaign: campaigns[opportunity.id] ?? originCampaign.get(opportunity.submission_id) ?? null,
         owner: opportunity.owner_id
           ? { id: opportunity.owner_id, full_name: ownerNames.get(opportunity.owner_id) ?? null }
           : null,

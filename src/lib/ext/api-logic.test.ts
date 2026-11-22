@@ -52,3 +52,9 @@ describe("normalizeCampaign", () => {
   it("vazio remove a campanha", () => { expect(nc("   ")).toBeNull(); expect(nc(null)).toBeNull(); });
   it("limita a 60 caracteres", () => expect(nc("x".repeat(80))?.length).toBe(60));
 });
+
+import { campaignFromOrigin } from "./api-logic";
+describe("campaignFromOrigin", () => {
+  it("extrai o nome", () => { expect(campaignFromOrigin("Campanha - Black November")).toBe("Black November"); });
+  it("ignora origem comum", () => { expect(campaignFromOrigin("WhatsApp")).toBeNull(); });
+});

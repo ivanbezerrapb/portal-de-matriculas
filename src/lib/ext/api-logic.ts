@@ -82,3 +82,10 @@ export function normalizeCampaign(value: string | null | undefined): string | nu
   const v = (value ?? "").replace(/\s+/g, " ").trim().slice(0, 60).trim();
   return v || null;
 }
+
+/** Extrai o nome da campanha de uma Origem como "Campanha - Black November". */
+export function campaignFromOrigin(value: unknown): string | null {
+  const t = typeof value === "string" ? value : Array.isArray(value) ? String(value[0] ?? "") : "";
+  const m = /^\s*campanha\s*[-–:]\s*(.+)$/i.exec(t);
+  return m ? normalizeCampaign(m[1]) : null;
+}
