@@ -46,6 +46,12 @@ function ApiPage() {
             const a = document.createElement("a"); a.href = url; a.download = "api-portal-matriculas.pdf"; a.click();
             setTimeout(() => URL.revokeObjectURL(url), 30_000);
           }}><FileText className="h-4 w-4" /> Baixar PDF</Button>
+          <Button variant="secondary" onClick={async () => {
+            const { postmanCollection } = await import("@/lib/api-postman");
+            const url = URL.createObjectURL(new Blob([JSON.stringify(postmanCollection(), null, 2)], { type: "application/json" }));
+            const a = document.createElement("a"); a.href = url; a.download = "portal-matriculas.postman_collection.json"; a.click();
+            setTimeout(() => URL.revokeObjectURL(url), 30_000);
+          }}><Download className="h-4 w-4" /> Baixar Postman</Button>
         </div>
       </div>
       <div className="flex gap-2 border-b border-border">
