@@ -16,3 +16,4 @@
 
 - Public integration API lives under `/api/public/v1/*` authenticated by Bearer keys whose SHA-256 hashes are stored in the private `integracoes/api.json` object on the external DB (managed in Configurações › API); the external DB has no migration path, and raw keys are shown only once.
 - Public API v1 routes stay thin (zod + `authenticate`), with logic in `src/lib/ext/api.server.ts`/`api2.server.ts` and docs generated from `src/lib/api-docs.ts` (screen, .md and PDF) — one source keeps docs and behavior in sync.
+- Card campaign names live in the private `integracoes/campanhas.json` object (cardId→name) on the external DB, via `src/lib/ext/campaign.server.ts` — the external DB cannot get new columns from here.

@@ -15,6 +15,7 @@ const createSchema = z.object({
   serie,
   origem: z.string().trim().max(80).optional(),
   observacao: z.string().trim().max(2000).optional(),
+  campanha: z.string().trim().max(60).optional(),
 });
 
 const editSchema = z.object({
@@ -26,6 +27,7 @@ const editSchema = z.object({
   origem: z.string().trim().max(80).optional(),
   responsavel: z.string().trim().max(120).optional(),
   observacao: z.string().trim().max(2000).optional(),
+  campanha: z.string().trim().max(60).optional(),
 }).refine(hasRef, refMsg);
 
 export const Route = createFileRoute("/api/public/v1/leads")({

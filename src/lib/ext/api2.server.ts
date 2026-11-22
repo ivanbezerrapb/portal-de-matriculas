@@ -50,8 +50,9 @@ type CardRow = {
 };
 const CARD_SEL = "id, name, phone, email, status, visit_at, owner_id, created_at, updated_at, school_id, funnel_id, stage_id, schools(name), funnels(name), funnel_stages(name), submissions!inner(id, public_id, list_type, created_at)";
 
-function shape(c: CardRow, owners: Map<string, string | null>) {
+function shape(c: CardRow, owners: Map<string, string | null>, camps: Record<string, string> = {}) {
   return {
+    campanha: camps[c.id] ?? null,
     card_id: c.id, codigo: c.submissions?.public_id ?? null, nome: c.name, telefone: c.phone, email: c.email,
     tipo: c.submissions?.list_type === "leads" ? "leads" : "visitantes",
     escola: c.schools?.name ?? null, funil: c.funnels?.name ?? null, funil_id: c.funnel_id, etapa: c.funnel_stages?.name ?? null, etapa_id: c.stage_id,
@@ -122,7 +123,8 @@ export async function listCards(db: SupabaseClient, sp: URLSearchParams, forcedT
   let rows = (data ?? []) as unknown as CardRow[];
   if (busca && busca.replace(/\D/g, "").length >= 8) rows = rows.filter((r) => r.phone && phoneKey(r.phone) === phoneKey(busca));
   const owners = await names(db, rows.map((r) => r.owner_id));
-  return { ok: true, pagina: pg.pagina, limite: pg.limite, total: count ?? rows.length, itens: rows.map((r) => shape(r, owners)) };
+  const camps = await (await import("./campaign.server")).readCampaigns(db);
+  return { ok: true, pagina: pg.pagina, limite: pg.limite, total: count ?? rows.length, itens: rows.map((r) => shape(r, owners, camps)) };
 }
 
 // ---------- Lead: detalhe completo ----------
@@ -143,7 +145,7 @@ export async function cardDetail(db: SupabaseClient, ref: Ref) {
   return {
     ok: true,
     card: {
-      ...shape(row, owners), respostas,
+      ...shape(row, owners, await (await import("./campaign.server")).readCampaigns(db)), respostas,
       tarefas: ((tasks ?? []) as { id: string; title: string; due_date: string | null; done: boolean; done_at: string | null }[])
         .map((t) => ({ id: t.id, titulo: t.title, vencimento: t.due_date, situacao: taskState(t, today), concluida_em: t.done_at })),
     },
@@ -157,7 +159,7 @@ export async function cardHistory(db: SupabaseClient, ref: Ref) {
 }
 
 // ---------- Lead: edição ----------
-export type EditInput = Ref & { nome?: string | undefined; novo_telefone?: string | undefined; email?: string | undefined; serie?: string[] | undefined; origem?: string | undefined; responsavel?: string | undefined; observacao?: string | undefined };
+export type EditInput = Ref & { nome?: string | undefined; novo_telefone?: string | undefined; email?: string | undefined; serie?: string[] | undefined; origem?: string | undefined; responsavel?: string | undefined; observacao?: string | undefined; campanha?: string | undefined };
 export async function editLead(db: SupabaseClient, who: string, input: EditInput) {
   const c = await findCard(db, toRef(input));
   const code = c.submissions?.public_id ?? null;
@@ -176,6 +178,11 @@ export async function editLead(db: SupabaseClient, who: string, input: EditInput
       if (!u) throw new ApiError(422, "usuario_invalido", `Responsável "${input.responsavel}" não encontrado. Consulte GET /usuarios.`);
       upd["owner_id"] = u.id; upd["owner_confirmed_at"] = null; changes.push(`responsável: ${u.full_name}`);
     }
+  }
+  if (input.campanha !== undefined) {
+    const { setCampaign } = await import("./campaign.server");
+    const v = await setCampaign(db, c.id, input.campanha);
+    changes.push(v ? `campanha: ${v}` : "campanha removida");
   }
   // Campos do formulário (nome, telefone, e-mail, série, origem).
   if (c.submission_id) {

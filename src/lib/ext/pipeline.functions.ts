@@ -14,6 +14,7 @@ type OpportunityRow = Opportunity & {
   display_name: string;
   series: string[];
   restricted?: boolean;
+  campaign?: string | null;
 };
 
 function normalizeLabel(value: string): string {
@@ -235,6 +236,9 @@ export const listPipeline = createServerFn({ method: "GET" })
       }
     }
 
+    const { extAdmin: extAdm } = await import("./server");
+    const { readCampaigns } = await import("./campaign.server");
+    const campaigns = await readCampaigns(extAdm()).catch(() => ({}) as Record<string, string>);
     return {
       stages: (stages ?? []) as FunnelStage[],
       opportunities: (opportunities ?? []).map((opportunity: any) => ({
@@ -246,6 +250,7 @@ export const listPipeline = createServerFn({ method: "GET" })
           : opportunity.name,
         series: seriesBySubmission.get(opportunity.submission_id) ?? [],
         restricted: restrictedSubs.has(opportunity.submission_id),
+        campaign: campaigns[opportunity.id] ?? null,
         owner: opportunity.owner_id
           ? { id: opportunity.owner_id, full_name: ownerNames.get(opportunity.owner_id) ?? null }
           : null,
@@ -874,4 +879,32 @@ export const listTransferTargets = createServerFn({ method: "GET" })
       .neq("id", opp.funnel_id)
       .order("name");
     return (funnels ?? []) as { id: string; name: string; school_id: string }[];
+  });
+
+export const setOpportunityCampaign = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((data) =>
+    z.object({ id: z.string().uuid(), campaign: z.string().max(60).nullable() }).parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    // A RLS confirma que o usuário pode alterar o card.
+    const { data: cur, error } = await context.supabase
+      .from("opportunities").update({ updated_at: new Date().toISOString() }).eq("id", data.id).select("id, submission_id").maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!cur) throw new Error("Sem permissão para alterar este card.");
+    const { extAdmin } = await import("./server");
+    const { setCampaign } = await import("./campaign.server");
+    const db = extAdmin();
+    const before = (await (await import("./campaign.server")).readCampaigns(db))[data.id] ?? null;
+    const v = await setCampaign(db, data.id, data.campaign);
+    const { data: profile } = await db.from("profiles").select("full_name").eq("id", context.userId).maybeSingle();
+    const who = profile?.full_name || context.userEmail || "Usuário";
+    if (cur.submission_id) {
+      await db.from("audit_log").insert({
+        submission_id: cur.submission_id, actor_id: context.userId, actor_email: context.userEmail, action: "update",
+        changes: [{ field_id: "campaign", label: "Campanha", before: before ?? "—", after: v ?? "—" }],
+      });
+    }
+    await db.from("crm_notes").insert({ opportunity_id: data.id, author_id: context.userId, author_name: who, body: v ? `Campanha definida: ${v}.` : "Campanha removida." });
+    return { ok: true, campaign: v };
   });

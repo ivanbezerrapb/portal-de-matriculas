@@ -76,3 +76,9 @@ export function cardName(code: string | null | undefined, nome: string): string 
 export function todayLocal(now = new Date()): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Fortaleza" }).format(now);
 }
+
+/** Nome da campanha: espaços aparados, máx. 60 caracteres; vazio = sem campanha. */
+export function normalizeCampaign(value: string | null | undefined): string | null {
+  const v = (value ?? "").replace(/\s+/g, " ").trim().slice(0, 60).trim();
+  return v || null;
+}

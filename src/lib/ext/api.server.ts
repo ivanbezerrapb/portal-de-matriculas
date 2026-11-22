@@ -96,7 +96,7 @@ export async function listSchools(db: SupabaseClient) {
 // ---------- Leads ----------
 export type LeadInput = {
   escola: string; nome: string; telefone: string; email?: string | undefined;
-  serie?: string[] | undefined; origem?: string | undefined; observacao?: string | undefined;
+  serie?: string[] | undefined; origem?: string | undefined; observacao?: string | undefined; campanha?: string | undefined;
 };
 
 async function findLeadByPhone(db: SupabaseClient, schoolId: string, pk: string) {
@@ -154,8 +154,13 @@ export async function createLead(db: SupabaseClient, who: string, input: LeadInp
   if (opp && input.observacao) {
     await db.from("crm_notes").insert({ opportunity_id: opp.id, author_id: null, author_name: who, body: input.observacao });
   }
+  let campanha: string | null = null;
+  if (opp && input.campanha) {
+    const { setCampaign } = await import("./campaign.server");
+    campanha = await setCampaign(db, opp.id, input.campanha);
+  }
   await log(db, who, `Lead criado pela API: ${publicId} ${input.nome}`, { telefone: input.telefone }, school.id);
-  return { status: 201, body: { ok: true, criado: true, lead: { codigo: publicId, card_id: opp?.id ?? null, escola: school.name, nome: input.nome, no_funil: destino === "sent" } } };
+  return { status: 201, body: { ok: true, criado: true, lead: { codigo: publicId, card_id: opp?.id ?? null, escola: school.name, nome: input.nome, campanha, no_funil: destino === "sent" } } };
 }
 
 // ---------- Localizar card ----------

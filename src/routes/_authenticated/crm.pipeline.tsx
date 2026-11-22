@@ -26,7 +26,7 @@ import { createNote, deleteNote, listNotes } from "@/lib/ext/notas.functions";
 import { getMyPermissions, getSubmission, updateSubmission } from "@/lib/ext/cadastros.functions";
 import { isChildrenCountField, type FormField } from "@/lib/ext/model";
 import { FieldRenderer } from "@/components/FieldRenderer";
-import { setOpportunityVisit } from "@/lib/ext/pipeline.functions";
+import { setOpportunityCampaign, setOpportunityVisit } from "@/lib/ext/pipeline.functions";
 import { Button, Card, EmptyState, Input, Label, Select, Spinner, Textarea } from "@/components/ui";
 
 // Monta o link do WhatsApp: DDI 55 + DDD e número do cadastro.
@@ -101,6 +101,59 @@ function SubmissionEditForm({
         <Button type="button" variant="ghost" onClick={onDone}>Cancelar</Button>
       </div>
     </form>
+  );
+}
+
+function CampaignBadge({ name }: { name: string }) {
+  return (
+    <span
+      title={`Campanha - ${name}`}
+      className="inline-block max-w-full truncate rounded-full bg-primary px-2 py-0.5 text-[11px] font-semibold text-primary-foreground"
+    >
+      Campanha - {name}
+    </span>
+  );
+}
+
+function CampaignField({ cardId, campaign, canEdit }: { cardId: string; campaign: string | null; canEdit: boolean }) {
+  const qc = useQueryClient();
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(campaign ?? "");
+  const save = useMutation({
+    mutationFn: () => setOpportunityCampaign({ data: { id: cardId, campaign: value.trim() || null } }),
+    onSuccess: () => {
+      toast.success("Campanha atualizada.");
+      setEditing(false);
+      qc.invalidateQueries({ queryKey: ["pipeline"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  if (editing) {
+    return (
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <Input
+          autoFocus
+          maxLength={60}
+          placeholder="Ex.: Black November (vazio = sem campanha)"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          className="h-8 w-64"
+        />
+        <Button onClick={() => save.mutate()} disabled={save.isPending}>Salvar</Button>
+        <Button variant="ghost" onClick={() => { setValue(campaign ?? ""); setEditing(false); }}>Cancelar</Button>
+      </div>
+    );
+  }
+  if (!campaign && !canEdit) return null;
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-2">
+      {campaign && <CampaignBadge name={campaign} />}
+      {canEdit && (
+        <button type="button" className="text-xs font-medium text-primary underline" onClick={() => setEditing(true)}>
+          {campaign ? "Editar campanha" : "Adicionar campanha"}
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -585,6 +638,7 @@ function PipelinePage() {
                             />
                             {stage.name}
                           </span>
+                          {card.campaign && <CampaignBadge name={card.campaign} />}
                           {activity ? (
                             <span
                               className={`text-[11px] font-medium ${activityColor(activity.due_date)}`}
@@ -735,6 +789,11 @@ function PipelinePage() {
                   <h2 className="break-words font-display text-xl font-bold text-foreground">
                     {card.display_name}
                   </h2>
+                  <CampaignField
+                    cardId={card.id}
+                    campaign={card.campaign ?? null}
+                    canEdit={canEditData}
+                  />
                   {cardSeries.length > 0 && (
                     <p className="mt-1 break-words text-sm text-muted-foreground">
                       <span className="font-medium text-foreground">Série:</span>{" "}

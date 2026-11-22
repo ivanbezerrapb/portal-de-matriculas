@@ -45,3 +45,10 @@ describe("API v1 — regras novas", () => {
     expect(cardName("1051/CE2027", " Maria ")).toBe("1051/CE2027 · Maria");
   });
 });
+
+import { normalizeCampaign as nc } from "./api-logic";
+describe("normalizeCampaign", () => {
+  it("apara espaços", () => expect(nc("  Black   November ")).toBe("Black November"));
+  it("vazio remove a campanha", () => { expect(nc("   ")).toBeNull(); expect(nc(null)).toBeNull(); });
+  it("limita a 60 caracteres", () => expect(nc("x".repeat(80))?.length).toBe(60));
+});
