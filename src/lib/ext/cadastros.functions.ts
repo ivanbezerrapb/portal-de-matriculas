@@ -1152,7 +1152,7 @@ export const getDashboardStats = createServerFn({ method: "GET" })
         normalize(f.label as string).includes("como conheceu"),
       );
       const originFields = (fields ?? []).filter((f) =>
-        normalize(f.label as string).includes("origem"),
+        normalize(f.label as string).includes("origem do contato"),
       );
 
       const responseFieldIds = [
