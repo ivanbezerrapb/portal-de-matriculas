@@ -15,3 +15,4 @@
 - Card↔Maxbot contact links live in the `contacts` map (opportunityId→contactId) of `integracoes/maxbot.json`; cards are registered when opened and by the 10-min cron sweep (no hook in each creation path, since cards are created from many places).
 
 - Public integration API lives under `/api/public/v1/*` authenticated by Bearer keys whose SHA-256 hashes are stored in the private `integracoes/api.json` object on the external DB (managed in Configurações › API); the external DB has no migration path, and raw keys are shown only once.
+- Public API v1 routes stay thin (zod + `authenticate`), with logic in `src/lib/ext/api.server.ts`/`api2.server.ts` and docs generated from `src/lib/api-docs.ts` (screen, .md and PDF) — one source keeps docs and behavior in sync.

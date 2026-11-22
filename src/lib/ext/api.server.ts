@@ -28,7 +28,7 @@ export async function writeStore(db: SupabaseClient, s: Store) {
 
 export const CORS = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, PATCH, DELETE, OPTIONS",
   "Access-Control-Allow-Headers": "Authorization, Content-Type",
 };
 
@@ -62,7 +62,7 @@ export async function authenticate(request: Request) {
   return { db, integration: `API: ${key.name}` };
 }
 
-async function log(db: SupabaseClient, who: string, label: string, data: Record<string, unknown>, schoolId: string | null) {
+export async function log(db: SupabaseClient, who: string, label: string, data: Record<string, unknown>, schoolId: string | null) {
   await db.from("activity_logs").insert({
     actor_id: null, actor_name: who, action: "create", table_name: "api_publica",
     record_id: "api", school_id: schoolId, label, new_data: data,
@@ -159,9 +159,15 @@ export async function createLead(db: SupabaseClient, who: string, input: LeadInp
 }
 
 // ---------- Localizar card ----------
-export async function findCard(db: SupabaseClient, ref: { codigo?: string | undefined; telefone?: string | undefined; escola?: string | undefined }) {
-  type Row = { id: string; name: string; phone: string | null; school_id: string; funnel_id: string; stage_id: string; status: string; visit_at: string | null; owner_id: string | null; owner_confirmed_at: string | null; submissions: { public_id: string | null; list_type: string | null } | null };
-  const sel = "id, name, phone, school_id, funnel_id, stage_id, status, visit_at, owner_id, owner_confirmed_at, submissions!inner(public_id, list_type)";
+export async function findCard(db: SupabaseClient, ref: { id?: string | undefined; codigo?: string | undefined; telefone?: string | undefined; escola?: string | undefined }) {
+  type Row = { id: string; submission_id: string | null; name: string; phone: string | null; school_id: string; funnel_id: string; stage_id: string; status: string; visit_at: string | null; owner_id: string | null; owner_confirmed_at: string | null; submissions: { public_id: string | null; list_type: string | null } | null };
+  const sel = "id, submission_id, name, phone, school_id, funnel_id, stage_id, status, visit_at, owner_id, owner_confirmed_at, submissions!inner(public_id, list_type)";
+  if (ref.id) {
+    if (!/^[0-9a-f-]{36}$/i.test(ref.id)) throw new ApiError(422, "dados_invalidos", "card_id inválido.");
+    const { data } = await db.from("opportunities").select(sel).eq("id", ref.id).maybeSingle();
+    if (!data) throw new ApiError(404, "card_nao_encontrado", `Nenhum card com o ID ${ref.id}.`);
+    return data as unknown as Row;
+  }
   if (ref.codigo) {
     const { data } = await db.from("opportunities").select(sel).ilike("submissions.public_id", ref.codigo.trim()).order("created_at", { ascending: false }).limit(1);
     const r = (data ?? [])[0] as unknown as Row | undefined;
@@ -182,7 +188,7 @@ export async function findCard(db: SupabaseClient, ref: { codigo?: string | unde
     if (!r) throw new ApiError(404, "card_nao_encontrado", "Nenhum card com esse telefone.");
     return r;
   }
-  throw new ApiError(422, "referencia_ausente", "Informe codigo ou telefone.");
+  throw new ApiError(422, "referencia_ausente", "Informe card_id, codigo ou telefone.");
 }
 
 export async function cardView(db: SupabaseClient, c: Awaited<ReturnType<typeof findCard>>) {
@@ -198,7 +204,7 @@ export async function cardView(db: SupabaseClient, c: Awaited<ReturnType<typeof 
   };
 }
 
-async function moveTo(db: SupabaseClient, c: { id: string; stage_id: string; owner_id: string | null; owner_confirmed_at: string | null }, stageId: string) {
+export async function moveTo(db: SupabaseClient, c: { id: string; stage_id: string; owner_id: string | null; owner_confirmed_at: string | null }, stageId: string) {
   if (c.stage_id === stageId) return;
   const now = new Date().toISOString();
   const { data: last } = await db.from("opportunities").select("position").eq("stage_id", stageId).order("position", { ascending: false }).limit(1).maybeSingle();
@@ -209,7 +215,7 @@ async function moveTo(db: SupabaseClient, c: { id: string; stage_id: string; own
   if (error) throw new Error(error.message);
 }
 
-function fmtWhen(iso: string) {
+export function fmtWhen(iso: string) {
   return new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Fortaleza", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(iso)).replace(",", " às");
 }
 

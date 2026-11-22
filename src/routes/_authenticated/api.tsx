@@ -5,7 +5,7 @@ import { useState } from "react";
 import { Copy, Download, FileText, KeyRound, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { createApiKey, getApiCatalog, listApiKeys, revokeApiKey } from "@/lib/ext/api.functions";
-import { API_BASE, curl, ENDPOINTS, ERRORS, jsCode, markdownDoc, pyCode, type Endpoint } from "@/lib/api-docs";
+import { API_BASE, curl, ENDPOINTS, ERRORS, GUIA, jsCode, markdownDoc, MODULOS, pyCode, type Endpoint } from "@/lib/api-docs";
 import { Badge, Button, Card, Input, Label, Spinner } from "@/components/ui";
 
 export const Route = createFileRoute("/_authenticated/api")({
@@ -32,7 +32,7 @@ function ApiPage() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="font-display text-2xl font-bold text-foreground">API</h1>
-          <p className="text-sm text-muted-foreground">Permite que outros sistemas criem leads, agendem visitas e atualizem cards no portal.</p>
+          <p className="text-sm text-muted-foreground">Permite que outros sistemas consultem e atualizem leads, calendário, pipeline e tarefas do portal.</p>
         </div>
         <div className="flex gap-2">
           <Button variant="secondary" onClick={() => {
@@ -140,23 +140,25 @@ function Code({ text }: { text: string }) {
 
 function EndpointCard({ e }: { e: Endpoint }) {
   const [lang, setLang] = useState<"curl" | "js" | "py">("curl");
-  const fields = e.campos ?? e.query;
   return (
     <Card className="space-y-3 p-5" >
       <div id={e.id} className="flex flex-wrap items-center gap-2">
-        <span className={`rounded px-2 py-0.5 text-xs font-bold ${e.metodo === "GET" ? "bg-secondary text-secondary-foreground" : "bg-primary text-primary-foreground"}`}>{e.metodo}</span>
+        <span className={`rounded px-2 py-0.5 text-xs font-bold ${e.metodo === "GET" ? "bg-secondary text-secondary-foreground" : e.metodo === "DELETE" ? "bg-destructive text-destructive-foreground" : "bg-primary text-primary-foreground"}`}>{e.metodo}</span>
         <code className="text-sm font-semibold text-foreground">{e.caminho}</code>
         <span className="text-sm text-muted-foreground">— {e.titulo}</span>
       </div>
       <p className="text-sm text-foreground">{e.descricao}</p>
-      {fields && (
-        <table className="w-full text-xs">
-          <thead className="text-left text-muted-foreground"><tr><th className="py-1 pr-3">Campo</th><th className="pr-3">Tipo</th><th className="pr-3">Obrigatório</th><th>Descrição</th></tr></thead>
-          <tbody>{fields.map((f) => (
-            <tr key={f.nome} className="border-t border-border"><td className="py-1.5 pr-3 font-mono">{f.nome}</td><td className="pr-3">{f.tipo}</td><td className="pr-3">{f.obrigatorio ? "sim" : "não"}</td><td>{f.descricao}</td></tr>
-          ))}</tbody>
-        </table>
-      )}
+      {([["Parâmetros da URL", e.query], ["Campos do corpo (JSON)", e.campos]] as const).map(([label, fields]) => fields && (
+        <div key={label}>
+          <p className="mb-1 text-xs font-semibold text-muted-foreground">{label}</p>
+          <table className="w-full text-xs">
+            <thead className="text-left text-muted-foreground"><tr><th className="py-1 pr-3">Campo</th><th className="pr-3">Tipo</th><th className="pr-3">Obrigatório</th><th>Descrição</th></tr></thead>
+            <tbody>{fields.map((f) => (
+              <tr key={f.nome} className="border-t border-border"><td className="py-1.5 pr-3 font-mono">{f.nome}</td><td className="pr-3">{f.tipo}</td><td className="pr-3">{f.obrigatorio ? "sim" : "não"}</td><td>{f.descricao}</td></tr>
+            ))}</tbody>
+          </table>
+        </div>
+      ))}
       <div className="flex gap-1">
         {([["curl", "cURL"], ["js", "JavaScript"], ["py", "Python"]] as const).map(([k, l]) => (
           <button key={k} onClick={() => setLang(k)} className={`rounded px-2 py-1 text-xs ${lang === k ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>{l}</button>
@@ -165,28 +167,56 @@ function EndpointCard({ e }: { e: Endpoint }) {
       <Code text={lang === "curl" ? curl(e) : lang === "js" ? jsCode(e) : pyCode(e)} />
       <p className="text-xs font-semibold text-muted-foreground">Resposta</p>
       <Code text={JSON.stringify(e.resposta, null, 2)} />
+      {e.erros?.length ? <p className="text-xs text-muted-foreground">Erros possíveis: {e.erros.map((x) => <code key={x} className="mr-1">{x}</code>)}</p> : null}
     </Card>
   );
 }
 
 function Docs() {
   return (
-    <div className="space-y-4">
-      <Card className="space-y-2 p-5 text-sm">
-        <p><strong>URL base:</strong> <code>{API_BASE}</code> <button onClick={() => copy(API_BASE)} aria-label="Copiar"><Copy className="inline h-3.5 w-3.5" /></button></p>
-        <p><strong>Autenticação:</strong> todas as chamadas levam o cabeçalho <code>Authorization: Bearer &lt;chave&gt;</code>, gerada na aba Chaves de acesso.</p>
-        <p><strong>Formato:</strong> JSON em UTF-8. Datas em ISO 8601 com fuso (ex.: <code>2026-12-03T09:00:00-03:00</code>). Toda resposta traz <code>ok</code>; em erro vem <code>{"{"} ok: false, erro, mensagem {"}"}</code>.</p>
-        <p><strong>Fluxo sugerido:</strong> 1) GET /escolas para conhecer séries e origens; 2) POST /leads; 3) POST /agendamentos com o código devolvido.</p>
-      </Card>
-      {ENDPOINTS.map((e) => <EndpointCard key={e.id} e={e} />)}
-      <Card className="p-5">
-        <h2 className="mb-2 font-semibold text-foreground">Erros</h2>
-        <table className="w-full text-xs">
-          <tbody>{ERRORS.map(([s, c, d]) => (
-            <tr key={s} className="border-t border-border"><td className="py-1.5 pr-3 font-mono">{s}</td><td className="pr-3 font-mono">{c}</td><td>{d}</td></tr>
-          ))}</tbody>
-        </table>
-      </Card>
+    <div className="grid gap-6 lg:grid-cols-[200px_1fr]">
+      <nav className="hidden lg:block">
+        <div className="sticky top-4 space-y-3 text-sm">
+          <a href="#guia" className="block font-semibold text-foreground">Guia</a>
+          {MODULOS.map((m) => (
+            <div key={m.id}>
+              <a href={`#mod-${m.id}`} className="block font-semibold text-foreground">{m.titulo.split(" (")[0]}</a>
+              {ENDPOINTS.filter((e) => e.modulo === m.id).map((e) => (
+                <a key={e.id} href={`#${e.id}`} className="block py-0.5 pl-2 text-xs text-muted-foreground hover:text-foreground">{e.titulo}</a>
+              ))}
+            </div>
+          ))}
+          <a href="#erros" className="block font-semibold text-foreground">Erros</a>
+        </div>
+      </nav>
+      <div className="min-w-0 space-y-4">
+        <div id="guia"><Card className="space-y-4 p-5 text-sm">
+          <p><strong>URL base:</strong> <code>{API_BASE}</code> <button onClick={() => copy(API_BASE)} aria-label="Copiar"><Copy className="inline h-3.5 w-3.5" /></button></p>
+          {GUIA.map((g) => (
+            <div key={g.titulo}>
+              <h3 className="mb-1 font-semibold text-foreground">{g.titulo}</h3>
+              <ul className="list-disc space-y-1 pl-5 text-foreground">{g.itens.map((i) => <li key={i}>{i}</li>)}</ul>
+            </div>
+          ))}
+        </Card></div>
+        {MODULOS.map((m) => (
+          <section key={m.id} id={`mod-${m.id}`} className="space-y-3">
+            <div className="pt-4">
+              <h2 className="font-display text-xl font-bold text-foreground">{m.titulo}</h2>
+              <p className="text-sm text-muted-foreground">{m.descricao}</p>
+            </div>
+            {ENDPOINTS.filter((e) => e.modulo === m.id).map((e) => <EndpointCard key={e.id} e={e} />)}
+          </section>
+        ))}
+        <div id="erros"><Card className="p-5">
+          <h2 className="mb-2 font-semibold text-foreground">Erros</h2>
+          <table className="w-full text-xs">
+            <tbody>{ERRORS.map(([s, c, d]) => (
+              <tr key={c} className="border-t border-border"><td className="py-1.5 pr-3 font-mono">{s}</td><td className="pr-3 font-mono">{c}</td><td>{d}</td></tr>
+            ))}</tbody>
+          </table>
+        </Card></div>
+      </div>
     </div>
   );
 }

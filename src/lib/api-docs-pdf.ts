@@ -1,6 +1,6 @@
 // Gera a documentação da API em PDF (A4) a partir dos mesmos dados da tela.
 import { jsPDF } from "jspdf";
-import { API_BASE, ENDPOINTS, ERRORS, curl } from "@/lib/api-docs";
+import { API_BASE, ENDPOINTS, ERRORS, GUIA, MODULOS, curl } from "@/lib/api-docs";
 
 const PAGE_W = 210;
 const PAGE_H = 297;
@@ -65,41 +65,60 @@ export function apiDocsPdfBlob(): Blob {
   y += 9;
 
   para(`URL base: ${API_BASE}`, 10, true);
-  para("Autenticação: todas as chamadas exigem o cabeçalho Authorization: Bearer <chave>. A chave é gerada pelo administrador em Configurações › API, dentro do portal.");
-  para("Formato: JSON em UTF-8. Datas em ISO 8601 com fuso (ex.: 2026-12-03T09:00:00-03:00). Toda resposta traz ok (true/false); em erro vem { ok: false, erro, mensagem }.");
-  para("Fluxo sugerido: 1) GET /escolas para conhecer séries e origens; 2) POST /leads; 3) POST /agendamentos com o código devolvido.");
-  y += 3;
+  para(`Versão de ${new Date().toLocaleDateString("pt-BR")} · ${ENDPOINTS.length} funções em ${MODULOS.length} módulos.`, 9);
+  y += 2;
 
-  // Endpoints
-  ENDPOINTS.forEach((e, i) => {
-    ensure(24);
-    doc.setFillColor(20, 20, 20);
-    doc.rect(MARGIN, y - 4.5, CONTENT_W, 7.5, "F");
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(10.5);
-    doc.setTextColor(255, 255, 255);
-    doc.text(`${i + 1}. ${e.metodo} ${e.caminho} — ${e.titulo}`, MARGIN + 2, y);
-    y += 6;
-    para(e.descricao);
+  // Sumário
+  para("Sumário", 13, true);
+  for (const m of MODULOS) {
+    para(m.titulo, 10, true, 0.5);
+    for (const e of ENDPOINTS.filter((x) => x.modulo === m.id)) para(`   ${e.metodo} ${e.caminho.split("?")[0]} — ${e.titulo}`, 9, false, 0.3);
+    y += 1;
+  }
 
-    const fields = e.campos ?? e.query;
-    if (fields) {
-      para(e.campos ? "Campos do corpo:" : "Parâmetros da URL:", 9.5, true, 0.5);
-      for (const f of fields) {
-        para(`• ${f.nome} (${f.tipo}, ${f.obrigatorio ? "obrigatório" : "opcional"}) — ${f.descricao}`, 9, false, 0.8);
-      }
-      y += 1;
-    }
-
-    para("Exemplo (cURL):", 9.5, true, 0.5);
-    codeBlock(curl(e));
-    para("Resposta:", 9.5, true, 0.5);
-    codeBlock(JSON.stringify(e.resposta, null, 2));
+  // Guia
+  doc.addPage(); y = MARGIN;
+  for (const g of GUIA) {
+    ensure(14);
+    para(g.titulo, 12, true, 1);
+    for (const i of g.itens) para(`• ${i}`, 9, false, 0.8);
     y += 2;
-  });
+  }
+
+  // Endpoints por módulo
+  let n = 0;
+  for (const m of MODULOS) {
+    doc.addPage(); y = MARGIN;
+    para(m.titulo, 15, true, 1);
+    para(m.descricao, 10, false, 3);
+    for (const e of ENDPOINTS.filter((x) => x.modulo === m.id)) {
+      n++;
+      ensure(24);
+      doc.setFillColor(20, 20, 20);
+      doc.rect(MARGIN, y - 4.5, CONTENT_W, 7.5, "F");
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10);
+      doc.setTextColor(255, 255, 255);
+      doc.text(`${n}. ${e.metodo} ${e.caminho.split("?")[0]} — ${e.titulo}`, MARGIN + 2, y);
+      y += 6;
+      para(e.descricao);
+      for (const [label, fs] of [["Parâmetros da URL:", e.query], ["Campos do corpo (JSON):", e.campos]] as const) {
+        if (!fs) continue;
+        para(label, 9.5, true, 0.5);
+        for (const f of fs) para(`• ${f.nome} (${f.tipo}, ${f.obrigatorio ? "obrigatório" : "opcional"}) — ${f.descricao}`, 9, false, 0.8);
+        y += 1;
+      }
+      para("Exemplo (cURL):", 9.5, true, 0.5);
+      codeBlock(curl(e));
+      para("Resposta:", 9.5, true, 0.5);
+      codeBlock(JSON.stringify(e.resposta, null, 2));
+      if (e.erros?.length) para(`Erros possíveis: ${e.erros.join(", ")}`, 8.5, false, 1);
+      y += 2;
+    }
+  }
 
   // Erros
-  ensure(20);
+  doc.addPage(); y = MARGIN;
   para("Erros", 13, true);
   for (const [s, c, d] of ERRORS) {
     para(`• HTTP ${s} — ${c}: ${d}`, 9, false, 0.8);

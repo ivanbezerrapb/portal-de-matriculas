@@ -25,3 +25,23 @@ describe("API pública", () => {
     expect(await sha256Hex(k)).toBe(await sha256Hex(k));
   });
 });
+
+import { pageParams, taskState, needsEnrollmentCount, cardName } from "./api-logic";
+describe("API v1 — regras novas", () => {
+  it("paginação padrão 50, máximo 200", () => {
+    expect(pageParams(new URLSearchParams(""))).toEqual({ pagina: 1, limite: 50, from: 0, to: 49 });
+    expect(pageParams(new URLSearchParams("pagina=3&limite=500"))).toEqual({ pagina: 3, limite: 200, from: 400, to: 599 });
+  });
+  it("tarefa vencida antes de hoje é atrasada", () => {
+    expect(taskState({ done: false, due_date: "2026-11-21" }, "2026-11-22")).toBe("atrasada");
+    expect(taskState({ done: false, due_date: "2026-11-22" }, "2026-11-22")).toBe("pendente");
+    expect(taskState({ done: true, due_date: "2026-01-01" }, "2026-11-22")).toBe("concluida");
+  });
+  it("ganho exige matrículas só em Visitantes", () => {
+    expect(needsEnrollmentCount("leads")).toBe(false);
+    expect(needsEnrollmentCount("visitantes")).toBe(true);
+  });
+  it("nome do card mantém o código", () => {
+    expect(cardName("1051/CE2027", " Maria ")).toBe("1051/CE2027 · Maria");
+  });
+});

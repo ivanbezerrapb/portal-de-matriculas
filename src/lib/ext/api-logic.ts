@@ -46,3 +46,33 @@ export function findSchool<T extends { id: string; name: string }>(schools: T[],
   const n = norm(ref);
   return schools.find((s) => s.id === ref) ?? schools.find((s) => norm(s.name) === n) ?? schools.find((s) => norm(s.name).includes(n)) ?? null;
 }
+
+// Paginação: ?pagina= (1+) e ?limite= (1–200, padrão 50).
+export function pageParams(sp: URLSearchParams): { pagina: number; limite: number; from: number; to: number } {
+  const p = Math.max(1, Math.floor(Number(sp.get("pagina")) || 1));
+  const raw = Math.floor(Number(sp.get("limite")) || 50);
+  const l = Math.min(200, Math.max(1, raw));
+  return { pagina: p, limite: l, from: (p - 1) * l, to: p * l - 1 };
+}
+
+// Situação da tarefa: concluida, atrasada (vencimento antes de hoje) ou pendente.
+export function taskState(t: { done: boolean; due_date: string | null }, today: string): "concluida" | "atrasada" | "pendente" {
+  if (t.done) return "concluida";
+  if (t.due_date && t.due_date.slice(0, 10) < today) return "atrasada";
+  return "pendente";
+}
+
+// Ganho exige quantidade de matrículas só em Visitantes (LEADS não).
+export function needsEnrollmentCount(listType: string | null | undefined): boolean {
+  return Boolean(listType) && listType !== "leads" && listType !== "lead";
+}
+
+// Nome do card no formato "código · nome", preservando o código existente.
+export function cardName(code: string | null | undefined, nome: string): string {
+  return code ? `${code} · ${nome.trim()}` : nome.trim();
+}
+
+// Data de hoje (YYYY-MM-DD) no fuso da escola.
+export function todayLocal(now = new Date()): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Fortaleza" }).format(now);
+}

@@ -41,10 +41,23 @@ import { Route as AuthenticatedRelatoriosAtendimentoRouteImport } from './routes
 import { Route as AuthenticatedRelatoriosMatriculadosRouteImport } from './routes/_authenticated/relatorios.matriculados'
 import { Route as ApiPublicConfigRouteImport } from './routes/api/public/config'
 import { Route as ApiPublicV1AgendamentosRouteImport } from './routes/api/public/v1/agendamentos'
+import { Route as ApiPublicV1CalendarioRouteImport } from './routes/api/public/v1/calendario'
 import { Route as ApiPublicV1EscolasRouteImport } from './routes/api/public/v1/escolas'
 import { Route as ApiPublicV1EtapaRouteImport } from './routes/api/public/v1/etapa'
 import { Route as ApiPublicV1LeadsRouteImport } from './routes/api/public/v1/leads'
+import { Route as ApiPublicV1MotivosRouteImport } from './routes/api/public/v1/motivos'
 import { Route as ApiPublicV1NotasRouteImport } from './routes/api/public/v1/notas'
+import { Route as ApiPublicV1PipelineRouteImport } from './routes/api/public/v1/pipeline'
+import { Route as ApiPublicV1TarefasRouteImport } from './routes/api/public/v1/tarefas'
+import { Route as ApiPublicV1UsuariosRouteImport } from './routes/api/public/v1/usuarios'
+import { Route as ApiPublicV1CalendarioCheckinRouteImport } from './routes/api/public/v1/calendario.checkin'
+import { Route as ApiPublicV1CalendarioFaltaRouteImport } from './routes/api/public/v1/calendario.falta'
+import { Route as ApiPublicV1LeadsHistoricoRouteImport } from './routes/api/public/v1/leads.historico'
+import { Route as ApiPublicV1PipelineCardsRouteImport } from './routes/api/public/v1/pipeline.cards'
+import { Route as ApiPublicV1PipelineFecharRouteImport } from './routes/api/public/v1/pipeline.fechar'
+import { Route as ApiPublicV1PipelineResponsavelRouteImport } from './routes/api/public/v1/pipeline.responsavel'
+import { Route as ApiPublicV1PipelineTransferirRouteImport } from './routes/api/public/v1/pipeline.transferir'
+import { Route as ApiPublicV1TarefasIdRouteImport } from './routes/api/public/v1/tarefas.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -218,6 +231,11 @@ const ApiPublicV1AgendamentosRoute = ApiPublicV1AgendamentosRouteImport.update({
   path: '/api/public/v1/agendamentos',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicV1CalendarioRoute = ApiPublicV1CalendarioRouteImport.update({
+  id: '/api/public/v1/calendario',
+  path: '/api/public/v1/calendario',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicV1EscolasRoute = ApiPublicV1EscolasRouteImport.update({
   id: '/api/public/v1/escolas',
   path: '/api/public/v1/escolas',
@@ -233,10 +251,77 @@ const ApiPublicV1LeadsRoute = ApiPublicV1LeadsRouteImport.update({
   path: '/api/public/v1/leads',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicV1MotivosRoute = ApiPublicV1MotivosRouteImport.update({
+  id: '/api/public/v1/motivos',
+  path: '/api/public/v1/motivos',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicV1NotasRoute = ApiPublicV1NotasRouteImport.update({
   id: '/api/public/v1/notas',
   path: '/api/public/v1/notas',
   getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicV1PipelineRoute = ApiPublicV1PipelineRouteImport.update({
+  id: '/api/public/v1/pipeline',
+  path: '/api/public/v1/pipeline',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicV1TarefasRoute = ApiPublicV1TarefasRouteImport.update({
+  id: '/api/public/v1/tarefas',
+  path: '/api/public/v1/tarefas',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicV1UsuariosRoute = ApiPublicV1UsuariosRouteImport.update({
+  id: '/api/public/v1/usuarios',
+  path: '/api/public/v1/usuarios',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicV1CalendarioCheckinRoute =
+  ApiPublicV1CalendarioCheckinRouteImport.update({
+    id: '/checkin',
+    path: '/checkin',
+    getParentRoute: () => ApiPublicV1CalendarioRoute,
+  } as any)
+const ApiPublicV1CalendarioFaltaRoute =
+  ApiPublicV1CalendarioFaltaRouteImport.update({
+    id: '/falta',
+    path: '/falta',
+    getParentRoute: () => ApiPublicV1CalendarioRoute,
+  } as any)
+const ApiPublicV1LeadsHistoricoRoute =
+  ApiPublicV1LeadsHistoricoRouteImport.update({
+    id: '/historico',
+    path: '/historico',
+    getParentRoute: () => ApiPublicV1LeadsRoute,
+  } as any)
+const ApiPublicV1PipelineCardsRoute =
+  ApiPublicV1PipelineCardsRouteImport.update({
+    id: '/cards',
+    path: '/cards',
+    getParentRoute: () => ApiPublicV1PipelineRoute,
+  } as any)
+const ApiPublicV1PipelineFecharRoute =
+  ApiPublicV1PipelineFecharRouteImport.update({
+    id: '/fechar',
+    path: '/fechar',
+    getParentRoute: () => ApiPublicV1PipelineRoute,
+  } as any)
+const ApiPublicV1PipelineResponsavelRoute =
+  ApiPublicV1PipelineResponsavelRouteImport.update({
+    id: '/responsavel',
+    path: '/responsavel',
+    getParentRoute: () => ApiPublicV1PipelineRoute,
+  } as any)
+const ApiPublicV1PipelineTransferirRoute =
+  ApiPublicV1PipelineTransferirRouteImport.update({
+    id: '/transferir',
+    path: '/transferir',
+    getParentRoute: () => ApiPublicV1PipelineRoute,
+  } as any)
+const ApiPublicV1TarefasIdRoute = ApiPublicV1TarefasIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => ApiPublicV1TarefasRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -271,10 +356,23 @@ export interface FileRoutesByFullPath {
   '/relatorios/matriculados': typeof AuthenticatedRelatoriosMatriculadosRoute
   '/api/public/config': typeof ApiPublicConfigRoute
   '/api/public/v1/agendamentos': typeof ApiPublicV1AgendamentosRoute
+  '/api/public/v1/calendario': typeof ApiPublicV1CalendarioRouteWithChildren
   '/api/public/v1/escolas': typeof ApiPublicV1EscolasRoute
   '/api/public/v1/etapa': typeof ApiPublicV1EtapaRoute
-  '/api/public/v1/leads': typeof ApiPublicV1LeadsRoute
+  '/api/public/v1/leads': typeof ApiPublicV1LeadsRouteWithChildren
+  '/api/public/v1/motivos': typeof ApiPublicV1MotivosRoute
   '/api/public/v1/notas': typeof ApiPublicV1NotasRoute
+  '/api/public/v1/pipeline': typeof ApiPublicV1PipelineRouteWithChildren
+  '/api/public/v1/tarefas': typeof ApiPublicV1TarefasRouteWithChildren
+  '/api/public/v1/usuarios': typeof ApiPublicV1UsuariosRoute
+  '/api/public/v1/calendario/checkin': typeof ApiPublicV1CalendarioCheckinRoute
+  '/api/public/v1/calendario/falta': typeof ApiPublicV1CalendarioFaltaRoute
+  '/api/public/v1/leads/historico': typeof ApiPublicV1LeadsHistoricoRoute
+  '/api/public/v1/pipeline/cards': typeof ApiPublicV1PipelineCardsRoute
+  '/api/public/v1/pipeline/fechar': typeof ApiPublicV1PipelineFecharRoute
+  '/api/public/v1/pipeline/responsavel': typeof ApiPublicV1PipelineResponsavelRoute
+  '/api/public/v1/pipeline/transferir': typeof ApiPublicV1PipelineTransferirRoute
+  '/api/public/v1/tarefas/$id': typeof ApiPublicV1TarefasIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -308,10 +406,23 @@ export interface FileRoutesByTo {
   '/relatorios/matriculados': typeof AuthenticatedRelatoriosMatriculadosRoute
   '/api/public/config': typeof ApiPublicConfigRoute
   '/api/public/v1/agendamentos': typeof ApiPublicV1AgendamentosRoute
+  '/api/public/v1/calendario': typeof ApiPublicV1CalendarioRouteWithChildren
   '/api/public/v1/escolas': typeof ApiPublicV1EscolasRoute
   '/api/public/v1/etapa': typeof ApiPublicV1EtapaRoute
-  '/api/public/v1/leads': typeof ApiPublicV1LeadsRoute
+  '/api/public/v1/leads': typeof ApiPublicV1LeadsRouteWithChildren
+  '/api/public/v1/motivos': typeof ApiPublicV1MotivosRoute
   '/api/public/v1/notas': typeof ApiPublicV1NotasRoute
+  '/api/public/v1/pipeline': typeof ApiPublicV1PipelineRouteWithChildren
+  '/api/public/v1/tarefas': typeof ApiPublicV1TarefasRouteWithChildren
+  '/api/public/v1/usuarios': typeof ApiPublicV1UsuariosRoute
+  '/api/public/v1/calendario/checkin': typeof ApiPublicV1CalendarioCheckinRoute
+  '/api/public/v1/calendario/falta': typeof ApiPublicV1CalendarioFaltaRoute
+  '/api/public/v1/leads/historico': typeof ApiPublicV1LeadsHistoricoRoute
+  '/api/public/v1/pipeline/cards': typeof ApiPublicV1PipelineCardsRoute
+  '/api/public/v1/pipeline/fechar': typeof ApiPublicV1PipelineFecharRoute
+  '/api/public/v1/pipeline/responsavel': typeof ApiPublicV1PipelineResponsavelRoute
+  '/api/public/v1/pipeline/transferir': typeof ApiPublicV1PipelineTransferirRoute
+  '/api/public/v1/tarefas/$id': typeof ApiPublicV1TarefasIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -347,10 +458,23 @@ export interface FileRoutesById {
   '/_authenticated/relatorios/matriculados': typeof AuthenticatedRelatoriosMatriculadosRoute
   '/api/public/config': typeof ApiPublicConfigRoute
   '/api/public/v1/agendamentos': typeof ApiPublicV1AgendamentosRoute
+  '/api/public/v1/calendario': typeof ApiPublicV1CalendarioRouteWithChildren
   '/api/public/v1/escolas': typeof ApiPublicV1EscolasRoute
   '/api/public/v1/etapa': typeof ApiPublicV1EtapaRoute
-  '/api/public/v1/leads': typeof ApiPublicV1LeadsRoute
+  '/api/public/v1/leads': typeof ApiPublicV1LeadsRouteWithChildren
+  '/api/public/v1/motivos': typeof ApiPublicV1MotivosRoute
   '/api/public/v1/notas': typeof ApiPublicV1NotasRoute
+  '/api/public/v1/pipeline': typeof ApiPublicV1PipelineRouteWithChildren
+  '/api/public/v1/tarefas': typeof ApiPublicV1TarefasRouteWithChildren
+  '/api/public/v1/usuarios': typeof ApiPublicV1UsuariosRoute
+  '/api/public/v1/calendario/checkin': typeof ApiPublicV1CalendarioCheckinRoute
+  '/api/public/v1/calendario/falta': typeof ApiPublicV1CalendarioFaltaRoute
+  '/api/public/v1/leads/historico': typeof ApiPublicV1LeadsHistoricoRoute
+  '/api/public/v1/pipeline/cards': typeof ApiPublicV1PipelineCardsRoute
+  '/api/public/v1/pipeline/fechar': typeof ApiPublicV1PipelineFecharRoute
+  '/api/public/v1/pipeline/responsavel': typeof ApiPublicV1PipelineResponsavelRoute
+  '/api/public/v1/pipeline/transferir': typeof ApiPublicV1PipelineTransferirRoute
+  '/api/public/v1/tarefas/$id': typeof ApiPublicV1TarefasIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -386,10 +510,23 @@ export interface FileRouteTypes {
     | '/relatorios/matriculados'
     | '/api/public/config'
     | '/api/public/v1/agendamentos'
+    | '/api/public/v1/calendario'
     | '/api/public/v1/escolas'
     | '/api/public/v1/etapa'
     | '/api/public/v1/leads'
+    | '/api/public/v1/motivos'
     | '/api/public/v1/notas'
+    | '/api/public/v1/pipeline'
+    | '/api/public/v1/tarefas'
+    | '/api/public/v1/usuarios'
+    | '/api/public/v1/calendario/checkin'
+    | '/api/public/v1/calendario/falta'
+    | '/api/public/v1/leads/historico'
+    | '/api/public/v1/pipeline/cards'
+    | '/api/public/v1/pipeline/fechar'
+    | '/api/public/v1/pipeline/responsavel'
+    | '/api/public/v1/pipeline/transferir'
+    | '/api/public/v1/tarefas/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -423,10 +560,23 @@ export interface FileRouteTypes {
     | '/relatorios/matriculados'
     | '/api/public/config'
     | '/api/public/v1/agendamentos'
+    | '/api/public/v1/calendario'
     | '/api/public/v1/escolas'
     | '/api/public/v1/etapa'
     | '/api/public/v1/leads'
+    | '/api/public/v1/motivos'
     | '/api/public/v1/notas'
+    | '/api/public/v1/pipeline'
+    | '/api/public/v1/tarefas'
+    | '/api/public/v1/usuarios'
+    | '/api/public/v1/calendario/checkin'
+    | '/api/public/v1/calendario/falta'
+    | '/api/public/v1/leads/historico'
+    | '/api/public/v1/pipeline/cards'
+    | '/api/public/v1/pipeline/fechar'
+    | '/api/public/v1/pipeline/responsavel'
+    | '/api/public/v1/pipeline/transferir'
+    | '/api/public/v1/tarefas/$id'
   id:
     | '__root__'
     | '/'
@@ -461,10 +611,23 @@ export interface FileRouteTypes {
     | '/_authenticated/relatorios/matriculados'
     | '/api/public/config'
     | '/api/public/v1/agendamentos'
+    | '/api/public/v1/calendario'
     | '/api/public/v1/escolas'
     | '/api/public/v1/etapa'
     | '/api/public/v1/leads'
+    | '/api/public/v1/motivos'
     | '/api/public/v1/notas'
+    | '/api/public/v1/pipeline'
+    | '/api/public/v1/tarefas'
+    | '/api/public/v1/usuarios'
+    | '/api/public/v1/calendario/checkin'
+    | '/api/public/v1/calendario/falta'
+    | '/api/public/v1/leads/historico'
+    | '/api/public/v1/pipeline/cards'
+    | '/api/public/v1/pipeline/fechar'
+    | '/api/public/v1/pipeline/responsavel'
+    | '/api/public/v1/pipeline/transferir'
+    | '/api/public/v1/tarefas/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -475,10 +638,15 @@ export interface RootRouteChildren {
   FSlugRoute: typeof FSlugRoute
   ApiPublicConfigRoute: typeof ApiPublicConfigRoute
   ApiPublicV1AgendamentosRoute: typeof ApiPublicV1AgendamentosRoute
+  ApiPublicV1CalendarioRoute: typeof ApiPublicV1CalendarioRouteWithChildren
   ApiPublicV1EscolasRoute: typeof ApiPublicV1EscolasRoute
   ApiPublicV1EtapaRoute: typeof ApiPublicV1EtapaRoute
-  ApiPublicV1LeadsRoute: typeof ApiPublicV1LeadsRoute
+  ApiPublicV1LeadsRoute: typeof ApiPublicV1LeadsRouteWithChildren
+  ApiPublicV1MotivosRoute: typeof ApiPublicV1MotivosRoute
   ApiPublicV1NotasRoute: typeof ApiPublicV1NotasRoute
+  ApiPublicV1PipelineRoute: typeof ApiPublicV1PipelineRouteWithChildren
+  ApiPublicV1TarefasRoute: typeof ApiPublicV1TarefasRouteWithChildren
+  ApiPublicV1UsuariosRoute: typeof ApiPublicV1UsuariosRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -707,6 +875,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicV1AgendamentosRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/v1/calendario': {
+      id: '/api/public/v1/calendario'
+      path: '/api/public/v1/calendario'
+      fullPath: '/api/public/v1/calendario'
+      preLoaderRoute: typeof ApiPublicV1CalendarioRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/v1/escolas': {
       id: '/api/public/v1/escolas'
       path: '/api/public/v1/escolas'
@@ -728,12 +903,96 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicV1LeadsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/v1/motivos': {
+      id: '/api/public/v1/motivos'
+      path: '/api/public/v1/motivos'
+      fullPath: '/api/public/v1/motivos'
+      preLoaderRoute: typeof ApiPublicV1MotivosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/v1/notas': {
       id: '/api/public/v1/notas'
       path: '/api/public/v1/notas'
       fullPath: '/api/public/v1/notas'
       preLoaderRoute: typeof ApiPublicV1NotasRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/api/public/v1/pipeline': {
+      id: '/api/public/v1/pipeline'
+      path: '/api/public/v1/pipeline'
+      fullPath: '/api/public/v1/pipeline'
+      preLoaderRoute: typeof ApiPublicV1PipelineRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/v1/tarefas': {
+      id: '/api/public/v1/tarefas'
+      path: '/api/public/v1/tarefas'
+      fullPath: '/api/public/v1/tarefas'
+      preLoaderRoute: typeof ApiPublicV1TarefasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/v1/usuarios': {
+      id: '/api/public/v1/usuarios'
+      path: '/api/public/v1/usuarios'
+      fullPath: '/api/public/v1/usuarios'
+      preLoaderRoute: typeof ApiPublicV1UsuariosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/v1/calendario/checkin': {
+      id: '/api/public/v1/calendario/checkin'
+      path: '/checkin'
+      fullPath: '/api/public/v1/calendario/checkin'
+      preLoaderRoute: typeof ApiPublicV1CalendarioCheckinRouteImport
+      parentRoute: typeof ApiPublicV1CalendarioRoute
+    }
+    '/api/public/v1/calendario/falta': {
+      id: '/api/public/v1/calendario/falta'
+      path: '/falta'
+      fullPath: '/api/public/v1/calendario/falta'
+      preLoaderRoute: typeof ApiPublicV1CalendarioFaltaRouteImport
+      parentRoute: typeof ApiPublicV1CalendarioRoute
+    }
+    '/api/public/v1/leads/historico': {
+      id: '/api/public/v1/leads/historico'
+      path: '/historico'
+      fullPath: '/api/public/v1/leads/historico'
+      preLoaderRoute: typeof ApiPublicV1LeadsHistoricoRouteImport
+      parentRoute: typeof ApiPublicV1LeadsRoute
+    }
+    '/api/public/v1/pipeline/cards': {
+      id: '/api/public/v1/pipeline/cards'
+      path: '/cards'
+      fullPath: '/api/public/v1/pipeline/cards'
+      preLoaderRoute: typeof ApiPublicV1PipelineCardsRouteImport
+      parentRoute: typeof ApiPublicV1PipelineRoute
+    }
+    '/api/public/v1/pipeline/fechar': {
+      id: '/api/public/v1/pipeline/fechar'
+      path: '/fechar'
+      fullPath: '/api/public/v1/pipeline/fechar'
+      preLoaderRoute: typeof ApiPublicV1PipelineFecharRouteImport
+      parentRoute: typeof ApiPublicV1PipelineRoute
+    }
+    '/api/public/v1/pipeline/responsavel': {
+      id: '/api/public/v1/pipeline/responsavel'
+      path: '/responsavel'
+      fullPath: '/api/public/v1/pipeline/responsavel'
+      preLoaderRoute: typeof ApiPublicV1PipelineResponsavelRouteImport
+      parentRoute: typeof ApiPublicV1PipelineRoute
+    }
+    '/api/public/v1/pipeline/transferir': {
+      id: '/api/public/v1/pipeline/transferir'
+      path: '/transferir'
+      fullPath: '/api/public/v1/pipeline/transferir'
+      preLoaderRoute: typeof ApiPublicV1PipelineTransferirRouteImport
+      parentRoute: typeof ApiPublicV1PipelineRoute
+    }
+    '/api/public/v1/tarefas/$id': {
+      id: '/api/public/v1/tarefas/$id'
+      path: '/$id'
+      fullPath: '/api/public/v1/tarefas/$id'
+      preLoaderRoute: typeof ApiPublicV1TarefasIdRouteImport
+      parentRoute: typeof ApiPublicV1TarefasRoute
     }
   }
 }
@@ -800,6 +1059,60 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
 const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
+interface ApiPublicV1CalendarioRouteChildren {
+  ApiPublicV1CalendarioCheckinRoute: typeof ApiPublicV1CalendarioCheckinRoute
+  ApiPublicV1CalendarioFaltaRoute: typeof ApiPublicV1CalendarioFaltaRoute
+}
+
+const ApiPublicV1CalendarioRouteChildren: ApiPublicV1CalendarioRouteChildren = {
+  ApiPublicV1CalendarioCheckinRoute: ApiPublicV1CalendarioCheckinRoute,
+  ApiPublicV1CalendarioFaltaRoute: ApiPublicV1CalendarioFaltaRoute,
+}
+
+const ApiPublicV1CalendarioRouteWithChildren =
+  ApiPublicV1CalendarioRoute._addFileChildren(
+    ApiPublicV1CalendarioRouteChildren,
+  )
+
+interface ApiPublicV1LeadsRouteChildren {
+  ApiPublicV1LeadsHistoricoRoute: typeof ApiPublicV1LeadsHistoricoRoute
+}
+
+const ApiPublicV1LeadsRouteChildren: ApiPublicV1LeadsRouteChildren = {
+  ApiPublicV1LeadsHistoricoRoute: ApiPublicV1LeadsHistoricoRoute,
+}
+
+const ApiPublicV1LeadsRouteWithChildren =
+  ApiPublicV1LeadsRoute._addFileChildren(ApiPublicV1LeadsRouteChildren)
+
+interface ApiPublicV1PipelineRouteChildren {
+  ApiPublicV1PipelineCardsRoute: typeof ApiPublicV1PipelineCardsRoute
+  ApiPublicV1PipelineFecharRoute: typeof ApiPublicV1PipelineFecharRoute
+  ApiPublicV1PipelineResponsavelRoute: typeof ApiPublicV1PipelineResponsavelRoute
+  ApiPublicV1PipelineTransferirRoute: typeof ApiPublicV1PipelineTransferirRoute
+}
+
+const ApiPublicV1PipelineRouteChildren: ApiPublicV1PipelineRouteChildren = {
+  ApiPublicV1PipelineCardsRoute: ApiPublicV1PipelineCardsRoute,
+  ApiPublicV1PipelineFecharRoute: ApiPublicV1PipelineFecharRoute,
+  ApiPublicV1PipelineResponsavelRoute: ApiPublicV1PipelineResponsavelRoute,
+  ApiPublicV1PipelineTransferirRoute: ApiPublicV1PipelineTransferirRoute,
+}
+
+const ApiPublicV1PipelineRouteWithChildren =
+  ApiPublicV1PipelineRoute._addFileChildren(ApiPublicV1PipelineRouteChildren)
+
+interface ApiPublicV1TarefasRouteChildren {
+  ApiPublicV1TarefasIdRoute: typeof ApiPublicV1TarefasIdRoute
+}
+
+const ApiPublicV1TarefasRouteChildren: ApiPublicV1TarefasRouteChildren = {
+  ApiPublicV1TarefasIdRoute: ApiPublicV1TarefasIdRoute,
+}
+
+const ApiPublicV1TarefasRouteWithChildren =
+  ApiPublicV1TarefasRoute._addFileChildren(ApiPublicV1TarefasRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
@@ -808,10 +1121,15 @@ const rootRouteChildren: RootRouteChildren = {
   FSlugRoute: FSlugRoute,
   ApiPublicConfigRoute: ApiPublicConfigRoute,
   ApiPublicV1AgendamentosRoute: ApiPublicV1AgendamentosRoute,
+  ApiPublicV1CalendarioRoute: ApiPublicV1CalendarioRouteWithChildren,
   ApiPublicV1EscolasRoute: ApiPublicV1EscolasRoute,
   ApiPublicV1EtapaRoute: ApiPublicV1EtapaRoute,
-  ApiPublicV1LeadsRoute: ApiPublicV1LeadsRoute,
+  ApiPublicV1LeadsRoute: ApiPublicV1LeadsRouteWithChildren,
+  ApiPublicV1MotivosRoute: ApiPublicV1MotivosRoute,
   ApiPublicV1NotasRoute: ApiPublicV1NotasRoute,
+  ApiPublicV1PipelineRoute: ApiPublicV1PipelineRouteWithChildren,
+  ApiPublicV1TarefasRoute: ApiPublicV1TarefasRouteWithChildren,
+  ApiPublicV1UsuariosRoute: ApiPublicV1UsuariosRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
