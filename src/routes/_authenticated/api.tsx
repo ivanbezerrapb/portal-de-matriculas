@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
-import { Copy, Download, KeyRound, Plus } from "lucide-react";
+import { Copy, Download, FileText, KeyRound, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { createApiKey, getApiCatalog, listApiKeys, revokeApiKey } from "@/lib/ext/api.functions";
 import { API_BASE, curl, ENDPOINTS, ERRORS, jsCode, markdownDoc, pyCode, type Endpoint } from "@/lib/api-docs";
@@ -34,10 +34,19 @@ function ApiPage() {
           <h1 className="font-display text-2xl font-bold text-foreground">API</h1>
           <p className="text-sm text-muted-foreground">Permite que outros sistemas criem leads, agendem visitas e atualizem cards no portal.</p>
         </div>
-        <Button variant="secondary" onClick={() => {
-          const url = URL.createObjectURL(new Blob([markdownDoc()], { type: "text/markdown" }));
-          const a = document.createElement("a"); a.href = url; a.download = "api-portal-matriculas.md"; a.click(); URL.revokeObjectURL(url);
-        }}><Download className="h-4 w-4" /> Baixar documentação</Button>
+        <div className="flex gap-2">
+          <Button variant="secondary" onClick={() => {
+            const url = URL.createObjectURL(new Blob([markdownDoc()], { type: "text/markdown" }));
+            const a = document.createElement("a"); a.href = url; a.download = "api-portal-matriculas.md"; a.click(); URL.revokeObjectURL(url);
+          }}><Download className="h-4 w-4" /> Baixar documentação</Button>
+          <Button variant="secondary" onClick={async () => {
+            const { apiDocsPdfBlob } = await import("@/lib/api-docs-pdf");
+            const blob = apiDocsPdfBlob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a"); a.href = url; a.download = "api-portal-matriculas.pdf"; a.click();
+            setTimeout(() => URL.revokeObjectURL(url), 30_000);
+          }}><FileText className="h-4 w-4" /> Baixar PDF</Button>
+        </div>
       </div>
       <div className="flex gap-2 border-b border-border">
         {([["chaves", "Chaves de acesso"], ["docs", "Documentação"], ["opcoes", "Escolas e opções"]] as const).map(([k, l]) => (
