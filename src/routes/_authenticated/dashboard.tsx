@@ -344,10 +344,10 @@ const SOURCE_COLORS = [
   "var(--chart-5)",
 ];
 
-function SourcesChart({ data, title = "Como conheceu a escola" }: { data: IndicatorDatum[]; title?: string }) {
+function SourcesChart({ data }: { data: IndicatorDatum[] }) {
   return (
     <Card className="flex h-full min-w-0 flex-col p-4">
-      <h2 className="font-display text-sm font-semibold text-foreground">{title}</h2>
+      <h2 className="font-display text-sm font-semibold text-foreground">Como conheceu a escola</h2>
       {data.length === 0 ? (
         <div className="flex h-52 items-center justify-center text-sm text-muted-foreground">
           Nenhuma resposta no período.
@@ -922,10 +922,7 @@ function DashboardPage() {
           </div>
 
           <div className="mt-3 grid gap-3 @min-[36rem]/dashboard:grid-cols-2 @min-[52rem]/dashboard:grid-cols-3">
-            <div className="flex min-w-0 flex-col gap-3">
-              <SourcesChart data={data.sources} />
-              <SourcesChart title="Origem do contato" data={data.origins ?? []} />
-            </div>
+            <SourcesChart data={data.sources} />
             <SeriesChart data={data.series} />
             <div className="flex flex-col gap-3 @min-[36rem]/dashboard:col-span-2 @min-[52rem]/dashboard:col-span-1">
               <Card className="flex flex-1 flex-col p-4">
