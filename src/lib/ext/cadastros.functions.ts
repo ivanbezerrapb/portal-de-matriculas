@@ -1317,12 +1317,12 @@ export const getDashboardStats = createServerFn({ method: "GET" })
         .map(([label, count]) => ({ label, count }))
         .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, "pt-BR")),
       origins: (() => {
-        const missing = rows.length - originSeen.size;
-        const list = [...originCounts.entries()]
-          .map(([label, count]) => ({ label, count }))
-          .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, "pt-BR"));
-        if (list.length > 0 && missing > 0) list.push({ label: "Não informado", count: missing });
-        return list;
+        // Só as opções oficiais do campo "Origem do contato", nesta ordem.
+        const OFFICIAL = ["Telefone", "WhatsApp", "Site", "Rede social", "Campanha - Black November"];
+        const key = (t: string) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+        const byKey = new Map<string, number>();
+        for (const [label, count] of originCounts) byKey.set(key(label), (byKey.get(key(label)) ?? 0) + count);
+        return OFFICIAL.map((label) => ({ label, count: byKey.get(key(label)) ?? 0 }));
       })(),
       lossReasons: [...lossReasonCounts.entries()]
         .map(([label, count]) => ({ label, count }))
