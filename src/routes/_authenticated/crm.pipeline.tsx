@@ -28,6 +28,7 @@ import {
 } from "@/lib/ext/task-flow";
 import { listTaskTypes } from "@/lib/ext/atividades.functions";
 import { CompleteTaskDialog } from "@/components/CompleteTaskDialog";
+import { TaskDatePickerDialog } from "@/components/TaskDatePickerDialog";
 import { PendingCardTasksNotice } from "@/components/PendingCardTasksNotice";
 import { pendingNoticeItems, todayISO } from "@/lib/ext/task-notice";
 import { TransferPortfolioDialog } from "@/components/TransferPortfolioDialog";
@@ -1253,6 +1254,7 @@ function OpportunityTasks({
   const queryClient = useQueryClient();
   const [title, setTitle] = useState("");
   const [due, setDue] = useState("");
+  const [dateDialogOpen, setDateDialogOpen] = useState(false);
   const [completing, setCompleting] = useState<{ id: string; title: string } | null>(null);
   const { data: taskTypes } = useQuery({
     queryKey: ["task-types", "active"],
@@ -1272,11 +1274,12 @@ function OpportunityTasks({
   }
 
   const createM = useMutation({
-    mutationFn: () =>
-      createTask({ data: { opportunity_id: opportunityId, title, due_date: due || null } }),
+    mutationFn: (d: { title: string; due_date: string | null }) =>
+      createTask({ data: { opportunity_id: opportunityId, title: d.title, due_date: d.due_date } }),
     onSuccess: () => {
       setTitle("");
       setDue("");
+      setDateDialogOpen(false);
       refresh();
     },
     onError: (e: Error) => toast.error(e.message),
@@ -1313,6 +1316,20 @@ function OpportunityTasks({
 
   return (
     <section className="mt-6 border-t border-border pt-4">
+      <TaskDatePickerDialog
+        open={dateDialogOpen && !hasOpenTask}
+        taskTitle={title}
+        initialDue={due}
+        saving={createM.isPending}
+        onCancel={() => {
+          setDateDialogOpen(false);
+          setTitle("");
+        }}
+        onConfirm={(iso) => {
+          setDue(iso);
+          createM.mutate({ title: title.trim(), due_date: iso });
+        }}
+      />
       {completing && (
         <CompleteTaskDialog
           taskTitle={completing.title}
@@ -1388,7 +1405,7 @@ function OpportunityTasks({
             onSubmit={(e) => {
               e.preventDefault();
               if (!title.trim() || !due) return;
-              createM.mutate();
+              createM.mutate({ title: title.trim(), due_date: due });
             }}
           >
             {cardStatus === "open" && (
@@ -1396,7 +1413,14 @@ function OpportunityTasks({
                 Cartão sem próxima tarefa. Agende uma atividade abaixo.
               </p>
             )}
-            <Select value={title} onChange={(e) => setTitle(e.target.value)}>
+            <Select
+              value={title}
+              onChange={(e) => {
+                const next = e.target.value;
+                setTitle(next);
+                if (next) setDateDialogOpen(true);
+              }}
+            >
               <option value="">Selecione a atividade…</option>
               {(taskTypes ?? []).map((t) => (
                 <option key={t.id} value={t.label}>

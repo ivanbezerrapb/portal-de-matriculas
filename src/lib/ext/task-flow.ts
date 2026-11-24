@@ -5,6 +5,26 @@ export type NextTaskInput = {
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
+export function toLocalISODate(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+export function parseLocalISODate(iso: string): Date | undefined {
+  if (!DATE_RE.test(iso)) return undefined;
+  const [y, m, d] = iso.split("-").map(Number);
+  if (!y || !m || !d) return undefined;
+  const parsed = new Date(y, m - 1, d);
+  return toLocalISODate(parsed) === iso ? parsed : undefined;
+}
+
+// Bloqueia datas anteriores ao dia atual (YYYY-MM-DD no fuso do portal).
+export function isPastTaskDate(date: Date, today: string): boolean {
+  return toLocalISODate(date) < today;
+}
+
 // Cartões ativos com tarefa pendente não aceitam histórico solto: o atendente deve concluir a tarefa.
 export function canAddFreeNote(input: {
   cardStatus: string;

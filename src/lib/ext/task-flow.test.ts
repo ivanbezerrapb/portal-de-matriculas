@@ -2,8 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   canAddFreeNote,
   canCreateNewTask,
+  isPastTaskDate,
   needsNextTaskOnComplete,
+  parseLocalISODate,
   pickPrimaryOpenTask,
+  toLocalISODate,
   validateCompleteTask,
 } from "./task-flow";
 
@@ -107,5 +110,17 @@ describe("regras de tarefas e histórico do CRM", () => {
       { id: "4", title: "Mais urgente", done: false, due_date: "2026-11-20", created_at: "2026-11-05" },
     ]);
     expect(picked?.id).toBe("4");
+  });
+
+  it("bloqueia datas passadas e permite hoje ou datas futuras no calendário de tarefas", () => {
+    const today = "2026-11-24";
+    expect(isPastTaskDate(new Date(2026, 10, 23), today)).toBe(true);
+    expect(isPastTaskDate(new Date(2026, 10, 24), today)).toBe(false);
+    expect(isPastTaskDate(new Date(2026, 10, 25), today)).toBe(false);
+
+    const parsed = parseLocalISODate("2026-11-26");
+    expect(parsed).toBeDefined();
+    expect(parsed ? toLocalISODate(parsed) : "").toBe("2026-11-26");
+    expect(parseLocalISODate("2026-02-31")).toBeUndefined();
   });
 });
