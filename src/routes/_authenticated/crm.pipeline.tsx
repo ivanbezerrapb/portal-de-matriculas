@@ -33,7 +33,7 @@ import { pendingNoticeItems, todayISO } from "@/lib/ext/task-notice";
 import { TransferPortfolioDialog } from "@/components/TransferPortfolioDialog";
 import { createNote, deleteNote, listNotes } from "@/lib/ext/notas.functions";
 import { getMyPermissions, getSubmission, updateSubmission } from "@/lib/ext/cadastros.functions";
-import { isChildrenCountField, type FormField } from "@/lib/ext/model";
+import { funnelListType, isChildrenCountField, type FormField } from "@/lib/ext/model";
 import { FieldRenderer } from "@/components/FieldRenderer";
 import { setOpportunityCampaign, setOpportunityVisit } from "@/lib/ext/pipeline.functions";
 import { Button, Card, EmptyState, Input, Label, Select, Spinner, Textarea } from "@/components/ui";
@@ -323,6 +323,14 @@ function PipelinePage() {
         );
   const selected = funil ?? funnels.find((f) => f.is_default)?.id ?? funnels[0]?.id;
   const selectedFunnel = allFunnels.find((f) => f.id === selected);
+  const scheduleKind = (listType?: string | null): "visita" | "matricula" =>
+    selectedFunnel
+      ? funnelListType(selectedFunnel.name) === "leads"
+        ? "visita"
+        : "matricula"
+      : listType === "leads"
+        ? "visita"
+        : "matricula";
   const canBulkTransfer = Boolean(
     selectedFunnel && perms && canTransferPortfolio(perms, selectedFunnel.school_id),
   );
@@ -398,7 +406,9 @@ function PipelinePage() {
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "")
       .toLowerCase();
-    if (card.submissions?.list_type === "leads") return name.includes("visita agendada");
+    if (scheduleKind(card.submissions?.list_type) === "visita") {
+      return name.includes("visita agendada");
+    }
     return name.includes("matricula agendada");
   }
   function openVisitMove(move: MoveData) {
@@ -410,7 +420,7 @@ function PipelinePage() {
       initial = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
     }
     setVisitValue(initial);
-    setVisitKind(card?.submissions?.list_type === "leads" ? "visita" : "matricula");
+    setVisitKind(scheduleKind(card?.submissions?.list_type));
     setVisitMove(move);
   }
   function requestMove(cardId: string, stageId: string) {
@@ -675,7 +685,11 @@ function PipelinePage() {
                         )}
                         {card.visit_at && (
                           <p className="mt-1 inline-block rounded-full bg-orange-100 px-2 py-0.5 text-[11px] font-medium text-orange-900">
-                            Visita: {new Date(card.visit_at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                            {scheduleKind(card.submissions?.list_type) === "visita"
+                              ? "Visita"
+                              : "Matrícula"}
+                            :{" "}
+                            {new Date(card.visit_at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
                           </p>
                         )}
                         <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -1037,7 +1051,7 @@ function PipelinePage() {
                   opportunityId={card.id}
                   visitAt={card.visit_at ?? null}
                   canWrite={canWrite}
-                  kind={card.submissions?.list_type === "leads" ? "visita" : "matricula"}
+                  kind={scheduleKind(card.submissions?.list_type)}
                 />
               )}
 

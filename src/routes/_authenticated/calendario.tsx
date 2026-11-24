@@ -275,7 +275,7 @@ function CalendarPage() {
       {selected && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 p-4" onClick={() => { setSelected(null); setConfirming(false); }}>
           <div className="w-full max-w-md rounded-xl bg-card p-5 shadow-lg" onClick={(e) => e.stopPropagation()}>
-            <span className={`inline-block rounded-full border px-2 py-0.5 text-xs ${STATUS_CLASS[selected.status]}`}>Visita · {STATUS_LABEL[selected.status]}</span>
+            <span className={`inline-block rounded-full border px-2 py-0.5 text-xs ${STATUS_CLASS[selected.status]}`}>{KIND_LABEL[selected.kind]} · {STATUS_LABEL[selected.status]}</span>
             <h3 className="mt-2 break-words font-display text-lg font-semibold text-foreground">{selected.title}</h3>
             <dl className="mt-3 space-y-1 text-sm">
               <div><dt className="inline text-muted-foreground">Quando: </dt><dd className="inline">{format(new Date(selected.at), "dd/MM/yyyy 'às' HH:mm")}</dd></div>
