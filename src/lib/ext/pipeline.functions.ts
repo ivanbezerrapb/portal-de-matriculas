@@ -923,3 +923,180 @@ export const setOpportunityCampaign = createServerFn({ method: "POST" })
     await db.from("crm_notes").insert({ opportunity_id: data.id, author_id: context.userId, author_name: who, body: v ? `Campanha definida: ${v}.` : "Campanha removida." });
     return { ok: true, campaign: v };
   });
+
+// Resumo para transferência de carteira: donos com cartões abertos no funil e destinos permitidos.
+export const listPortfolioSummary = createServerFn({ method: "GET" })
+  .middleware([requireAuth])
+  .inputValidator((data) => z.object({ funnel_id: z.string().uuid() }).parse(data))
+  .handler(async ({ data, context }) => {
+    const { extAdmin, getPerms } = await import("./server");
+    const { canTransferPortfolio } = await import("./close-access");
+    const admin = extAdmin();
+    const perms = await getPerms(context.supabase, context.userId);
+    const { data: funnel, error: fErr } = await admin
+      .from("funnels")
+      .select("id, name, school_id")
+      .eq("id", data.funnel_id)
+      .maybeSingle();
+    if (fErr) throw new Error(fErr.message);
+    if (!funnel) throw new Error("Funil não encontrado.");
+    if (!canTransferPortfolio(perms, funnel.school_id)) {
+      throw new Error("Apenas administradores e gerentes desta unidade podem transferir a carteira.");
+    }
+
+    // Conta oportunidades abertas por responsável em blocos de 1000.
+    const counts = new Map<string, number>();
+    let unassigned = 0;
+    for (let from = 0; ; from += 1000) {
+      const { data: rows, error } = await admin
+        .from("opportunities")
+        .select("owner_id")
+        .eq("funnel_id", funnel.id)
+        .eq("status", "open")
+        .range(from, from + 999);
+      if (error) throw new Error(error.message);
+      const list = (rows ?? []) as { owner_id: string | null }[];
+      for (const r of list) {
+        if (r.owner_id) counts.set(r.owner_id, (counts.get(r.owner_id) ?? 0) + 1);
+        else unassigned++;
+      }
+      if (list.length < 1000) break;
+    }
+
+    // Destinos permitidos: vinculados ao funil + Central de Informações da escola.
+    const [{ data: linked }, { data: infoUsers }] = await Promise.all([
+      admin.from("user_funnels").select("user_id").eq("funnel_id", funnel.id),
+      admin.from("user_roles").select("user_id").eq("role", "info_center").eq("school_id", funnel.school_id),
+    ]);
+    const targetIds = [
+      ...new Set([
+        ...((linked ?? []) as { user_id: string }[]).map((r) => r.user_id),
+        ...((infoUsers ?? []) as { user_id: string }[]).map((r) => r.user_id),
+      ]),
+    ];
+    const allProfileIds = [...new Set([...counts.keys(), ...targetIds])];
+    const names = new Map<string, string>();
+    if (allProfileIds.length > 0) {
+      const { data: profiles } = await admin
+        .from("profiles")
+        .select("id, full_name")
+        .in("id", allProfileIds);
+      for (const p of (profiles ?? []) as { id: string; full_name: string | null }[]) {
+        names.set(p.id, p.full_name?.trim() || "Sem nome");
+      }
+    }
+
+    const sources: { owner_id: string | null; name: string; count: number }[] = [...counts.entries()]
+      .map(([owner_id, count]) => ({ owner_id, name: names.get(owner_id) || "Sem nome", count }))
+      .sort((a, b) => a.name.localeCompare(b.name, "pt"));
+    if (unassigned > 0) {
+      sources.push({ owner_id: null, name: "Sem responsável", count: unassigned });
+    }
+    const targets = targetIds
+      .map((user_id) => ({ user_id, name: names.get(user_id) || "Sem nome" }))
+      .sort((a, b) => a.name.localeCompare(b.name, "pt"));
+
+    return { sources, targets };
+  });
+
+// Transfere todas as oportunidades abertas de um atendente para outro dentro do mesmo funil.
+export const transferFunnelPortfolio = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((data) =>
+    z
+      .object({
+        funnel_id: z.string().uuid(),
+        from_owner_id: z.string().uuid().nullable(),
+        to_owner_id: z.string().uuid(),
+        note: z.string().max(300).optional().nullable(),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    const { extAdmin, getPerms } = await import("./server");
+    const { validatePortfolioTransfer } = await import("./close-access");
+    const admin = extAdmin();
+    const perms = await getPerms(context.supabase, context.userId);
+    const { data: funnel, error: fErr } = await admin
+      .from("funnels")
+      .select("id, name, school_id")
+      .eq("id", data.funnel_id)
+      .maybeSingle();
+    if (fErr) throw new Error(fErr.message);
+    if (!funnel) throw new Error("Funil não encontrado.");
+
+    const denied = validatePortfolioTransfer(perms, funnel.school_id, data.from_owner_id, data.to_owner_id);
+    if (denied) throw new Error(denied);
+    await validateOwner(context.supabase, funnel.id, data.to_owner_id);
+
+    // Busca todos os cartões abertos do atendente de origem neste funil.
+    const oppIds: string[] = [];
+    for (let from = 0; ; from += 1000) {
+      let q = admin
+        .from("opportunities")
+        .select("id")
+        .eq("funnel_id", funnel.id)
+        .eq("status", "open")
+        .range(from, from + 999);
+      q = data.from_owner_id ? q.eq("owner_id", data.from_owner_id) : q.is("owner_id", null);
+      const { data: rows, error } = await q;
+      if (error) throw new Error(error.message);
+      const list = (rows ?? []) as { id: string }[];
+      for (const r of list) oppIds.push(r.id);
+      if (list.length < 1000) break;
+    }
+    if (oppIds.length === 0) {
+      throw new Error("Nenhuma oportunidade aberta encontrada para este atendente neste funil.");
+    }
+
+    const now = new Date().toISOString();
+    for (let i = 0; i < oppIds.length; i += 200) {
+      const { error } = await admin
+        .from("opportunities")
+        .update({ owner_id: data.to_owner_id, updated_at: now })
+        .in("id", oppIds.slice(i, i + 200));
+      if (error) throw new Error(error.message);
+    }
+
+    const profileIds = [context.userId, data.to_owner_id, ...(data.from_owner_id ? [data.from_owner_id] : [])];
+    const { data: profiles } = await admin.from("profiles").select("id, full_name").in("id", profileIds);
+    const nameOf = (id: string | null, fallback: string) => {
+      if (!id) return fallback;
+      const p = ((profiles ?? []) as { id: string; full_name: string | null }[]).find((r) => r.id === id);
+      return p?.full_name?.trim() || fallback;
+    };
+    const authorName = nameOf(context.userId, context.userEmail || "Usuário");
+    const fromName = data.from_owner_id ? nameOf(data.from_owner_id, "atendente anterior") : "Sem responsável";
+    const toName = nameOf(data.to_owner_id, "novo atendente");
+    const extra = data.note?.trim() ? ` ${data.note.trim()}` : "";
+    const noteBody = `Carteira transferida de ${fromName} para ${toName} por ${authorName}.${extra}`;
+
+    for (let i = 0; i < oppIds.length; i += 200) {
+      const batch = oppIds.slice(i, i + 200).map((opportunity_id) => ({
+        opportunity_id,
+        author_id: context.userId,
+        author_name: authorName,
+        body: noteBody,
+      }));
+      const { error: nErr } = await admin.from("crm_notes").insert(batch);
+      if (nErr) throw new Error(nErr.message);
+    }
+
+    await admin.from("activity_logs").insert({
+      actor_id: context.userId,
+      actor_name: authorName,
+      action: "update",
+      table_name: "opportunities",
+      record_id: funnel.id,
+      school_id: funnel.school_id,
+      label: `Transferência de carteira no funil ${funnel.name}: ${oppIds.length} ${oppIds.length === 1 ? "oportunidade" : "oportunidades"} de ${fromName} para ${toName}.${extra}`,
+      new_data: {
+        funnel_id: funnel.id,
+        from_owner_id: data.from_owner_id,
+        to_owner_id: data.to_owner_id,
+        count: oppIds.length,
+      },
+    });
+
+    return { ok: true, count: oppIds.length, to_name: toName };
+  });

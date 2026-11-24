@@ -1,7 +1,7 @@
 import { groupFunnels } from "@/lib/funnel-order";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { asksEnrollment, canTransferBySchool } from "@/lib/ext/close-access";
+import { asksEnrollment, canTransferBySchool, canTransferPortfolio } from "@/lib/ext/close-access";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { AlertTriangle, MessageCircle, Plus, Trash2 } from "lucide-react";
@@ -28,6 +28,7 @@ import {
 } from "@/lib/ext/task-flow";
 import { listTaskTypes } from "@/lib/ext/atividades.functions";
 import { CompleteTaskDialog } from "@/components/CompleteTaskDialog";
+import { TransferPortfolioDialog } from "@/components/TransferPortfolioDialog";
 import { createNote, deleteNote, listNotes } from "@/lib/ext/notas.functions";
 import { getMyPermissions, getSubmission, updateSubmission } from "@/lib/ext/cadastros.functions";
 import { isChildrenCountField, type FormField } from "@/lib/ext/model";
@@ -319,6 +320,10 @@ function PipelinePage() {
           owners.some((o) => o.user_id === ownerFilter && o.funnel_id === f.id),
         );
   const selected = funil ?? funnels.find((f) => f.is_default)?.id ?? funnels[0]?.id;
+  const selectedFunnel = allFunnels.find((f) => f.id === selected);
+  const canBulkTransfer = Boolean(
+    selectedFunnel && perms && canTransferPortfolio(perms, selectedFunnel.school_id),
+  );
   const selectedOwners = owners.filter((o) => o.funnel_id === selected).map((o) => o.name);
 
   const pipelineQuery = useQuery({
@@ -548,6 +553,13 @@ function PipelinePage() {
               ))}
             </Select>
           </div>
+          {canBulkTransfer && selectedFunnel && (
+            <TransferPortfolioDialog
+              funnelId={selectedFunnel.id}
+              funnelName={selectedFunnel.name}
+              onDone={refresh}
+            />
+          )}
         </div>
       </div>
 

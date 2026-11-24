@@ -66,3 +66,29 @@ export function canTransferOpportunity(
     return "Sem permissão para transferir este cartão.";
   return null;
 }
+
+// Transferência de carteira (em lote) dentro de um funil: apenas Admin e Gerentes da unidade.
+export function canTransferPortfolio(
+  perms: CloseAccessPerms & { operatorSchools?: string[] },
+  schoolId: string,
+): boolean {
+  if (perms.isAdmin) return true;
+  if (perms.isDirecao) return false;
+  return perms.managerSchools.includes(schoolId);
+}
+
+export function validatePortfolioTransfer(
+  perms: CloseAccessPerms & { operatorSchools?: string[] },
+  schoolId: string,
+  fromOwnerId: string | null,
+  toOwnerId: string,
+): string | null {
+  if (!canTransferPortfolio(perms, schoolId)) {
+    return "Apenas administradores e gerentes desta unidade podem transferir a carteira.";
+  }
+  if (!toOwnerId) return "Escolha o atendente de destino.";
+  if (fromOwnerId && fromOwnerId === toOwnerId) {
+    return "O atendente de destino precisa ser diferente do atendente de origem.";
+  }
+  return null;
+}
