@@ -26,7 +26,7 @@ export type NoticeItem = {
   funnelName: string;
   schoolName: string;
   taskTitle: string;
-  dueDate: string | null;
+  dueDate: string;
   overdue: boolean;
   ownerName: string | null;
 };
@@ -37,8 +37,9 @@ export function todayISO(now = new Date()): string {
 }
 
 /**
- * Cartões em aberto do próprio atendente que têm tarefa pendente.
- * Atrasadas primeiro, depois por data (sem data por último), depois por nome.
+ * Cartões em aberto do próprio atendente com tarefa atrasada ou para hoje.
+ * Ignora tarefas futuras (a vencer) e sem data.
+ * Atrasadas primeiro (mais antigas antes), depois as do dia, por nome.
  */
 export function pendingNoticeItems(
   tasks: NoticeTaskRow[],
@@ -49,6 +50,7 @@ export function pendingNoticeItems(
   const items: NoticeItem[] = [];
   for (const t of tasks) {
     if (t.done) continue;
+    if (!t.due_date || t.due_date > today) continue;
     const opp = t.opportunities;
     if (!opp || opp.status !== "open") continue;
     const cardOwnerId = opp.owner?.id ?? opp.owner_id ?? null;
@@ -62,17 +64,15 @@ export function pendingNoticeItems(
       schoolName: opp.schools?.name ?? "",
       taskTitle: t.title,
       dueDate: t.due_date,
-      overdue: Boolean(t.due_date && t.due_date < today),
+      overdue: t.due_date < today,
       ownerName: opp.owner?.full_name?.trim() || null,
     });
   }
   items.sort((a, b) => {
     if (a.overdue !== b.overdue) return a.overdue ? -1 : 1;
-    if (a.dueDate && b.dueDate && a.dueDate !== b.dueDate) {
+    if (a.dueDate !== b.dueDate) {
       return a.dueDate.localeCompare(b.dueDate);
     }
-    if (a.dueDate && !b.dueDate) return -1;
-    if (!a.dueDate && b.dueDate) return 1;
     return a.cardName.localeCompare(b.cardName);
   });
   return items;

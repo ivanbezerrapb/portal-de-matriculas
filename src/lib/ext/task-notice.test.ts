@@ -23,7 +23,7 @@ function row(overrides: {
     id: overrides.id,
     title: overrides.title ?? "Ligar para o responsável",
     done: overrides.done ?? false,
-    due_date: overrides.due === undefined ? null : overrides.due,
+    due_date: overrides.due === undefined ? TODAY : overrides.due,
     opportunities: {
       id: overrides.cardId ?? `card-${overrides.id}`,
       name: overrides.cardName ?? `0001/CE2027 · Aluno ${overrides.id}`,
@@ -39,15 +39,17 @@ function row(overrides: {
 }
 
 describe("aviso de cartões com tarefas pendentes", () => {
-  it("lista só cartões em aberto do próprio atendente com tarefa pendente", () => {
+  it("lista só cartões em aberto do próprio atendente com tarefa atrasada ou do dia", () => {
     const items = pendingNoticeItems(
       [
-        row({ id: "a" }),
+        row({ id: "a", due: TODAY }),
         row({ id: "b", done: true }),
         row({ id: "c", status: "won" }),
         row({ id: "d", status: "lost" }),
         row({ id: "e", ownerId: "u2", ownerName: "Bruno" }),
         row({ id: "f", ownerId: null, ownerName: null }),
+        row({ id: "g", due: "2026-11-25" }),
+        row({ id: "h", due: null }),
       ],
       TODAY,
       ME,
@@ -58,6 +60,7 @@ describe("aviso de cartões com tarefas pendentes", () => {
       funnelName: "Centro - Novo Lead",
       schoolName: "Centro",
       ownerName: "Ana",
+      dueDate: TODAY,
       overdue: false,
     });
   });
@@ -71,10 +74,10 @@ describe("aviso de cartões com tarefas pendentes", () => {
     expect(pendingNoticeItems([orphan], TODAY, ME)).toEqual([]);
   });
 
-  it("põe as atrasadas primeiro, depois pela data e as sem data por último", () => {
+  it("mantém só atrasadas e do dia, pondo as atrasadas primeiro pela data mais antiga", () => {
     const items = pendingNoticeItems(
       [
-        row({ id: "sem-data", cardName: "1000/CE2027 · Z" }),
+        row({ id: "sem-data", due: null, cardName: "1000/CE2027 · Z" }),
         row({ id: "futura", due: "2026-11-30", cardName: "1000/CE2027 · Z" }),
         row({ id: "atrasada-2", due: "2026-11-10", cardName: "1000/CE2027 · Z" }),
         row({ id: "atrasada-1", due: "2026-11-05", cardName: "1000/CE2027 · Z" }),
@@ -87,19 +90,17 @@ describe("aviso de cartões com tarefas pendentes", () => {
       "atrasada-1",
       "atrasada-2",
       "hoje",
-      "futura",
-      "sem-data",
     ]);
     expect(items[0]?.overdue).toBe(true);
+    expect(items[1]?.overdue).toBe(true);
     expect(items[2]?.overdue).toBe(false);
-    expect(items[4]?.overdue).toBe(false);
   });
 
   it("ordena por nome quando a data é a mesma", () => {
     const items = pendingNoticeItems(
       [
-        row({ id: "b", cardName: "2000/CE2027 · Bruno", due: "2026-11-25" }),
-        row({ id: "a", cardName: "1000/CE2027 · Ana", due: "2026-11-25" }),
+        row({ id: "b", cardName: "2000/CE2027 · Bruno", due: TODAY }),
+        row({ id: "a", cardName: "1000/CE2027 · Ana", due: TODAY }),
       ],
       TODAY,
       ME,
