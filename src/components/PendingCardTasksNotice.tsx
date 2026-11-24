@@ -33,7 +33,7 @@ export function PendingCardTasksNotice(props: {
           <AlertTriangle className="mt-0.5 h-6 w-6 shrink-0 text-[oklch(0.72_0.18_60)]" />
           <div>
             <h2 className="text-lg font-semibold text-foreground">
-              Cartões com tarefas pendentes ({props.items.length})
+              Suas tarefas pendentes ({props.items.length})
             </h2>
             <p className="text-sm text-muted-foreground">
               Abra um cartão para ver a tarefa e o que registrar no histórico.
@@ -55,7 +55,6 @@ export function PendingCardTasksNotice(props: {
                 <p className="mt-0.5 break-words text-xs text-muted-foreground">
                   {item.funnelName}
                   {item.schoolName ? ` · ${item.schoolName}` : ""}
-                  {item.ownerName ? ` · ${item.ownerName}` : ""}
                 </p>
                 <p className="mt-1 text-sm text-foreground">
                   {item.taskTitle}

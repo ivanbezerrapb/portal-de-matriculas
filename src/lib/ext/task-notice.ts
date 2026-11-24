@@ -11,6 +11,7 @@ export type NoticeTaskRow = {
     status: string;
     school_id: string;
     funnel_id: string;
+    owner_id?: string | null;
     funnels: { name: string } | null;
     schools: { name: string } | null;
     owner: { id: string; full_name: string | null } | null;
@@ -36,18 +37,22 @@ export function todayISO(now = new Date()): string {
 }
 
 /**
- * Cartões em aberto que têm tarefa pendente.
+ * Cartões em aberto do próprio atendente que têm tarefa pendente.
  * Atrasadas primeiro, depois por data (sem data por último), depois por nome.
  */
 export function pendingNoticeItems(
   tasks: NoticeTaskRow[],
   today: string,
+  ownerId: string,
 ): NoticeItem[] {
+  if (!ownerId) return [];
   const items: NoticeItem[] = [];
   for (const t of tasks) {
     if (t.done) continue;
     const opp = t.opportunities;
     if (!opp || opp.status !== "open") continue;
+    const cardOwnerId = opp.owner?.id ?? opp.owner_id ?? null;
+    if (cardOwnerId !== ownerId) continue;
     items.push({
       taskId: t.id,
       cardId: opp.id,

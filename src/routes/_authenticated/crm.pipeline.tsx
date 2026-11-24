@@ -283,7 +283,7 @@ function PipelinePage() {
     if (card) setOpenCard(card);
   }, [card]);
 
-  const { data: perms } = useQuery({
+  const { data: perms, isPending: permsPending } = useQuery({
     queryKey: ["my-permissions"],
     queryFn: () => getMyPermissions(),
   });
@@ -341,19 +341,19 @@ function PipelinePage() {
   const opportunities = pipelineQuery.data?.opportunities ?? [];
   const nextTasks = pipelineQuery.data?.nextTasks ?? {};
 
-  // Aviso ao abrir o Pipeline: quais cartões têm tarefa pendente.
+  // Aviso ao abrir o Pipeline: apenas as tarefas pendentes do atendente logado.
   const noticeQuery = useQuery({
-    queryKey: ["crm-tasks", "pending-notice"],
-    queryFn: () => listTasks({ data: { done: false } }),
+    queryKey: ["crm-tasks", "pending-notice", "mine"],
+    queryFn: () => listTasks({ data: { done: false, mine: true } }),
   });
   const noticeItems = useMemo(
-    () => pendingNoticeItems(noticeQuery.data ?? [], todayISO()),
-    [noticeQuery.data],
+    () => pendingNoticeItems(noticeQuery.data ?? [], todayISO(), perms?.userId ?? ""),
+    [noticeQuery.data, perms?.userId],
   );
   const [noticeOpen, setNoticeOpen] = useState(false);
   const noticeShown = useRef(false);
   useEffect(() => {
-    if (noticeShown.current || isDirecao) return;
+    if (noticeShown.current || permsPending || isDirecao) return;
     // Quem chega direto num cartão (ex.: vindo de Tarefas) não precisa do aviso.
     if (card) {
       noticeShown.current = true;
@@ -362,7 +362,7 @@ function PipelinePage() {
     if (noticeQuery.isPending) return;
     noticeShown.current = true;
     if (noticeItems.length > 0) setNoticeOpen(true);
-  }, [noticeQuery.isPending, card, isDirecao, noticeItems.length]);
+  }, [permsPending, noticeQuery.isPending, card, isDirecao, noticeItems.length]);
 
   function refresh() {
     void queryClient.invalidateQueries({ queryKey: ["pipeline", selected] });
@@ -489,6 +489,7 @@ function PipelinePage() {
       setClosing(null);
       setOpenCard(null);
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["crm-tasks"] });
       refresh();
     },
     onError: (e: Error) => toast.error(e.message),

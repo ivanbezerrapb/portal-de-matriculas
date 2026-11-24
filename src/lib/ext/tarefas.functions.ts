@@ -30,6 +30,7 @@ export const listTasks = createServerFn({ method: "GET" })
         school_id: z.string().uuid().optional(),
         funnel_id: z.string().uuid().optional(),
         owner_id: z.string().uuid().optional(),
+        mine: z.boolean().optional(),
         unassigned: z.boolean().optional(),
       })
       .parse(data),
@@ -47,7 +48,8 @@ export const listTasks = createServerFn({ method: "GET" })
     if (data.done !== undefined) q = q.eq("done", data.done);
     if (data.school_id) q = q.eq("opportunities.school_id", data.school_id);
     if (data.funnel_id) q = q.eq("opportunities.funnel_id", data.funnel_id);
-    if (data.owner_id) q = q.eq("opportunities.owner_id", data.owner_id);
+    if (data.mine) q = q.eq("opportunities.owner_id", context.userId);
+    else if (data.owner_id) q = q.eq("opportunities.owner_id", data.owner_id);
     if (data.unassigned) q = q.is("opportunities.owner_id", null);
     const { data: rows, error } = await q;
     if (error) throw new Error(error.message);

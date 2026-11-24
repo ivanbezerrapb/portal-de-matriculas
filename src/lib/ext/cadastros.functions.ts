@@ -1359,6 +1359,7 @@ export const getMyPermissions = createServerFn({ method: "GET" })
       .maybeSingle();
     return {
       ...perms,
+      userId: context.userId,
       email: context.userEmail,
       fullName: profile?.full_name ?? "",
     };

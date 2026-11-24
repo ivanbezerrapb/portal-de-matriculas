@@ -541,6 +541,13 @@ export const closeOpportunity = createServerFn({ method: "POST" })
     const listType = (current as { submissions?: { list_type?: string } | null }).submissions?.list_type;
     const wonStage = pickWonStage((wonStages ?? []) as { id: string; name: string }[], listType);
     const now = new Date().toISOString();
+    const { error: tErr } = await admin
+      .from("crm_tasks")
+      .update({ done: true, done_at: now })
+      .eq("opportunity_id", opp.id)
+      .eq("done", false);
+    if (tErr) throw new Error(tErr.message);
+
     const { data: updated, error } = await admin
       .from("opportunities")
       .update({

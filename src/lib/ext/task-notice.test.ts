@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { pendingNoticeItems, todayISO, type NoticeTaskRow } from "./task-notice";
 
 const TODAY = "2026-11-24";
+const ME = "u1";
 
 function row(overrides: {
   id: string;
@@ -14,8 +15,10 @@ function row(overrides: {
   funnelId?: string;
   funnelName?: string;
   schoolName?: string;
+  ownerId?: string | null;
   ownerName?: string | null;
 }): NoticeTaskRow {
+  const ownerId = overrides.ownerId === undefined ? ME : overrides.ownerId;
   return {
     id: overrides.id,
     title: overrides.title ?? "Ligar para o responsável",
@@ -27,23 +30,27 @@ function row(overrides: {
       status: overrides.status ?? "open",
       school_id: "school-1",
       funnel_id: overrides.funnelId ?? "funnel-1",
+      owner_id: ownerId,
       funnels: { name: overrides.funnelName ?? "Centro - Novo Lead" },
       schools: { name: overrides.schoolName ?? "Centro" },
-      owner: { id: "u1", full_name: overrides.ownerName ?? "Ana" },
+      owner: ownerId ? { id: ownerId, full_name: overrides.ownerName ?? "Ana" } : null,
     },
   };
 }
 
 describe("aviso de cartões com tarefas pendentes", () => {
-  it("lista só cartões em aberto que têm tarefa pendente", () => {
+  it("lista só cartões em aberto do próprio atendente com tarefa pendente", () => {
     const items = pendingNoticeItems(
       [
         row({ id: "a" }),
         row({ id: "b", done: true }),
         row({ id: "c", status: "won" }),
         row({ id: "d", status: "lost" }),
+        row({ id: "e", ownerId: "u2", ownerName: "Bruno" }),
+        row({ id: "f", ownerId: null, ownerName: null }),
       ],
       TODAY,
+      ME,
     );
     expect(items.map((i) => i.taskId)).toEqual(["a"]);
     expect(items[0]).toMatchObject({
@@ -55,9 +62,13 @@ describe("aviso de cartões com tarefas pendentes", () => {
     });
   });
 
+  it("não mostra nada se não houver atendente informado", () => {
+    expect(pendingNoticeItems([row({ id: "a" })], TODAY, "")).toEqual([]);
+  });
+
   it("ignora tarefa sem cartão vinculado", () => {
     const orphan: NoticeTaskRow = { ...row({ id: "x" }), opportunities: null };
-    expect(pendingNoticeItems([orphan], TODAY)).toEqual([]);
+    expect(pendingNoticeItems([orphan], TODAY, ME)).toEqual([]);
   });
 
   it("põe as atrasadas primeiro, depois pela data e as sem data por último", () => {
@@ -70,6 +81,7 @@ describe("aviso de cartões com tarefas pendentes", () => {
         row({ id: "hoje", due: TODAY, cardName: "1000/CE2027 · Z" }),
       ],
       TODAY,
+      ME,
     );
     expect(items.map((i) => i.taskId)).toEqual([
       "atrasada-1",
@@ -90,6 +102,7 @@ describe("aviso de cartões com tarefas pendentes", () => {
         row({ id: "a", cardName: "1000/CE2027 · Ana", due: "2026-11-25" }),
       ],
       TODAY,
+      ME,
     );
     expect(items.map((i) => i.cardName)).toEqual([
       "1000/CE2027 · Ana",
