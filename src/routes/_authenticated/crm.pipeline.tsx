@@ -2,7 +2,7 @@ import { groupFunnels } from "@/lib/funnel-order";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { asksEnrollment, canTransferBySchool, canTransferPortfolio } from "@/lib/ext/close-access";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { AlertTriangle, MessageCircle, Plus, Trash2 } from "lucide-react";
 import { listFunnelOwners, listFunnels, listSchoolInfoUsers } from "@/lib/ext/funis.functions";
@@ -28,6 +28,8 @@ import {
 } from "@/lib/ext/task-flow";
 import { listTaskTypes } from "@/lib/ext/atividades.functions";
 import { CompleteTaskDialog } from "@/components/CompleteTaskDialog";
+import { PendingCardTasksNotice } from "@/components/PendingCardTasksNotice";
+import { pendingNoticeItems, todayISO } from "@/lib/ext/task-notice";
 import { TransferPortfolioDialog } from "@/components/TransferPortfolioDialog";
 import { createNote, deleteNote, listNotes } from "@/lib/ext/notas.functions";
 import { getMyPermissions, getSubmission, updateSubmission } from "@/lib/ext/cadastros.functions";
@@ -338,6 +340,29 @@ function PipelinePage() {
   const stages = pipelineQuery.data?.stages ?? [];
   const opportunities = pipelineQuery.data?.opportunities ?? [];
   const nextTasks = pipelineQuery.data?.nextTasks ?? {};
+
+  // Aviso ao abrir o Pipeline: quais cartões têm tarefa pendente.
+  const noticeQuery = useQuery({
+    queryKey: ["crm-tasks", "pending-notice"],
+    queryFn: () => listTasks({ data: { done: false } }),
+  });
+  const noticeItems = useMemo(
+    () => pendingNoticeItems(noticeQuery.data ?? [], todayISO()),
+    [noticeQuery.data],
+  );
+  const [noticeOpen, setNoticeOpen] = useState(false);
+  const noticeShown = useRef(false);
+  useEffect(() => {
+    if (noticeShown.current || isDirecao) return;
+    // Quem chega direto num cartão (ex.: vindo de Tarefas) não precisa do aviso.
+    if (card) {
+      noticeShown.current = true;
+      return;
+    }
+    if (noticeQuery.isPending) return;
+    noticeShown.current = true;
+    if (noticeItems.length > 0) setNoticeOpen(true);
+  }, [noticeQuery.isPending, card, isDirecao, noticeItems.length]);
 
   function refresh() {
     void queryClient.invalidateQueries({ queryKey: ["pipeline", selected] });
@@ -1171,6 +1196,20 @@ function PipelinePage() {
               ...(enrollmentCount == null ? {} : { enrollment_count: enrollmentCount }),
             })
           }
+        />
+      )}
+
+      {noticeOpen && (
+        <PendingCardTasksNotice
+          items={noticeItems}
+          onClose={() => setNoticeOpen(false)}
+          onOpenCard={(item) => {
+            setNoticeOpen(false);
+            navigate({
+              to: "/crm/pipeline",
+              search: { funil: item.funnelId, card: item.cardId },
+            });
+          }}
         />
       )}
     </div>

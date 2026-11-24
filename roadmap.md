@@ -14,3 +14,4 @@
 - [x] Lista de LEADS (menu, numeração 1001/CE2027, 2001/CR2027, 3001/BE2027 e 4001/EX2027, formulários com escolha de lista)
 - [x] Check-in definitivo na Lista de LEADS, com data/hora, ganho automático no CRM e conclusão das tarefas
 - [x] Cartões do CRM com título ID + nome e séries informadas no formulário
+- [x] Pop-up ao abrir o Pipeline avisando quais cartões têm tarefas pendentes

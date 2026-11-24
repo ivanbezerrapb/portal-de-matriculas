@@ -1,0 +1,74 @@
+// Regras puras do aviso de cartões com tarefas pendentes (sem banco, testável).
+
+export type NoticeTaskRow = {
+  id: string;
+  title: string;
+  done: boolean;
+  due_date: string | null;
+  opportunities: {
+    id: string;
+    name: string;
+    status: string;
+    school_id: string;
+    funnel_id: string;
+    funnels: { name: string } | null;
+    schools: { name: string } | null;
+    owner: { id: string; full_name: string | null } | null;
+  } | null;
+};
+
+export type NoticeItem = {
+  taskId: string;
+  cardId: string;
+  cardName: string;
+  funnelId: string;
+  funnelName: string;
+  schoolName: string;
+  taskTitle: string;
+  dueDate: string | null;
+  overdue: boolean;
+  ownerName: string | null;
+};
+
+// Data de hoje no fuso do portal (America/Fortaleza), no formato AAAA-MM-DD.
+export function todayISO(now = new Date()): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Fortaleza" }).format(now);
+}
+
+/**
+ * Cartões em aberto que têm tarefa pendente.
+ * Atrasadas primeiro, depois por data (sem data por último), depois por nome.
+ */
+export function pendingNoticeItems(
+  tasks: NoticeTaskRow[],
+  today: string,
+): NoticeItem[] {
+  const items: NoticeItem[] = [];
+  for (const t of tasks) {
+    if (t.done) continue;
+    const opp = t.opportunities;
+    if (!opp || opp.status !== "open") continue;
+    items.push({
+      taskId: t.id,
+      cardId: opp.id,
+      cardName: opp.name,
+      funnelId: opp.funnel_id,
+      funnelName: opp.funnels?.name ?? "",
+      schoolName: opp.schools?.name ?? "",
+      taskTitle: t.title,
+      dueDate: t.due_date,
+      overdue: Boolean(t.due_date && t.due_date < today),
+      ownerName: opp.owner?.full_name?.trim() || null,
+    });
+  }
+  items.sort((a, b) => {
+    if (a.overdue !== b.overdue) return a.overdue ? -1 : 1;
+    if (a.dueDate && b.dueDate && a.dueDate !== b.dueDate) {
+      return a.dueDate.localeCompare(b.dueDate);
+    }
+    if (a.dueDate && !b.dueDate) return -1;
+    if (!a.dueDate && b.dueDate) return 1;
+    return a.cardName.localeCompare(b.cardName);
+  });
+  return items;
+}
