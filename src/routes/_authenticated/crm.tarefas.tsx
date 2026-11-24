@@ -99,7 +99,13 @@ function TarefasPage() {
     requireNextTask: boolean;
   } | null>(null);
   const doneM = useMutation({
-    mutationFn: (d: { id: string; done: boolean; note?: string; next_task?: NextTaskInput }) =>
+    mutationFn: (d: {
+      id: string;
+      done: boolean;
+      note?: string;
+      next_task?: NextTaskInput;
+      skip_next?: boolean;
+    }) =>
       setTaskDone({ data: d }),
     onSuccess: (_res, vars) => {
       setCompleting(null);
@@ -130,12 +136,13 @@ function TarefasPage() {
           requireNextTask={completing.requireNextTask}
           saving={doneM.isPending}
           onCancel={() => setCompleting(null)}
-          onConfirm={({ note, nextTask }) =>
+          onConfirm={({ note, nextTask, skipNext }) =>
             doneM.mutate({
               id: completing.id,
               done: true,
               note,
               ...(nextTask ? { next_task: nextTask } : {}),
+              ...(skipNext ? { skip_next: true } : {}),
             })
           }
         />

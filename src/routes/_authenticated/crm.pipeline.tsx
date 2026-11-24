@@ -1258,7 +1258,13 @@ function OpportunityTasks({
     onError: (e: Error) => toast.error(e.message),
   });
   const doneM = useMutation({
-    mutationFn: (d: { id: string; done: boolean; note?: string; next_task?: NextTaskInput }) =>
+    mutationFn: (d: {
+      id: string;
+      done: boolean;
+      note?: string;
+      next_task?: NextTaskInput;
+      skip_next?: boolean;
+    }) =>
       setTaskDone({ data: d }),
     onSuccess: (_res, vars) => {
       setCompleting(null);
@@ -1292,12 +1298,13 @@ function OpportunityTasks({
             otherOpenTaskCount: openTasks.filter((t) => t.id !== completing.id).length,
           })}
           onCancel={() => setCompleting(null)}
-          onConfirm={({ note, nextTask }) =>
+          onConfirm={({ note, nextTask, skipNext }) =>
             doneM.mutate({
               id: completing.id,
               done: true,
               note,
               ...(nextTask ? { next_task: nextTask } : {}),
+              ...(skipNext ? { skip_next: true } : {}),
             })
           }
         />
@@ -1545,13 +1552,19 @@ function OpportunityNotes({
   });
 
   const completeFromNoteM = useMutation({
-    mutationFn: (d: { id: string; note: string; next_task?: NextTaskInput }) =>
+    mutationFn: (d: {
+      id: string;
+      note: string;
+      next_task?: NextTaskInput;
+      skip_next?: boolean;
+    }) =>
       setTaskDone({
         data: {
           id: d.id,
           done: true,
           note: d.note,
           ...(d.next_task ? { next_task: d.next_task } : {}),
+          ...(d.skip_next ? { skip_next: true } : {}),
         },
       }),
     onSuccess: (_res, vars) => {
@@ -1586,11 +1599,12 @@ function OpportunityNotes({
             otherOpenTaskCount: completingFromNote.otherOpenCount,
           })}
           onCancel={() => setCompletingFromNote(null)}
-          onConfirm={({ note, nextTask }) =>
+          onConfirm={({ note, nextTask, skipNext }) =>
             completeFromNoteM.mutate({
               id: completingFromNote.id,
               note,
               ...(nextTask ? { next_task: nextTask } : {}),
+              ...(skipNext ? { skip_next: true } : {}),
             })
           }
         />

@@ -46,10 +46,15 @@ export function validateCompleteTask(input: {
   cardStatus: string;
   otherOpenTaskCount: number;
   nextTask?: NextTaskInput | null;
+  skipNext?: boolean;
 }): { ok: true; note: string; nextTask: NextTaskInput | null } | { ok: false; error: string } {
   const note = (input.note ?? "").trim();
   if (!note) {
     return { ok: false, error: "Descreva no histórico o que foi feito para concluir a tarefa." };
+  }
+
+  if (input.skipNext) {
+    return { ok: true, note, nextTask: null };
   }
 
   const mustScheduleNext = needsNextTaskOnComplete({

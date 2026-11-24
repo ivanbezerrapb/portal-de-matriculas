@@ -76,6 +76,29 @@ describe("regras de tarefas e histórico do CRM", () => {
     expect(outraAberta).toEqual({ ok: true, note: "Primeiro contato feito.", nextTask: null });
   });
 
+  it("permite concluir sem próxima tarefa quando o atendente marca skipNext, exigindo histórico", () => {
+    const liberada = validateCompleteTask({
+      note: "Responsável informou que só decide no próximo mês.",
+      cardStatus: "open",
+      otherOpenTaskCount: 0,
+      nextTask: null,
+      skipNext: true,
+    });
+    expect(liberada).toEqual({
+      ok: true,
+      note: "Responsável informou que só decide no próximo mês.",
+      nextTask: null,
+    });
+
+    const semNota = validateCompleteTask({
+      note: "   ",
+      cardStatus: "open",
+      otherOpenTaskCount: 0,
+      skipNext: true,
+    });
+    expect(semNota.ok).toBe(false);
+  });
+
   it("escolhe a tarefa pendente mais urgente como principal", () => {
     const picked = pickPrimaryOpenTask([
       { id: "1", title: "Feita", done: true, due_date: "2026-11-01" },

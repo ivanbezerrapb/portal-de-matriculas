@@ -133,6 +133,7 @@ export const setTaskDone = createServerFn({ method: "POST" })
           })
           .optional()
           .nullable(),
+        skip_next: z.boolean().optional(),
       })
       .parse(data),
   )
@@ -178,6 +179,7 @@ export const setTaskDone = createServerFn({ method: "POST" })
         cardStatus: (opp?.status as string | undefined) ?? "open",
         otherOpenTaskCount: otherOpenCount ?? 0,
         nextTask: data.next_task ?? null,
+        skipNext: Boolean(data.skip_next),
       });
       if (!validated.ok) throw new Error(validated.error);
       validatedNote = validated.note;
@@ -198,11 +200,15 @@ export const setTaskDone = createServerFn({ method: "POST" })
         .maybeSingle();
       const authorName =
         ((profile?.full_name as string | null) ?? "") || context.userEmail || "Usuário";
+      const body =
+        data.skip_next && !nextTaskToCreate
+          ? `Concluiu ${task.title}: ${validatedNote}\nConcluída sem agendar próxima tarefa.`
+          : `Concluiu ${task.title}: ${validatedNote}`;
       const { error: noteError } = await context.supabase.from("crm_notes").insert({
         opportunity_id: task.opportunity_id,
         author_id: context.userId,
         author_name: authorName,
-        body: `Concluiu ${task.title}: ${validatedNote}`,
+        body,
       });
       if (noteError) throw new Error(noteError.message);
     }

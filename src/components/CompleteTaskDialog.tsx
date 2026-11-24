@@ -11,11 +11,13 @@ export function CompleteTaskDialog(props: {
   initialNote?: string;
   fromHistory?: boolean;
   onCancel: () => void;
-  onConfirm: (payload: { note: string; nextTask?: NextTaskInput }) => void;
+  onConfirm: (payload: { note: string; nextTask?: NextTaskInput; skipNext?: boolean }) => void;
 }) {
   const [note, setNote] = useState(props.initialNote ?? "");
   const [nextTitle, setNextTitle] = useState("");
   const [nextDue, setNextDue] = useState("");
+  const [skipNext, setSkipNext] = useState(false);
+  const [confirmSkip, setConfirmSkip] = useState(false);
 
   const { data: taskTypes } = useQuery({
     queryKey: ["task-types", "active"],
@@ -24,10 +26,17 @@ export function CompleteTaskDialog(props: {
   });
 
   const hasTypes = (taskTypes ?? []).length > 0;
+  const needsNext = props.requireNextTask && !skipNext;
   const canConfirm =
     !props.saving &&
     Boolean(note.trim()) &&
-    (!props.requireNextTask || (Boolean(nextTitle.trim()) && Boolean(nextDue)));
+    (!needsNext || (Boolean(nextTitle.trim()) && Boolean(nextDue)));
+
+  const submitLabel = props.requireNextTask
+    ? skipNext
+      ? "Concluir sem próxima tarefa"
+      : "Concluir e agendar próxima"
+    : "Concluir";
 
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center bg-foreground/40 p-4">
@@ -61,39 +70,54 @@ export function CompleteTaskDialog(props: {
             <p className="mt-0.5 text-xs text-muted-foreground">
               Todo cartão em andamento precisa ter um próximo passo agendado.
             </p>
-            <Label htmlFor="next-task-title" className="mt-3 block">
-              Atividade
-            </Label>
-            {hasTypes ? (
-              <Select
-                id="next-task-title"
-                value={nextTitle}
-                onChange={(e) => setNextTitle(e.target.value)}
-              >
-                <option value="">Selecione a próxima atividade…</option>
-                {(taskTypes ?? []).map((t) => (
-                  <option key={t.id} value={t.label}>
-                    {t.label}
-                  </option>
-                ))}
-              </Select>
-            ) : (
+            <div className={skipNext ? "opacity-50" : undefined}>
+              <Label htmlFor="next-task-title" className="mt-3 block">
+                Atividade
+              </Label>
+              {hasTypes ? (
+                <Select
+                  id="next-task-title"
+                  value={nextTitle}
+                  disabled={props.saving || skipNext}
+                  onChange={(e) => setNextTitle(e.target.value)}
+                >
+                  <option value="">Selecione a próxima atividade…</option>
+                  {(taskTypes ?? []).map((t) => (
+                    <option key={t.id} value={t.label}>
+                      {t.label}
+                    </option>
+                  ))}
+                </Select>
+              ) : (
+                <Input
+                  id="next-task-title"
+                  value={nextTitle}
+                  disabled={props.saving || skipNext}
+                  onChange={(e) => setNextTitle(e.target.value)}
+                  placeholder="Descreva a próxima atividade"
+                />
+              )}
+              <Label htmlFor="next-task-due" className="mt-3 block">
+                Data
+              </Label>
               <Input
-                id="next-task-title"
-                value={nextTitle}
-                onChange={(e) => setNextTitle(e.target.value)}
-                placeholder="Descreva a próxima atividade"
+                id="next-task-due"
+                type="date"
+                value={nextDue}
+                disabled={props.saving || skipNext}
+                onChange={(e) => setNextDue(e.target.value)}
               />
-            )}
-            <Label htmlFor="next-task-due" className="mt-3 block">
-              Data
-            </Label>
-            <Input
-              id="next-task-due"
-              type="date"
-              value={nextDue}
-              onChange={(e) => setNextDue(e.target.value)}
-            />
+            </div>
+            <label className="mt-4 flex cursor-pointer items-center gap-2 text-sm text-foreground">
+              <input
+                type="checkbox"
+                className="h-4 w-4 accent-[var(--color-primary)]"
+                checked={skipNext}
+                disabled={props.saving}
+                onChange={(e) => setSkipNext(e.target.checked)}
+              />
+              <span>Não criar próxima tarefa</span>
+            </label>
           </div>
         )}
         <div className="mt-4 flex justify-end gap-2">
@@ -101,20 +125,53 @@ export function CompleteTaskDialog(props: {
             Cancelar
           </Button>
           <Button
-            onClick={() =>
+            onClick={() => {
+              if (props.requireNextTask && skipNext) {
+                setConfirmSkip(true);
+                return;
+              }
               props.onConfirm({
                 note: note.trim(),
                 ...(props.requireNextTask
                   ? { nextTask: { title: nextTitle.trim(), due_date: nextDue } }
                   : {}),
-              })
-            }
+              });
+            }}
             disabled={!canConfirm}
           >
-            {props.requireNextTask ? "Concluir e agendar próxima" : "Concluir"}
+            {submitLabel}
           </Button>
         </div>
       </div>
+      {confirmSkip && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-foreground/50 p-4">
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="confirm-skip-title"
+            className="w-full max-w-sm rounded-lg border border-border bg-card p-5 shadow-xl"
+          >
+            <h3 id="confirm-skip-title" className="font-display text-base font-bold text-foreground">
+              Concluir sem próxima tarefa?
+            </h3>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Tem certeza que não irá criar a próxima tarefa? Este cartão ficará sem próximo passo
+              agendado.
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setConfirmSkip(false)} disabled={props.saving}>
+                Voltar
+              </Button>
+              <Button
+                onClick={() => props.onConfirm({ note: note.trim(), skipNext: true })}
+                disabled={props.saving}
+              >
+                Sim, concluir sem próxima
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
