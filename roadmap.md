@@ -15,3 +15,4 @@
 - [x] Check-in definitivo na Lista de LEADS, com data/hora, ganho automático no CRM e conclusão das tarefas
 - [x] Cartões do CRM com título ID + nome e séries informadas no formulário
 - [x] Pop-up ao abrir o Pipeline avisando quais cartões têm tarefas pendentes
+- [ ] Atualizar tarefas, datas e ordenação do Pipeline após alterações, sem recarregar o navegador; verificar sincronização automática.

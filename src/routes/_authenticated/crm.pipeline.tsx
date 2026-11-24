@@ -1,4 +1,5 @@
 import { groupFunnels } from "@/lib/funnel-order";
+import { refreshTaskViews } from "@/lib/crm-refresh";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { asksEnrollment, canTransferBySchool, canTransferPortfolio } from "@/lib/ext/close-access";
@@ -339,8 +340,12 @@ function PipelinePage() {
 
   const pipelineQuery = useQuery({
     queryKey: ["pipeline", selected, statusFilter],
-    queryFn: () => listPipeline({ data: { funnel_id: selected!, status: statusFilter } }),
+    queryFn: () => {
+      if (!selected) throw new Error("Selecione um funil.");
+      return listPipeline({ data: { funnel_id: selected, status: statusFilter } });
+    },
     enabled: Boolean(selected),
+    refetchOnMount: "always",
     // Atualiza sozinho, mas pausa durante arraste, criação ou painel aberto.
     refetchInterval: dragging || newIn || openCard || closing ? false : 30_000,
     refetchIntervalInBackground: false,
@@ -354,6 +359,8 @@ function PipelinePage() {
   const noticeQuery = useQuery({
     queryKey: ["crm-tasks", "pending-notice", "mine"],
     queryFn: () => listTasks({ data: { done: false, mine: true } }),
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
   });
   const noticeItems = useMemo(
     () => pendingNoticeItems(noticeQuery.data ?? [], todayISO(), perms?.userId ?? ""),
@@ -375,6 +382,11 @@ function PipelinePage() {
 
   function refresh() {
     void queryClient.invalidateQueries({ queryKey: ["pipeline", selected] });
+  }
+
+  function closeCard() {
+    setOpenCard(null);
+    refresh();
   }
 
   const [pendingMove, setPendingMove] = useState<
@@ -498,7 +510,7 @@ function PipelinePage() {
     onSuccess: () => {
       toast.success("Oportunidade fechada.");
       setClosing(null);
-      setOpenCard(null);
+      closeCard();
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       queryClient.invalidateQueries({ queryKey: ["crm-tasks"] });
       refresh();
@@ -510,7 +522,7 @@ function PipelinePage() {
     mutationFn: (d: { id: string }) => reopenOpportunity({ data: d }),
     onSuccess: () => {
       toast.success("Oportunidade reaberta.");
-      setOpenCard(null);
+      closeCard();
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       refresh();
     },
@@ -840,7 +852,7 @@ function PipelinePage() {
         return (
           <div
             className={`fixed inset-0 z-50 flex bg-foreground/40 ${wide ? "items-center justify-center p-4" : "justify-end"}`}
-            onClick={() => setOpenCard(null)}
+            onClick={closeCard}
           >
             <div
               className={
@@ -867,7 +879,7 @@ function PipelinePage() {
                     </p>
                   )}
                 </div>
-                <Button variant="ghost" onClick={() => setOpenCard(null)}>
+                <Button variant="ghost" onClick={closeCard}>
                   Fechar
                 </Button>
               </div>
@@ -910,7 +922,7 @@ function PipelinePage() {
                 <TransferFunnel
                   opportunityId={card.id}
                   currentFunnelId={card.funnel_id}
-                  onDone={() => setOpenCard(null)}
+                  onDone={closeCard}
                 />
               )}
               </div>
@@ -1269,8 +1281,7 @@ function OpportunityTasks({
   });
 
   function refresh() {
-    void queryClient.invalidateQueries({ queryKey: ["crm-tasks"] });
-    void queryClient.invalidateQueries({ queryKey: ["dashboard-backlog"] });
+    return refreshTaskViews(queryClient);
   }
 
   const createM = useMutation({
@@ -1619,8 +1630,7 @@ function OpportunityNotes({
       setBody("");
       setCompletingFromNote(null);
       refresh();
-      void queryClient.invalidateQueries({ queryKey: ["crm-tasks"] });
-      void queryClient.invalidateQueries({ queryKey: ["dashboard-backlog"] });
+      void refreshTaskViews(queryClient);
       toast.success(
         vars.next_task ? "Tarefa concluída e próxima agendada." : "Tarefa concluída.",
       );

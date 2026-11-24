@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { refreshTaskViews } from "@/lib/crm-refresh";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -86,11 +87,11 @@ function TarefasPage() {
       }),
     refetchInterval: 30_000,
     refetchIntervalInBackground: false,
+    refetchOnMount: "always",
   });
 
   function refresh() {
-    void queryClient.invalidateQueries({ queryKey: ["crm-tasks"] });
-    void queryClient.invalidateQueries({ queryKey: ["dashboard-backlog"] });
+    return refreshTaskViews(queryClient);
   }
 
   const [completing, setCompleting] = useState<{
