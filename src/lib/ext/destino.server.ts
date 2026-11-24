@@ -185,13 +185,16 @@ export async function applyDestination(
 
   // Quando o funil tem uma única pessoa vinculada, ela já assume o cartão.
   let ownerId: string | null = null;
-  const { extAdmin } = await import("./server");
-  const { data: ownerLinks } = await extAdmin()
-    .from("user_funnels")
-    .select("user_id")
-    .eq("funnel_id", funnelId)
-    .limit(2);
-  if (ownerLinks?.length === 1) ownerId = ownerLinks[0]?.user_id ?? null;
+  const { extAdmin, getInactiveUserIds } = await import("./server");
+  const admin = extAdmin();
+  const [{ data: ownerLinks }, inactiveIds] = await Promise.all([
+    admin.from("user_funnels").select("user_id").eq("funnel_id", funnelId),
+    getInactiveUserIds(admin),
+  ]);
+  const activeOwners = ((ownerLinks ?? []) as { user_id: string }[]).filter(
+    (l) => !inactiveIds.has(l.user_id),
+  );
+  if (activeOwners.length === 1) ownerId = activeOwners[0]?.user_id ?? null;
 
   const { data: last } = await supabase
     .from("opportunities")

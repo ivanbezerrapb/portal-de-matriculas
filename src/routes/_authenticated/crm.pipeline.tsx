@@ -925,20 +925,30 @@ function PipelinePage() {
                   }
                 >
                   <option value="">Sem responsável</option>
-                  {Array.from(
-                    new Map(
+                  {(() => {
+                    const map = new Map(
                       [
                         ...owners.filter((owner) => owner.funnel_id === card.funnel_id),
                         ...schoolInfo.filter((u) => u.school_id === card.school_id),
                       ].map((u) => [u.user_id, u.name] as const),
-                    ).entries(),
-                  )
-                    .sort((a, b) => a[1].localeCompare(b[1], "pt"))
-                    .map(([id, name]) => (
-                      <option key={id} value={id}>
-                        {name}
-                      </option>
-                    ))}
+                    );
+                    return (
+                      <>
+                        {card.owner_id && !map.has(card.owner_id) && (
+                          <option value={card.owner_id} disabled>
+                            {(card.owner?.full_name || "Usuário inativo") + " (inativo)"}
+                          </option>
+                        )}
+                        {Array.from(map.entries())
+                          .sort((a, b) => a[1].localeCompare(b[1], "pt"))
+                          .map(([id, name]) => (
+                            <option key={id} value={id}>
+                              {name}
+                            </option>
+                          ))}
+                      </>
+                    );
+                  })()}
                 </Select>
               </div>
 

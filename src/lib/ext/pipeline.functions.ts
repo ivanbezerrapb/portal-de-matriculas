@@ -51,8 +51,12 @@ async function validateOwner(
   ownerId: string | null | undefined,
 ) {
   if (!ownerId) return null;
-  const { extAdmin } = await import("./server");
-  const { data, error } = await extAdmin()
+  const { extAdmin, isUserIdInactive } = await import("./server");
+  const admin = extAdmin();
+  if (await isUserIdInactive(admin, ownerId)) {
+    throw new Error("Este usuário está inativo e não pode receber atendimentos.");
+  }
+  const { data, error } = await admin
     .from("user_funnels")
     .select("user_id")
     .eq("funnel_id", funnelId)
@@ -61,7 +65,6 @@ async function validateOwner(
   if (error) throw new Error(error.message);
   if (!data) {
     // Também vale qualquer Central de Informações da mesma unidade do funil.
-    const admin = extAdmin();
     const { data: f } = await admin.from("funnels").select("school_id").eq("id", funnelId).maybeSingle();
     const { data: r } = f
       ? await admin.from("user_roles").select("user_id").eq("user_id", ownerId).eq("role", "info_center").eq("school_id", (f as { school_id: string }).school_id).maybeSingle()
@@ -844,13 +847,17 @@ export const transferOpportunity = createServerFn({ method: "POST" })
 
     let ownerStays = false;
     if (opp.owner_id) {
-      const { data: ol } = await admin
-        .from("user_funnels")
-        .select("user_id")
-        .eq("funnel_id", target.id)
-        .eq("user_id", opp.owner_id)
-        .maybeSingle();
-      ownerStays = Boolean(ol);
+      const { isUserIdInactive } = await import("./server");
+      const [{ data: ol }, inactive] = await Promise.all([
+        admin
+          .from("user_funnels")
+          .select("user_id")
+          .eq("funnel_id", target.id)
+          .eq("user_id", opp.owner_id)
+          .maybeSingle(),
+        isUserIdInactive(admin, opp.owner_id),
+      ]);
+      ownerStays = Boolean(ol) && !inactive;
     }
     const { count } = await admin
       .from("opportunities")
@@ -971,16 +978,18 @@ export const listPortfolioSummary = createServerFn({ method: "GET" })
     }
 
     // Destinos permitidos: vinculados ao funil + Central de Informações da escola.
-    const [{ data: linked }, { data: infoUsers }] = await Promise.all([
+    const { getInactiveUserIds } = await import("./server");
+    const [{ data: linked }, { data: infoUsers }, inactiveIds] = await Promise.all([
       admin.from("user_funnels").select("user_id").eq("funnel_id", funnel.id),
       admin.from("user_roles").select("user_id").eq("role", "info_center").eq("school_id", funnel.school_id),
+      getInactiveUserIds(admin),
     ]);
     const targetIds = [
       ...new Set([
         ...((linked ?? []) as { user_id: string }[]).map((r) => r.user_id),
         ...((infoUsers ?? []) as { user_id: string }[]).map((r) => r.user_id),
       ]),
-    ];
+    ].filter((id) => !inactiveIds.has(id));
     const allProfileIds = [...new Set([...counts.keys(), ...targetIds])];
     const names = new Map<string, string>();
     if (allProfileIds.length > 0) {
@@ -994,7 +1003,11 @@ export const listPortfolioSummary = createServerFn({ method: "GET" })
     }
 
     const sources: { owner_id: string | null; name: string; count: number }[] = [...counts.entries()]
-      .map(([owner_id, count]) => ({ owner_id, name: names.get(owner_id) || "Sem nome", count }))
+      .map(([owner_id, count]) => ({
+        owner_id,
+        name: `${names.get(owner_id) || "Sem nome"}${inactiveIds.has(owner_id) ? " (inativo)" : ""}`,
+        count,
+      }))
       .sort((a, b) => a.name.localeCompare(b.name, "pt"));
     if (unassigned > 0) {
       sources.push({ owner_id: null, name: "Sem responsável", count: unassigned });

@@ -57,6 +57,24 @@ export function extAdmin(): SupabaseClient {
   });
 }
 
+// Conjunto de IDs de usuários inativos no Auth externo.
+export async function getInactiveUserIds(admin: SupabaseClient): Promise<Set<string>> {
+  const { isUserInactive } = await import("./user-status");
+  const ids = new Set<string>();
+  const { data } = await admin.auth.admin.listUsers({ perPage: 1000 });
+  const now = Date.now();
+  for (const u of data?.users ?? []) {
+    if (isUserInactive(u, now)) ids.add(u.id);
+  }
+  return ids;
+}
+
+export async function isUserIdInactive(admin: SupabaseClient, userId: string): Promise<boolean> {
+  const { isUserInactive } = await import("./user-status");
+  const { data } = await admin.auth.admin.getUserById(userId);
+  return isUserInactive(data?.user);
+}
+
 // Garante o campo interno "Quantidade de crianças" do formulário e devolve seu id.
 export async function ensureChildrenCountField(
   supabase: SupabaseClient,

@@ -2,13 +2,14 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { KeyRound, Lock, Pencil, Plus, Trash2 } from "lucide-react";
+import { KeyRound, Lock, Pencil, Plus, Trash2, UserCheck, UserX } from "lucide-react";
 
 const ACT = "inline-flex h-7 items-center gap-1.5 px-2 py-0 text-xs";
 import {
   createUser,
   deleteUser,
   listUsers,
+  setUserActive,
   setUserFunnels,
   setUserRole,
   setMustChangePassword,
@@ -65,6 +66,7 @@ function UsersPage() {
   const [filterName, setFilterName] = useState("");
   const [filterRole, setFilterRole] = useState<Role | "all">("all");
   const [filterSchool, setFilterSchool] = useState("all");
+  const [filterStatus, setFilterStatus] = useState<"all" | "active" | "inactive">("all");
   const [funnelIds, setFunnelIds] = useState<string[]>([]);
   const [editFunnelsFor, setEditFunnelsFor] = useState<string | null>(null);
   const [editFunnelIds, setEditFunnelIds] = useState<string[]>([]);
@@ -169,6 +171,17 @@ function UsersPage() {
     onError: (e) => toast.error(e.message),
   });
 
+  const activeMut = useMutation({
+    mutationFn: (vars: { user_id: string; active: boolean }) => setUserActive({ data: vars }),
+    onSuccess: (_res, vars) => {
+      toast.success(vars.active ? "Usuário reativado." : "Usuário inativado.");
+      invalidate();
+      queryClient.invalidateQueries({ queryKey: ["funnel-owners"] });
+      queryClient.invalidateQueries({ queryKey: ["school-info-users"] });
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
   const schoolName = (id: string | null) => schools?.find((s) => s.id === id)?.name ?? "";
 
   const funnelName = (id: string) => funnels.find((f) => f.id === id)?.name ?? "Funil removido";
@@ -194,9 +207,11 @@ function UsersPage() {
         !u.roles.some((r) => r.school_id === filterSchool)
       )
         return false;
+      if (filterStatus === "active" && u.inactive) return false;
+      if (filterStatus === "inactive" && !u.inactive) return false;
       return true;
     });
-  }, [users, filterName, filterRole, filterSchool]);
+  }, [users, filterName, filterRole, filterSchool, filterStatus]);
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -304,7 +319,7 @@ function UsersPage() {
       </Card>
 
       <Card className="mt-6">
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-4">
           <div>
             <Label>Nome</Label>
             <Input
@@ -338,6 +353,17 @@ function UsersPage() {
               ))}
             </Select>
           </div>
+          <div>
+            <Label>Situação</Label>
+            <Select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value as "all" | "active" | "inactive")}
+            >
+              <option value="all">Todos</option>
+              <option value="active">Ativos</option>
+              <option value="inactive">Inativos</option>
+            </Select>
+          </div>
         </div>
       </Card>
 
@@ -356,13 +382,14 @@ function UsersPage() {
         <div className="mt-6 flex flex-col gap-3">
           {filteredUsers.map((u) => (
             <Card key={u.id} className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 [&>*]:col-start-1">
-              <div className="min-w-0">
+              <div className={`min-w-0 ${u.inactive ? "opacity-75" : ""}`}>
                   <p className="font-medium text-foreground">{u.full_name || u.email}</p>
                   <p className="text-xs text-muted-foreground">{u.email}</p>
-                  {u.must_change_password && (
-                    <span className="mt-1 inline-block">
-                      <Badge color="amber">Troca de senha pendente</Badge>
-                    </span>
+                  {(u.inactive || u.must_change_password) && (
+                    <div className="mt-1 flex flex-wrap gap-1.5">
+                      {u.inactive && <Badge color="red">Inativo</Badge>}
+                      {u.must_change_password && <Badge color="amber">Troca de senha pendente</Badge>}
+                    </div>
                   )}
               </div>
               <div className="!col-start-2 row-span-4 row-start-1 flex flex-col items-end gap-0.5">
@@ -401,6 +428,29 @@ function UsersPage() {
                   onClick={() => setAddRoleFor(addRoleFor === u.id ? null : u.id)}
                 >
                   <Plus className="h-3.5 w-3.5" /> Perfil
+                </Button>
+                <Button
+                  variant="ghost"
+                  className={ACT}
+                  disabled={activeMut.isPending}
+                  onClick={() => {
+                    const msg = u.inactive
+                      ? `Reativar o usuário ${u.full_name || u.email}? Ele voltará a acessar o portal.`
+                      : `Inativar o usuário ${u.full_name || u.email}? Ele perderá o acesso ao portal e não receberá novos atendimentos, mas todo o histórico será mantido.`;
+                    if (window.confirm(msg)) {
+                      activeMut.mutate({ user_id: u.id, active: u.inactive });
+                    }
+                  }}
+                >
+                  {u.inactive ? (
+                    <>
+                      <UserCheck className="h-3.5 w-3.5" /> Reativar
+                    </>
+                  ) : (
+                    <>
+                      <UserX className="h-3.5 w-3.5" /> Inativar
+                    </>
+                  )}
                 </Button>
                 <Button
                   variant="ghost"

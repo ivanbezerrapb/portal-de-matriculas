@@ -36,6 +36,7 @@ import { getMyPermissions } from "@/lib/ext/cadastros.functions";
 import { getFileAccess } from "@/lib/ext/arquivos.functions";
 import { recordAccess } from "@/lib/ext/logs.functions";
 import { getMyPasswordStatus } from "@/lib/ext/usuarios.functions";
+import { isUserInactive } from "@/lib/ext/user-status";
 import { ForcePasswordChange } from "@/components/ForcePasswordChange";
 import { usePendingAttendance } from "@/components/PendingAttendanceDialog";
 import { PendingTasksDialog } from "@/components/PendingTasksDialog";
@@ -51,6 +52,10 @@ export const Route = createFileRoute("/_authenticated")({
     const supabase = await getSupabase();
     const { data, error } = await supabase.auth.getUser();
     if (error || !data.user) throw redirect({ to: "/auth" });
+    if (isUserInactive(data.user)) {
+      await supabase.auth.signOut().catch(() => {});
+      throw redirect({ to: "/auth", search: { inativo: "1" } });
+    }
     return { user: data.user };
   },
   component: AuthenticatedLayout,
@@ -70,6 +75,11 @@ function SessionExpired() {
         if (cancelled) return;
         if (!data.user) {
           navigate({ to: "/auth", replace: true });
+          return;
+        }
+        if (isUserInactive(data.user)) {
+          await supabase.auth.signOut().catch(() => {});
+          navigate({ to: "/auth", search: { inativo: "1" }, replace: true });
           return;
         }
       } catch {
@@ -142,7 +152,13 @@ function AuthenticatedLayout() {
     (async () => {
       const supabase = await getSupabase();
       const { data } = await supabase.auth.getUser();
-      if (!cancelled && !data.user) navigate({ to: "/auth", replace: true });
+      if (cancelled) return;
+      if (!data.user) {
+        navigate({ to: "/auth", replace: true });
+      } else if (isUserInactive(data.user)) {
+        await supabase.auth.signOut().catch(() => {});
+        navigate({ to: "/auth", search: { inativo: "1" }, replace: true });
+      }
     })();
     return () => {
       cancelled = true;

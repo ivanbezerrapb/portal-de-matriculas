@@ -282,14 +282,16 @@ export const listFunnelOwners = createServerFn({ method: "GET" })
     if (!visibleIds.length) {
       return [] as { funnel_id: string; user_id: string; name: string }[];
     }
-    const { extAdmin } = await import("./server");
+    const { extAdmin, getInactiveUserIds } = await import("./server");
     const admin = extAdmin();
-    const { data: links, error } = await admin
-      .from("user_funnels")
-      .select("user_id, funnel_id")
-      .in("funnel_id", visibleIds);
+    const [{ data: links, error }, inactiveIds] = await Promise.all([
+      admin.from("user_funnels").select("user_id, funnel_id").in("funnel_id", visibleIds),
+      getInactiveUserIds(admin),
+    ]);
     if (error) throw new Error(error.message);
-    const rows = (links ?? []) as { user_id: string; funnel_id: string }[];
+    const rows = ((links ?? []) as { user_id: string; funnel_id: string }[]).filter(
+      (r) => !inactiveIds.has(r.user_id),
+    );
     if (!rows.length) return [] as { funnel_id: string; user_id: string; name: string }[];
     const { data: profiles } = await admin
       .from("profiles")
@@ -315,14 +317,19 @@ export const listSchoolInfoUsers = createServerFn({ method: "GET" })
     const { data: visible } = await context.supabase.from("funnels").select("school_id");
     const schoolIds = [...new Set(((visible ?? []) as { school_id: string }[]).map((f) => f.school_id))];
     if (!schoolIds.length) return [] as { school_id: string; user_id: string; name: string }[];
-    const { extAdmin } = await import("./server");
+    const { extAdmin, getInactiveUserIds } = await import("./server");
     const admin = extAdmin();
-    const { data: roles } = await admin
-      .from("user_roles")
-      .select("user_id, school_id")
-      .eq("role", "info_center")
-      .in("school_id", schoolIds);
-    const rows = (roles ?? []) as { user_id: string; school_id: string }[];
+    const [{ data: roles }, inactiveIds] = await Promise.all([
+      admin
+        .from("user_roles")
+        .select("user_id, school_id")
+        .eq("role", "info_center")
+        .in("school_id", schoolIds),
+      getInactiveUserIds(admin),
+    ]);
+    const rows = ((roles ?? []) as { user_id: string; school_id: string }[]).filter(
+      (r) => !inactiveIds.has(r.user_id),
+    );
     if (!rows.length) return [] as { school_id: string; user_id: string; name: string }[];
     const { data: profiles } = await admin
       .from("profiles")

@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAuth } from "./auth";
+import { canToggleUserActive, INACTIVE_BAN_DURATION, isUserInactive } from "./user-status";
 
 // ---------- Gestão de usuários (somente Administrador) ----------
 
@@ -53,6 +54,8 @@ export const listUsers = createServerFn({ method: "GET" })
       roles: roleMap.get(u.id) ?? [],
       funnel_ids: funnelMap.get(u.id) ?? [],
       must_change_password: mustMap.get(u.id) ?? false,
+      inactive: isUserInactive(u),
+      inactive_at: (u.app_metadata?.["inactive_at"] as string | null | undefined) ?? null,
     }));
   });
 
@@ -200,6 +203,54 @@ export const deleteUser = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+// Inativa ou reativa o acesso do usuário mantendo perfil, vínculos e todo o histórico.
+export const setUserActive = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((data) =>
+    z.object({ user_id: z.string().uuid(), active: z.boolean() }).parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    await requireAdmin(context.supabase, context.userId);
+    const denied = canToggleUserActive(context.userId, data.user_id, data.active);
+    if (denied) throw new Error(denied);
+
+    const { extAdmin } = await import("./server");
+    const admin = extAdmin();
+    const { data: targetData, error: getErr } = await admin.auth.admin.getUserById(data.user_id);
+    if (getErr || !targetData?.user) throw new Error("Usuário não encontrado.");
+
+    const now = new Date().toISOString();
+    const prevMeta = (targetData.user.app_metadata ?? {}) as Record<string, unknown>;
+    const { error } = await admin.auth.admin.updateUserById(data.user_id, {
+      ban_duration: data.active ? "none" : INACTIVE_BAN_DURATION,
+      app_metadata: {
+        ...prevMeta,
+        inactive: !data.active,
+        inactive_at: data.active ? null : now,
+      },
+    });
+    if (error) throw new Error(error.message);
+
+    const { data: profs } = await admin
+      .from("profiles")
+      .select("id, full_name")
+      .in("id", [context.userId, data.user_id]);
+    const nameOf = (id: string, fallback: string) =>
+      ((profs ?? []) as { id: string; full_name: string | null }[])
+        .find((p) => p.id === id)
+        ?.full_name?.trim() || fallback;
+    const targetName = nameOf(data.user_id, targetData.user.email ?? data.user_id);
+    await admin.from("activity_logs").insert({
+      actor_id: context.userId,
+      actor_name: nameOf(context.userId, context.userEmail || "Administrador"),
+      action: "update",
+      table_name: "profiles",
+      record_id: data.user_id,
+      label: data.active ? `Usuário reativado: ${targetName}` : `Usuário inativado: ${targetName}`,
+      new_data: { active: data.active },
+    });
+    return { ok: true };
+  });
 // ---------- Troca obrigatória de senha ----------
 
 export const setMustChangePassword = createServerFn({ method: "POST" })

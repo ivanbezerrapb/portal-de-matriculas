@@ -176,6 +176,10 @@ export async function editLead(db: SupabaseClient, who: string, input: EditInput
     else {
       const u = await userByRef(db, input.responsavel);
       if (!u) throw new ApiError(422, "usuario_invalido", `Responsável "${input.responsavel}" não encontrado. Consulte GET /usuarios.`);
+      const { isUserIdInactive } = await import("./server");
+      if (await isUserIdInactive(db, u.id)) {
+        throw new ApiError(422, "usuario_inativo", `Responsável "${u.full_name ?? input.responsavel}" está inativo.`);
+      }
       upd["owner_id"] = u.id; upd["owner_confirmed_at"] = null; changes.push(`responsável: ${u.full_name}`);
     }
   }
@@ -470,9 +474,13 @@ export async function deleteTaskApi(db: SupabaseClient, who: string, id: string)
 const ROLE: Record<string, string> = { admin: "Administrador", direcao: "Direção", school_manager: "Gerente", info_center: "Central de Informações", print_operator: "Coordenação", submission_editor: "Editor" };
 export async function listUsersApi(db: SupabaseClient, sp: URLSearchParams) {
   const school = await schoolId(db, sp.get("escola"));
-  const { data: roles } = await db.from("user_roles").select("user_id, role, school_id, schools(name)");
+  const { getInactiveUserIds } = await import("./server");
+  const [{ data: roles }, inactiveIds] = await Promise.all([
+    db.from("user_roles").select("user_id, role, school_id, schools(name)"),
+    getInactiveUserIds(db),
+  ]);
   const rs = ((roles ?? []) as unknown as { user_id: string; role: string; school_id: string | null; schools: { name: string } | null }[])
-    .filter((r) => r.role !== "admin" && r.role !== "direcao" && (!school || r.school_id === school));
+    .filter((r) => r.role !== "admin" && r.role !== "direcao" && !inactiveIds.has(r.user_id) && (!school || r.school_id === school));
   const nm = await names(db, rs.map((r) => r.user_id));
   const byUser = new Map<string, { id: string; nome: string | null; perfis: { perfil: string; escola: string | null }[] }>();
   for (const r of rs) {

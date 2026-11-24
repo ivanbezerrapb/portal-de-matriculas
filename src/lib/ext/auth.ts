@@ -1,5 +1,6 @@
 import { createMiddleware } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
+import { isUserInactive } from "./user-status";
 
 // Middleware de autenticação para server functions: valida o bearer token
 // contra o Supabase externo e expõe um cliente com RLS do usuário.
@@ -13,6 +14,7 @@ export const requireAuth = createMiddleware({ type: "function" }).server(async (
   const anon = extAnon();
   const { data, error } = await anon.auth.getUser(token);
   if (error || !data.user) throw new Error("Unauthorized");
+  if (isUserInactive(data.user)) throw new Error("Conta inativa.");
 
   return next({
     context: {

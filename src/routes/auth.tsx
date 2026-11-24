@@ -4,10 +4,14 @@ import { toast } from "sonner";
 import { ArrowRight, Eye, EyeOff, LockKeyhole, Mail } from "lucide-react";
 import { getSupabase } from "@/lib/ext/browser";
 import { recordAccess, recordFailedLogin } from "@/lib/ext/logs.functions";
+import { isBannedAuthError } from "@/lib/ext/user-status";
 import { Button, Card, Input, Label } from "@/components/ui";
 import logoAsset from "@/assets/grupo-inter-logo.png.asset.json";
 
 export const Route = createFileRoute("/auth")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    ...(String(search["inativo"] ?? "") === "1" ? { inativo: "1" } : {}),
+  }),
   head: () => ({
     meta: [
       { title: "Entrar — Portal de Matrículas" },
@@ -26,6 +30,7 @@ export const Route = createFileRoute("/auth")({
 
 function AuthPage() {
   const navigate = useNavigate();
+  const { inativo } = Route.useSearch();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -49,7 +54,12 @@ function AuthPage() {
       void recordAccess({ data: { event: "login" } }).catch(() => {});
       navigate({ to: "/dashboard" });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Não foi possível entrar.");
+      const raw = err instanceof Error ? err.message : "";
+      toast.error(
+        isBannedAuthError(raw)
+          ? "Este usuário está inativo. Entre em contato com o administrador."
+          : raw || "Não foi possível entrar.",
+      );
     } finally {
       setLoading(false);
     }
@@ -66,6 +76,11 @@ function AuthPage() {
           </h1>
         </div>
         <p className="text-center text-sm text-muted-foreground">Entre com sua conta</p>
+        {inativo === "1" && (
+          <p className="mt-4 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-center text-xs font-medium text-destructive">
+            Sua conta foi inativada. Entre em contato com o administrador.
+          </p>
+        )}
 
         <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
           <div className="relative">
