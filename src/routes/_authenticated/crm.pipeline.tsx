@@ -590,7 +590,14 @@ function PipelinePage() {
           {stages.map((stage) => {
             const cards = opportunities
               .filter((o) => o.stage_id === stage.id)
-              .sort((a, b) => a.position - b.position);
+              .sort((a, b) => {
+                const da = nextTasks[a.id]?.due_date ?? null;
+                const db = nextTasks[b.id]?.due_date ?? null;
+                if (da && db && da !== db) return da.localeCompare(db);
+                if (da && !db) return -1;
+                if (!da && db) return 1;
+                return a.position - b.position;
+              });
             return (
               <div
                 key={stage.id}
