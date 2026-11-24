@@ -20,6 +20,12 @@ import {
 } from "@/lib/ext/pipeline.functions";
 import { listCloseReasons } from "@/lib/ext/motivos.functions";
 import { createTask, deleteTask, listTasks, setTaskDone } from "@/lib/ext/tarefas.functions";
+import {
+  canAddFreeNote,
+  needsNextTaskOnComplete,
+  pickPrimaryOpenTask,
+  type NextTaskInput,
+} from "@/lib/ext/task-flow";
 import { listTaskTypes } from "@/lib/ext/atividades.functions";
 import { CompleteTaskDialog } from "@/components/CompleteTaskDialog";
 import { createNote, deleteNote, listNotes } from "@/lib/ext/notas.functions";
@@ -990,9 +996,17 @@ function PipelinePage() {
                 />
               )}
 
-              <OpportunityTasks opportunityId={card.id} canWrite={canWrite} />
+              <OpportunityTasks
+                opportunityId={card.id}
+                cardStatus={card.status}
+                canWrite={canWrite}
+              />
 
-              <OpportunityNotes opportunityId={card.id} canWrite={canWrite} />
+              <OpportunityNotes
+                opportunityId={card.id}
+                cardStatus={card.status}
+                canWrite={canWrite}
+              />
               </div>
               </div>
 
@@ -1146,9 +1160,11 @@ function PipelinePage() {
 
 function OpportunityTasks({
   opportunityId,
+  cardStatus,
   canWrite,
 }: {
   opportunityId: string;
+  cardStatus: string;
   canWrite: boolean;
 }) {
   const queryClient = useQueryClient();
@@ -1169,6 +1185,7 @@ function OpportunityTasks({
 
   function refresh() {
     void queryClient.invalidateQueries({ queryKey: ["crm-tasks"] });
+    void queryClient.invalidateQueries({ queryKey: ["dashboard-backlog"] });
   }
 
   const createM = useMutation({
@@ -1182,11 +1199,17 @@ function OpportunityTasks({
     onError: (e: Error) => toast.error(e.message),
   });
   const doneM = useMutation({
-    mutationFn: (d: { id: string; done: boolean; note?: string }) => setTaskDone({ data: d }),
-    onSuccess: () => {
+    mutationFn: (d: { id: string; done: boolean; note?: string; next_task?: NextTaskInput }) =>
+      setTaskDone({ data: d }),
+    onSuccess: (_res, vars) => {
       setCompleting(null);
       refresh();
       void queryClient.invalidateQueries({ queryKey: ["crm-notes", opportunityId] });
+      if (vars.done) {
+        toast.success(
+          vars.next_task ? "Tarefa concluída e próxima agendada." : "Tarefa concluída.",
+        );
+      }
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -1196,14 +1219,28 @@ function OpportunityTasks({
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const openTasks = (tasks ?? []).filter((t) => !t.done);
+  const hasOpenTask = openTasks.length > 0;
+
   return (
     <section className="mt-6 border-t border-border pt-4">
       {completing && (
         <CompleteTaskDialog
           taskTitle={completing.title}
           saving={doneM.isPending}
+          requireNextTask={needsNextTaskOnComplete({
+            cardStatus,
+            otherOpenTaskCount: openTasks.filter((t) => t.id !== completing.id).length,
+          })}
           onCancel={() => setCompleting(null)}
-          onConfirm={(note) => doneM.mutate({ id: completing.id, done: true, note })}
+          onConfirm={({ note, nextTask }) =>
+            doneM.mutate({
+              id: completing.id,
+              done: true,
+              note,
+              ...(nextTask ? { next_task: nextTask } : {}),
+            })
+          }
         />
       )}
       <h3 className="text-sm font-semibold text-foreground">Tarefas</h3>
@@ -1250,31 +1287,41 @@ function OpportunityTasks({
           <li className="text-xs text-muted-foreground">Nenhuma tarefa ainda.</li>
         )}
       </ul>
-      {canWrite && (
-        <form
-          className="mt-3 flex flex-col gap-2"
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (!title.trim()) return;
-            createM.mutate();
-          }}
-        >
-          <Select value={title} onChange={(e) => setTitle(e.target.value)}>
-            <option value="">Selecione a atividade…</option>
-            {(taskTypes ?? []).map((t) => (
-              <option key={t.id} value={t.label}>
-                {t.label}
-              </option>
-            ))}
-          </Select>
-          <div className="flex gap-2">
-            <Input type="date" value={due} onChange={(e) => setDue(e.target.value)} />
-            <Button type="submit" disabled={createM.isPending || !title.trim()}>
-              Adicionar
-            </Button>
-          </div>
-        </form>
-      )}
+      {canWrite &&
+        (hasOpenTask ? (
+          <p className="mt-3 rounded-md border border-border bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
+            Conclua a tarefa pendente acima antes de criar outra.
+          </p>
+        ) : (
+          <form
+            className="mt-3 flex flex-col gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!title.trim() || !due) return;
+              createM.mutate();
+            }}
+          >
+            {cardStatus === "open" && (
+              <p className="rounded-md border border-amber-300/70 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                Cartão sem próxima tarefa. Agende uma atividade abaixo.
+              </p>
+            )}
+            <Select value={title} onChange={(e) => setTitle(e.target.value)}>
+              <option value="">Selecione a atividade…</option>
+              {(taskTypes ?? []).map((t) => (
+                <option key={t.id} value={t.label}>
+                  {t.label}
+                </option>
+              ))}
+            </Select>
+            <div className="flex gap-2">
+              <Input type="date" value={due} onChange={(e) => setDue(e.target.value)} />
+              <Button type="submit" disabled={createM.isPending || !title.trim() || !due}>
+                Adicionar
+              </Button>
+            </div>
+          </form>
+        ))}
     </section>
   );
 }
@@ -1390,13 +1437,21 @@ function CloseDialog(props: {
 // Histórico de informações do cartão: cada registro guarda nome, data e hora.
 function OpportunityNotes({
   opportunityId,
+  cardStatus,
   canWrite,
 }: {
   opportunityId: string;
+  cardStatus: string;
   canWrite: boolean;
 }) {
   const queryClient = useQueryClient();
   const [body, setBody] = useState("");
+  const [completingFromNote, setCompletingFromNote] = useState<{
+    id: string;
+    title: string;
+    note: string;
+    otherOpenCount: number;
+  } | null>(null);
 
   const { data: notes } = useQuery({
     queryKey: ["crm-notes", opportunityId],
@@ -1404,6 +1459,18 @@ function OpportunityNotes({
     refetchInterval: 30_000,
     refetchIntervalInBackground: false,
   });
+
+  const { data: tasks } = useQuery({
+    queryKey: ["crm-tasks", "opp", opportunityId],
+    queryFn: () => listTasks({ data: { opportunity_id: opportunityId } }),
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
+  });
+
+  const openTasks = (tasks ?? []).filter((t) => !t.done);
+  const primaryOpen = pickPrimaryOpenTask(openTasks);
+  const noteCheck = canAddFreeNote({ cardStatus, openTaskCount: openTasks.length });
+  const guidedTask = !noteCheck.allowed ? primaryOpen : null;
 
   function refresh() {
     void queryClient.invalidateQueries({ queryKey: ["crm-notes", opportunityId] });
@@ -1418,6 +1485,29 @@ function OpportunityNotes({
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const completeFromNoteM = useMutation({
+    mutationFn: (d: { id: string; note: string; next_task?: NextTaskInput }) =>
+      setTaskDone({
+        data: {
+          id: d.id,
+          done: true,
+          note: d.note,
+          ...(d.next_task ? { next_task: d.next_task } : {}),
+        },
+      }),
+    onSuccess: (_res, vars) => {
+      setBody("");
+      setCompletingFromNote(null);
+      refresh();
+      void queryClient.invalidateQueries({ queryKey: ["crm-tasks"] });
+      void queryClient.invalidateQueries({ queryKey: ["dashboard-backlog"] });
+      toast.success(
+        vars.next_task ? "Tarefa concluída e próxima agendada." : "Tarefa concluída.",
+      );
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const deleteM = useMutation({
     mutationFn: (d: { id: string }) => deleteNote({ data: d }),
     onSuccess: refresh,
@@ -1426,6 +1516,26 @@ function OpportunityNotes({
 
   return (
     <section className="mt-6 border-t border-border pt-4">
+      {completingFromNote && (
+        <CompleteTaskDialog
+          taskTitle={completingFromNote.title}
+          initialNote={completingFromNote.note}
+          fromHistory
+          saving={completeFromNoteM.isPending}
+          requireNextTask={needsNextTaskOnComplete({
+            cardStatus,
+            otherOpenTaskCount: completingFromNote.otherOpenCount,
+          })}
+          onCancel={() => setCompletingFromNote(null)}
+          onConfirm={({ note, nextTask }) =>
+            completeFromNoteM.mutate({
+              id: completingFromNote.id,
+              note,
+              ...(nextTask ? { next_task: nextTask } : {}),
+            })
+          }
+        />
+      )}
       <h3 className="text-sm font-semibold text-foreground">Histórico</h3>
 
       {canWrite && (
@@ -1434,17 +1544,40 @@ function OpportunityNotes({
           onSubmit={(e) => {
             e.preventDefault();
             if (!body.trim()) return;
+            if (guidedTask) {
+              setCompletingFromNote({
+                id: guidedTask.id,
+                title: guidedTask.title,
+                note: body.trim(),
+                otherOpenCount: Math.max(openTasks.length - 1, 0),
+              });
+              return;
+            }
             createM.mutate();
           }}
         >
+          {guidedTask && (
+            <p className="rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs text-foreground">
+              Tarefa pendente: <span className="font-semibold">{guidedTask.title}</span>. Ao
+              registrar abaixo, essa tarefa será concluída e o sistema pedirá a próxima.
+            </p>
+          )}
           <Textarea
             rows={3}
             value={body}
             onChange={(e) => setBody(e.target.value)}
-            placeholder="Escreva aqui a informação a registrar…"
+            placeholder={
+              guidedTask
+                ? "Descreva o que foi feito na tarefa pendente…"
+                : "Escreva aqui a informação a registrar…"
+            }
           />
-          <Button type="submit" disabled={createM.isPending || !body.trim()} className="self-start">
-            Registrar
+          <Button
+            type="submit"
+            disabled={createM.isPending || completeFromNoteM.isPending || !body.trim()}
+            className="self-start"
+          >
+            {guidedTask ? "Concluir tarefa e registrar" : "Registrar"}
           </Button>
         </form>
       )}

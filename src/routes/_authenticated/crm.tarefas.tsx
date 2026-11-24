@@ -4,6 +4,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Trash2 } from "lucide-react";
 import { deleteTask, listTasks, setTaskDone, type TaskRow } from "@/lib/ext/tarefas.functions";
+import { needsNextTaskOnComplete, type NextTaskInput } from "@/lib/ext/task-flow";
 import { getMyPermissions } from "@/lib/ext/cadastros.functions";
 import { listSchools } from "@/lib/ext/escolas.functions";
 import { listFunnelOwners, listFunnels } from "@/lib/ext/funis.functions";
@@ -89,15 +90,26 @@ function TarefasPage() {
 
   function refresh() {
     void queryClient.invalidateQueries({ queryKey: ["crm-tasks"] });
+    void queryClient.invalidateQueries({ queryKey: ["dashboard-backlog"] });
   }
 
-  const [completing, setCompleting] = useState<{ id: string; title: string } | null>(null);
+  const [completing, setCompleting] = useState<{
+    id: string;
+    title: string;
+    requireNextTask: boolean;
+  } | null>(null);
   const doneM = useMutation({
-    mutationFn: (d: { id: string; done: boolean; note?: string }) => setTaskDone({ data: d }),
-    onSuccess: () => {
+    mutationFn: (d: { id: string; done: boolean; note?: string; next_task?: NextTaskInput }) =>
+      setTaskDone({ data: d }),
+    onSuccess: (_res, vars) => {
       setCompleting(null);
       refresh();
       void queryClient.invalidateQueries({ queryKey: ["crm-notes"] });
+      if (vars.done) {
+        toast.success(
+          vars.next_task ? "Tarefa concluída e próxima agendada." : "Tarefa concluída.",
+        );
+      }
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -115,9 +127,17 @@ function TarefasPage() {
       {completing && (
         <CompleteTaskDialog
           taskTitle={completing.title}
+          requireNextTask={completing.requireNextTask}
           saving={doneM.isPending}
           onCancel={() => setCompleting(null)}
-          onConfirm={(note) => doneM.mutate({ id: completing.id, done: true, note })}
+          onConfirm={({ note, nextTask }) =>
+            doneM.mutate({
+              id: completing.id,
+              done: true,
+              note,
+              ...(nextTask ? { next_task: nextTask } : {}),
+            })
+          }
         />
       )}
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -221,7 +241,19 @@ function TarefasPage() {
                     disabled={!canWrite}
                     onChange={(e) =>
                       e.target.checked
-                        ? setCompleting({ id: t.id, title: t.title })
+                        ? setCompleting({
+                            id: t.id,
+                            title: t.title,
+                            requireNextTask: needsNextTaskOnComplete({
+                              cardStatus: t.opportunities?.status ?? "open",
+                              otherOpenTaskCount: (tasks ?? []).filter(
+                                (x) =>
+                                  !x.done &&
+                                  x.opportunity_id === t.opportunity_id &&
+                                  x.id !== t.id,
+                              ).length,
+                            }),
+                          })
                         : doneM.mutate({ id: t.id, done: false })
                     }
                     aria-label={t.done ? "Reabrir tarefa" : "Concluir tarefa"}

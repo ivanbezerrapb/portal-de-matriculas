@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAuth } from "./auth";
+import { canAddFreeNote } from "./task-flow";
 
 export type CrmNote = {
   id: string;
@@ -43,6 +44,26 @@ export const createNote = createServerFn({ method: "POST" })
       .parse(data),
   )
   .handler(async ({ data, context }) => {
+    const [{ data: opp, error: oppErr }, { count: openCount, error: countErr }] = await Promise.all([
+      context.supabase
+        .from("opportunities")
+        .select("status")
+        .eq("id", data.opportunity_id)
+        .maybeSingle(),
+      context.supabase
+        .from("crm_tasks")
+        .select("id", { count: "exact", head: true })
+        .eq("opportunity_id", data.opportunity_id)
+        .eq("done", false),
+    ]);
+    if (oppErr) throw new Error(oppErr.message);
+    if (countErr) throw new Error(countErr.message);
+    const check = canAddFreeNote({
+      cardStatus: (opp?.status as string | undefined) ?? "open",
+      openTaskCount: openCount ?? 0,
+    });
+    if (!check.allowed) throw new Error(check.reason ?? "Conclua a tarefa pendente antes.");
+
     const { extAdmin } = await import("./server");
     const { data: profile } = await extAdmin()
       .from("profiles")

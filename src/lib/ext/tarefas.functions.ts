@@ -2,11 +2,13 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAuth } from "./auth";
 import type { CrmTask } from "./model";
+import { canCreateNewTask, validateCompleteTask } from "./task-flow";
 
 export type TaskRow = CrmTask & {
   opportunities: {
     id: string;
     name: string;
+    status: string;
     school_id: string;
     funnel_id: string;
     owner_id: string | null;
@@ -36,7 +38,7 @@ export const listTasks = createServerFn({ method: "GET" })
     let q = context.supabase
       .from("crm_tasks")
       .select(
-        "*, opportunities!inner(id, name, school_id, funnel_id, owner_id, funnels(name), schools(name))",
+        "*, opportunities!inner(id, name, status, school_id, funnel_id, owner_id, funnels(name), schools(name))",
       )
       .order("done")
       .order("due_date", { nullsFirst: false })
@@ -95,6 +97,15 @@ export const createTask = createServerFn({ method: "POST" })
       .parse(data),
   )
   .handler(async ({ data, context }) => {
+    const { count: openCount, error: countErr } = await context.supabase
+      .from("crm_tasks")
+      .select("id", { count: "exact", head: true })
+      .eq("opportunity_id", data.opportunity_id)
+      .eq("done", false);
+    if (countErr) throw new Error(countErr.message);
+    const check = canCreateNewTask({ openTaskCount: openCount ?? 0 });
+    if (!check.allowed) throw new Error(check.reason ?? "Já existe uma tarefa pendente.");
+
     const { error } = await context.supabase.from("crm_tasks").insert({
       opportunity_id: data.opportunity_id,
       title: data.title.trim(),
@@ -113,26 +124,70 @@ export const setTaskDone = createServerFn({ method: "POST" })
         id: z.string().uuid(),
         done: z.boolean(),
         note: z.string().trim().max(4000).optional(),
+        next_task: z
+          .object({
+            title: z.string().trim().min(1).max(160),
+            due_date: z.string().trim().min(1),
+          })
+          .optional()
+          .nullable(),
       })
       .parse(data),
   )
   .handler(async ({ data, context }) => {
-    // Concluir exige o registro do que foi feito (vai para o Histórico do cartão).
-    if (data.done && !data.note) {
-      throw new Error("Descreva no histórico o que foi feito para concluir a tarefa.");
-    }
     const { data: task, error: readError } = await context.supabase
       .from("crm_tasks")
       .select("id, title, opportunity_id")
       .eq("id", data.id)
       .single();
     if (readError || !task) throw new Error(readError?.message ?? "Tarefa não encontrada.");
+
+    const [{ data: opp, error: oppErr }, { count: otherOpenCount, error: countErr }] =
+      await Promise.all([
+        context.supabase
+          .from("opportunities")
+          .select("status")
+          .eq("id", task.opportunity_id)
+          .maybeSingle(),
+        context.supabase
+          .from("crm_tasks")
+          .select("id", { count: "exact", head: true })
+          .eq("opportunity_id", task.opportunity_id)
+          .eq("done", false)
+          .neq("id", data.id),
+      ]);
+    if (oppErr) throw new Error(oppErr.message);
+    if (countErr) throw new Error(countErr.message);
+
+    if (!data.done) {
+      const reopenCheck = canCreateNewTask({ openTaskCount: otherOpenCount ?? 0 });
+      if (!reopenCheck.allowed) {
+        throw new Error(
+          "Já existe outra tarefa pendente neste cartão. Conclua-a antes de reabrir esta.",
+        );
+      }
+    }
+
+    let validatedNote: string | null = null;
+    let nextTaskToCreate: { title: string; due_date: string } | null = null;
+    if (data.done) {
+      const validated = validateCompleteTask({
+        note: data.note,
+        cardStatus: (opp?.status as string | undefined) ?? "open",
+        otherOpenTaskCount: otherOpenCount ?? 0,
+        nextTask: data.next_task ?? null,
+      });
+      if (!validated.ok) throw new Error(validated.error);
+      validatedNote = validated.note;
+      nextTaskToCreate = validated.nextTask;
+    }
+
     const { error } = await context.supabase
       .from("crm_tasks")
       .update({ done: data.done, done_at: data.done ? new Date().toISOString() : null })
       .eq("id", data.id);
     if (error) throw new Error(error.message);
-    if (data.done && data.note) {
+    if (data.done && validatedNote) {
       const { extAdmin } = await import("./server");
       const { data: profile } = await extAdmin()
         .from("profiles")
@@ -145,9 +200,18 @@ export const setTaskDone = createServerFn({ method: "POST" })
         opportunity_id: task.opportunity_id,
         author_id: context.userId,
         author_name: authorName,
-        body: `Concluiu ${task.title}: ${data.note}`,
+        body: `Concluiu ${task.title}: ${validatedNote}`,
       });
       if (noteError) throw new Error(noteError.message);
+    }
+    if (data.done && nextTaskToCreate) {
+      const { error: nextError } = await context.supabase.from("crm_tasks").insert({
+        opportunity_id: task.opportunity_id,
+        title: nextTaskToCreate.title,
+        due_date: nextTaskToCreate.due_date,
+        created_by: context.userId,
+      });
+      if (nextError) throw new Error(nextError.message);
     }
     return { ok: true };
   });
