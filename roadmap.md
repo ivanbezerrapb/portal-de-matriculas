@@ -1,5 +1,10 @@
 # Roadmap — Sistema de Formulários por Escola
 
+## Indicadores de atualização — Atendimento
+- [x] Adicionar indicadores de cartões abertos, filtros, última atualização e parados por atendente.
+- [x] Validar indicadores e filtros na tela com testes automatizados (96 testes passaram).
+- [ ] Conferir o relatório com sessão do banco externo: sessão temporária do ambiente retorna ao login e não permite acessar Atendimento.
+
 - [x] Conectar Supabase externo (credenciais salvas)
 - [x] Trocar para o novo Supabase (nrfqkavipnycifrucbfg)
 - [x] Esquema do banco aplicado via psql (9 tabelas, RLS, funções, trigger, seed de 4 escolas)

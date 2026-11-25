@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAuth } from "./auth";
+import { resolveLastUpdatedAt } from "./card-freshness";
 
 // Relatórios: Admin, Direção e Gerentes (Gerente só nas suas unidades).
 
@@ -135,18 +136,27 @@ export const attendanceReport = createServerFn({ method: "GET" })
     if (!schoolIds.length) return [];
     const opps = await fetchAll<any>((a, b) => {
       let q = admin.from("opportunities")
-        .select("id, name, school_id, funnel_id, stage_id, owner_id, status, created_at, submission_id, funnels(name), funnel_stages(name), submissions(form_id)")
+        .select("id, name, school_id, funnel_id, stage_id, owner_id, status, created_at, updated_at, submission_id, funnels(name), funnel_stages(name), submissions(form_id, updated_at)")
         .in("school_id", schoolIds);
       if (data.from) q = q.gte("created_at", data.from);
       if (data.to) q = q.lte("created_at", `${data.to}T23:59:59`);
       return q.order("created_at", { ascending: false }).range(a, b);
     });
     const ids = opps.map((o) => o.id as string);
-    const tasks: { opportunity_id: string; done: boolean; due_date: string | null }[] = [];
+    const tasks: { opportunity_id: string; done: boolean; due_date: string | null; created_at: string; done_at: string | null }[] = [];
+    const latestInteraction = new Map<string, string>();
+    const recordInteraction = (id: string, timestamps: (string | null | undefined)[]) => {
+      const latest = resolveLastUpdatedAt([latestInteraction.get(id), ...timestamps]);
+      if (latest) latestInteraction.set(id, latest);
+    };
     for (let i = 0; i < ids.length; i += 150) {
       const chunk = ids.slice(i, i + 150);
-      tasks.push(...await fetchAll<any>((a, b) => admin.from("crm_tasks").select("opportunity_id, done, due_date").in("opportunity_id", chunk).range(a, b)));
+      tasks.push(...await fetchAll<any>((a, b) => admin.from("crm_tasks").select("opportunity_id, done, due_date, created_at, done_at").in("opportunity_id", chunk).order("id").range(a, b)));
+      const notes = await fetchAll<{ opportunity_id: string; created_at: string }>((a, b) =>
+        admin.from("crm_notes").select("opportunity_id, created_at").in("opportunity_id", chunk).order("id").range(a, b));
+      for (const note of notes) recordInteraction(note.opportunity_id, [note.created_at]);
     }
+    for (const task of tasks) recordInteraction(task.opportunity_id, [task.created_at, task.done_at]);
     const today = new Date(Date.now() - 3 * 3600_000).toISOString().slice(0, 10);
     const overdue = new Map<string, number>();
     for (const t of tasks) if (!t.done && t.due_date && t.due_date.slice(0, 10) < today) overdue.set(t.opportunity_id, (overdue.get(t.opportunity_id) ?? 0) + 1);
@@ -171,6 +181,7 @@ export const attendanceReport = createServerFn({ method: "GET" })
       attendant: o.owner_id ? profName.get(o.owner_id) ?? "" : "",
       status: o.status as "open" | "won" | "lost",
       created_at: o.created_at as string,
+      last_updated_at: resolveLastUpdatedAt([o.updated_at, o.created_at, o.submissions?.updated_at, latestInteraction.get(o.id)]) ?? o.created_at as string,
       restricted: Boolean(o.submission_id && restricted.has(o.submission_id)),
       overdue: overdue.get(o.id) ?? 0,
     }));
