@@ -115,6 +115,11 @@ export const createTask = createServerFn({ method: "POST" })
       created_by: context.userId,
     });
     if (error) throw new Error(error.message);
+    const { extAdmin } = await import("./server");
+    await extAdmin()
+      .from("opportunities")
+      .update({ updated_at: new Date().toISOString() })
+      .eq("id", data.opportunity_id);
     return { ok: true };
   });
 
@@ -221,6 +226,11 @@ export const setTaskDone = createServerFn({ method: "POST" })
       });
       if (nextError) throw new Error(nextError.message);
     }
+    const { extAdmin } = await import("./server");
+    await extAdmin()
+      .from("opportunities")
+      .update({ updated_at: new Date().toISOString() })
+      .eq("id", task.opportunity_id);
     return { ok: true };
   });
 

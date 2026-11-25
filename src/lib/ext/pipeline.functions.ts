@@ -3,11 +3,18 @@ import { z } from "zod";
 import { requireAuth } from "./auth";
 import { asksEnrollment, canCloseOpportunity } from "./close-access";
 import { pickWonStage } from "./won-stage";
+import { resolveLastUpdatedAt } from "./card-freshness";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { FunnelStage, Opportunity } from "./model";
 
 type OpportunityRow = Opportunity & {
-  submissions: { public_id: string; children_count: number | null; form_id: string; list_type: string | null } | null;
+  submissions: {
+    public_id: string;
+    children_count: number | null;
+    form_id: string;
+    list_type: string | null;
+    updated_at?: string | null;
+  } | null;
   visit_at: string | null;
   crm_close_reasons: { label: string; kind: "won" | "lost" } | null;
   owner: { id: string; full_name: string | null } | null;
@@ -15,6 +22,7 @@ type OpportunityRow = Opportunity & {
   series: string[];
   restricted?: boolean;
   campaign?: string | null;
+  last_updated_at?: string;
 };
 
 function normalizeLabel(value: string): string {
@@ -110,7 +118,7 @@ export const listPipeline = createServerFn({ method: "GET" })
     const status = data.status ?? "open";
     const { data: opportunities, error: oppError } = await context.supabase
       .from("opportunities")
-      .select("*, submissions(public_id, children_count, form_id, list_type), crm_close_reasons(label, kind)")
+      .select("*, submissions(public_id, children_count, form_id, list_type, updated_at), crm_close_reasons(label, kind)")
       .eq("funnel_id", data.funnel_id)
       .eq("status", status)
       .order(status === "open" ? "position" : "closed_at");
@@ -220,11 +228,11 @@ export const listPipeline = createServerFn({ method: "GET" })
     // Próxima atividade pendente de cada oportunidade.
     const ids = ((opportunities ?? []) as { id: string }[]).map((o) => o.id);
     const nextTasks: Record<string, { title: string; due_date: string | null }> = {};
-    if (ids.length > 0) {
+    for (let i = 0; i < ids.length; i += 150) {
       const { data: tasks } = await context.supabase
         .from("crm_tasks")
         .select("opportunity_id, title, due_date")
-        .in("opportunity_id", ids)
+        .in("opportunity_id", ids.slice(i, i + 150))
         .eq("done", false)
         .order("due_date", { nullsFirst: false })
         .order("created_at");
@@ -240,14 +248,54 @@ export const listPipeline = createServerFn({ method: "GET" })
     }
 
     const { extAdmin: extAdm } = await import("./server");
+    const adminClient = extAdm();
+    // Última interação real (notas e tarefas) em lotes paginados para cobrir cartões antigos.
+    const latestInteraction = new Map<string, string>();
+    const recordInteraction = (oppId: string, ts: string | null | undefined) => {
+      const next = resolveLastUpdatedAt([latestInteraction.get(oppId), ts]);
+      if (next) latestInteraction.set(oppId, next);
+    };
+    for (let i = 0; i < ids.length; i += 150) {
+      const batch = ids.slice(i, i + 150);
+      for (let from = 0; ; from += 1000) {
+        const { data: notes } = await adminClient
+          .from("crm_notes")
+          .select("opportunity_id, created_at")
+          .in("opportunity_id", batch)
+          .order("created_at", { ascending: false })
+          .range(from, from + 999);
+        const rows = (notes ?? []) as { opportunity_id: string; created_at: string }[];
+        for (const r of rows) recordInteraction(r.opportunity_id, r.created_at);
+        if (rows.length < 1000) break;
+      }
+      for (let from = 0; ; from += 1000) {
+        const { data: allTasks } = await adminClient
+          .from("crm_tasks")
+          .select("opportunity_id, created_at, done_at")
+          .in("opportunity_id", batch)
+          .order("created_at", { ascending: false })
+          .range(from, from + 999);
+        const rows = (allTasks ?? []) as {
+          opportunity_id: string;
+          created_at: string;
+          done_at: string | null;
+        }[];
+        for (const r of rows) {
+          recordInteraction(r.opportunity_id, r.created_at);
+          recordInteraction(r.opportunity_id, r.done_at);
+        }
+        if (rows.length < 1000) break;
+      }
+    }
+
     const { readCampaigns } = await import("./campaign.server");
-    const campaigns = await readCampaigns(extAdm()).catch(() => ({}) as Record<string, string>);
+    const campaigns = await readCampaigns(adminClient).catch(() => ({}) as Record<string, string>);
     // Campanha também reconhecida pela Origem do contato ("Campanha - Nome").
     const { campaignFromOrigin } = await import("./api-logic");
     const originCampaign = new Map<string, string>();
     const subIds = [...new Set(((opportunities ?? []) as { submission_id: string | null }[]).map((o) => o.submission_id).filter((x): x is string => Boolean(x)))];
     for (let i = 0; i < subIds.length; i += 150) {
-      const { data: vals } = await extAdm()
+      const { data: vals } = await adminClient
         .from("submission_values")
         .select("submission_id, value")
         .in("submission_id", subIds.slice(i, i + 150))
@@ -269,6 +317,13 @@ export const listPipeline = createServerFn({ method: "GET" })
         series: seriesBySubmission.get(opportunity.submission_id) ?? [],
         restricted: restrictedSubs.has(opportunity.submission_id),
         campaign: campaigns[opportunity.id] ?? originCampaign.get(opportunity.submission_id) ?? null,
+        last_updated_at:
+          resolveLastUpdatedAt([
+            opportunity.updated_at,
+            opportunity.created_at,
+            opportunity.submissions?.updated_at,
+            latestInteraction.get(opportunity.id),
+          ]) ?? opportunity.created_at,
         owner: opportunity.owner_id
           ? { id: opportunity.owner_id, full_name: ownerNames.get(opportunity.owner_id) ?? null }
           : null,

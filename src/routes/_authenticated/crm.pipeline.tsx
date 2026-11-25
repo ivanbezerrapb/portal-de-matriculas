@@ -5,7 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { asksEnrollment, canTransferBySchool, canTransferPortfolio } from "@/lib/ext/close-access";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { AlertTriangle, MessageCircle, Plus, Trash2 } from "lucide-react";
+import { AlertTriangle, Clock, MessageCircle, Plus, Trash2 } from "lucide-react";
 import { listFunnelOwners, listFunnels, listSchoolInfoUsers } from "@/lib/ext/funis.functions";
 import {
   closeOpportunity,
@@ -36,6 +36,7 @@ import { TransferPortfolioDialog } from "@/components/TransferPortfolioDialog";
 import { createNote, deleteNote, listNotes } from "@/lib/ext/notas.functions";
 import { getMyPermissions, getSubmission, updateSubmission } from "@/lib/ext/cadastros.functions";
 import { funnelListType, isChildrenCountField, type FormField } from "@/lib/ext/model";
+import { describeCardFreshness, type FreshnessLevel } from "@/lib/ext/card-freshness";
 import { FieldRenderer } from "@/components/FieldRenderer";
 import { setOpportunityCampaign, setOpportunityVisit } from "@/lib/ext/pipeline.functions";
 import { Button, Card, EmptyState, Input, Label, Select, Spinner, Textarea } from "@/components/ui";
@@ -122,6 +123,27 @@ function CampaignBadge({ name }: { name: string }) {
       className="inline-block max-w-full truncate rounded-full bg-primary px-2 py-0.5 text-[11px] font-semibold text-primary-foreground"
     >
       Campanha - {name}
+    </span>
+  );
+}
+
+const FRESHNESS_STYLES: Record<FreshnessLevel, string> = {
+  fresh: "bg-success/15 text-success-foreground",
+  warning: "bg-warning/25 text-warning-foreground",
+  stale: "bg-destructive text-destructive-foreground",
+  neutral: "bg-muted text-muted-foreground",
+};
+
+function FreshnessBadge({ updatedAt, status }: { updatedAt: string | null | undefined; status: string }) {
+  const info = describeCardFreshness(updatedAt, { status });
+  if (!info) return null;
+  return (
+    <span
+      title={info.title}
+      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${FRESHNESS_STYLES[info.level]}`}
+    >
+      <Clock className="h-3 w-3 shrink-0" />
+      {info.label}
     </span>
   );
 }
@@ -729,6 +751,10 @@ function PipelinePage() {
                           ) : (
                             <span className="text-[11px] text-muted-foreground">Sem atividade</span>
                           )}
+                          <FreshnessBadge
+                            updatedAt={card.last_updated_at ?? card.updated_at ?? card.created_at}
+                            status={card.status}
+                          />
                         </div>
                         {card.status !== "open" && (
                           <p
@@ -1599,6 +1625,7 @@ function OpportunityNotes({
 
   function refresh() {
     void queryClient.invalidateQueries({ queryKey: ["crm-notes", opportunityId] });
+    void queryClient.invalidateQueries({ queryKey: ["pipeline"] });
   }
 
   const createM = useMutation({

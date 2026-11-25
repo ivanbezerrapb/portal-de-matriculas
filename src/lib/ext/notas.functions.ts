@@ -79,6 +79,10 @@ export const createNote = createServerFn({ method: "POST" })
       body: data.body.trim(),
     });
     if (error) throw new Error(error.message);
+    await extAdmin()
+      .from("opportunities")
+      .update({ updated_at: new Date().toISOString() })
+      .eq("id", data.opportunity_id);
     return { ok: true };
   });
 

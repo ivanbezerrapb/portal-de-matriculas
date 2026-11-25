@@ -301,6 +301,7 @@ export type Opportunity = {
   close_note: string | null;
   closed_at: string | null;
   created_at: string;
+  updated_at?: string;
 };
 
 export type CrmTask = {
