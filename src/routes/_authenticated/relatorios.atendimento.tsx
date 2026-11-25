@@ -72,7 +72,7 @@ function AtendimentoPage() {
   const elapsed = openRows.map((r) => Date.parse(r.last_updated_at)).filter(Number.isFinite).map((ms) => Math.max(0, now - ms));
   const averageDays = elapsed.length ? elapsed.reduce((sum, ms) => sum + ms, 0) / elapsed.length / 86_400_000 : null;
   const average = averageDays === null ? "—" : averageDays < 1 ? `${numberBR(averageDays * 24)} h` : `${numberBR(averageDays)} dias`;
-  const rows = baseRows.filter((r) => !situation || (r.status === "open" && r.freshness?.level === situation));
+  const rows = openRows.filter((r) => !situation || r.freshness?.level === situation);
   if (updateOrder) rows.sort((a, b) => {
     const aMs = Date.parse(a.last_updated_at);
     const bMs = Date.parse(b.last_updated_at);
@@ -86,7 +86,7 @@ function AtendimentoPage() {
     const name = r.attendant || "Sem atendente";
     staleByAttendant.set(name, (staleByAttendant.get(name) ?? 0) + 1);
   }
-  const schoolLabel = schoolId ? schools.find((s) => s.id === schoolId)?.name ?? "" : [...new Set(rows.map((r) => r.school))].sort(compareSchoolNames).join(" · ") || "Todas as escolas";
+  const schoolLabel = schoolId ? schools.find((s) => s.id === schoolId)?.name ?? "" : [...new Set((rows.length ? rows : baseRows).map((r) => r.school))].sort(compareSchoolNames).join(" · ") || "Todas as escolas";
   const filters = [
     schoolId && `Escola: ${schoolLabel}`, attendant && `Atendente: ${attendant}`,
     funnelId && `Funil: ${funnels.find((f) => f.id === funnelId)?.name ?? ""}`,
@@ -95,7 +95,7 @@ function AtendimentoPage() {
     situation && `Atualização: ${SITUATIONS.find((s) => s.level === situation)?.label}`,
     updateOrder && `Última atualização: ${updateOrder === "asc" ? "mais antiga primeiro" : "mais recente primeiro"}`,
   ].filter(Boolean) as string[];
-  const summary = `${rows.length} cartão${rows.length === 1 ? "" : "es"}`;
+  const summary = rows.length === 1 ? "1 cartão em aberto" : `${rows.length} cartões em aberto`;
   const totalRows = totals.map((t) => [t.attendant, t.cards, t.open, t.won, t.lost, t.pending, t.overdue, staleByAttendant.get(t.attendant) ?? 0]);
   const totalCols = ["Atendente", "Cartões", "Abertos", "Ganhos", "Perdidos", "Com pendência", "Com tarefa atrasada", "Parados (8 dias ou mais)"];
 
@@ -106,7 +106,7 @@ function AtendimentoPage() {
           <h1 className="font-display text-2xl font-semibold text-foreground">Relatório de Atendimento</h1>
           <p className="text-sm text-muted-foreground">{schoolLabel}</p>
         </div>
-        <Button variant="outline" disabled={isLoading || rows.length === 0}
+        <Button variant="outline" disabled={isLoading || (rows.length === 0 && totals.length === 0)}
           onClick={() => { setPrintAt(new Date().toLocaleString("pt-BR")); printNow(); }}>
           <Printer className="mr-2 h-4 w-4" /> Imprimir
         </Button>

@@ -92,9 +92,36 @@ describe("Os indicadores de atualização consideram apenas cartões em aberto",
     report.mockResolvedValue([row("Ganho antigo", 20, "won")]);
     const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
     render(<QueryClientProvider client={client}><Page /></QueryClientProvider>);
-    await screen.findByText("Ganho antigo");
+    await screen.findByRole("table", { name: "Totais por atendente" });
     expect(within(screen.getByRole("button", { name: /Críticos/ })).getByText("0")).toBeInTheDocument();
     expect(within(screen.getByTestId("average-update")).getByText("—")).toBeInTheDocument();
+  });
+});
+
+describe("A lista de cartões do Atendimento mostra apenas cartões em aberto", () => {
+  it("O gestor vê na lista apenas os cartões em aberto, sem exibir ganhos nem perdidos", async () => {
+    await openReport();
+    const table = screen.getByRole("table", { name: "Cartões" });
+    expect(within(table).getByText("Recente")).toBeInTheDocument();
+    expect(within(table).getByText("Atenção")).toBeInTheDocument();
+    expect(within(table).getByText("Parado")).toBeInTheDocument();
+    expect(within(table).queryByText("Ganho antigo")).not.toBeInTheDocument();
+    expect(within(table).queryByText("Perdido antigo")).not.toBeInTheDocument();
+    const totalsTable = screen.getByRole("table", { name: "Totais por atendente" });
+    const rowCells = within(totalsTable).getByText("Atendente A").closest("tr")?.querySelectorAll("td");
+    expect(Array.from(rowCells ?? []).map((td) => td.textContent)).toEqual(["Atendente A", "5", "3", "1", "1", "0", "0", "1"]);
+  });
+  it("O gestor imprime o relatório e a lista impressa também traz apenas cartões em aberto", async () => {
+    await openReport();
+    vi.spyOn(window, "print").mockImplementation(() => {});
+    fireEvent.click(screen.getByRole("button", { name: "Imprimir" }));
+    const output = document.getElementById("list-report");
+    if (!output) throw new Error("Relatório de impressão não encontrado");
+    expect(output).toHaveTextContent("Recente");
+    expect(output).toHaveTextContent("Atenção");
+    expect(output).toHaveTextContent("Parado");
+    expect(output).not.toHaveTextContent("Ganho antigo");
+    expect(output).not.toHaveTextContent("Perdido antigo");
   });
 });
 
@@ -121,12 +148,13 @@ describe("Os indicadores de situação filtram a lista de cartões do Atendiment
     expect(screen.queryByText("Atenção")).not.toBeInTheDocument();
     expect(screen.queryByText("Parado")).not.toBeInTheDocument();
   });
-  it("O gestor clica novamente no indicador selecionado e volta a ver todos os cartões", async () => {
+  it("O gestor clica novamente no indicador selecionado e volta a ver todos os cartões em aberto", async () => {
     await openReport();
     fireEvent.click(screen.getByRole("button", { name: /Críticos/ }));
     fireEvent.click(screen.getByRole("button", { name: /Críticos/ }));
     expect(screen.getByText("Recente")).toBeInTheDocument();
-    expect(screen.getByText("Ganho antigo")).toBeInTheDocument();
+    expect(screen.getByText("Atenção")).toBeInTheDocument();
+    expect(screen.queryByText("Ganho antigo")).not.toBeInTheDocument();
   });
 });
 
@@ -163,6 +191,6 @@ describe("Cartões parados a partir de 8 dias ficam em alerta vermelho", () => {
     fireEvent.click(screen.getByRole("button", { name: /Última atualização/ }));
     const table = screen.getByRole("table", { name: "Cartões" });
     const clients = within(table).getAllByRole("row").slice(1).map((tr) => tr.firstElementChild?.textContent);
-    expect(clients).toEqual(["Ganho antigo", "Perdido antigo", "Parado", "Atenção", "Recente"]);
+    expect(clients).toEqual(["Parado", "Atenção", "Recente"]);
   });
 });
