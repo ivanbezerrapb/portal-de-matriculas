@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { writeFileSync } from "node:fs";
 
 const { report } = vi.hoisted(() => ({ report: vi.fn() }));
 vi.mock("@/lib/ext/relatorios.functions", () => ({
@@ -34,6 +35,20 @@ async function openReport() {
 }
 
 describe("Os indicadores de atualização consideram apenas cartões em aberto", () => {
+  it("O gestor imprime os indicadores com os mesmos totais, percentuais e média exibidos na tela", async () => {
+    await openReport();
+    vi.spyOn(window, "print").mockImplementation(() => {});
+    fireEvent.click(screen.getByRole("button", { name: "Imprimir" }));
+    const output = document.getElementById("list-report");
+    if (!output) throw new Error("Relatório de impressão não encontrado");
+    expect(output).toHaveTextContent("Em dia");
+    expect(output).toHaveTextContent("Em atenção");
+    expect(output).toHaveTextContent("Críticos / Parados");
+    expect(output.textContent?.match(/33,3%/g)).toHaveLength(3);
+    expect(output).toHaveTextContent(/Média sem atualização:?\s*4 dias/);
+    const qaPath = process.env["ATTENDANCE_PRINT_QA"];
+    if (qaPath) writeFileSync(qaPath, output.outerHTML);
+  });
   it("O gestor vê um cartão em dia, um em atenção e um crítico, sem contar ganhos e perdas", async () => {
     await openReport();
     for (const label of [/Em dia/, /Em atenção/, /Críticos/]) {

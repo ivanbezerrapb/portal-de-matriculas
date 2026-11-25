@@ -98,7 +98,6 @@ function AtendimentoPage() {
   const summary = `${rows.length} cartão${rows.length === 1 ? "" : "es"}`;
   const totalRows = totals.map((t) => [t.attendant, t.cards, t.open, t.won, t.lost, t.pending, t.overdue, staleByAttendant.get(t.attendant) ?? 0]);
   const totalCols = ["Atendente", "Cartões", "Abertos", "Ganhos", "Perdidos", "Com pendência", "Com tarefa atrasada", "Parados (> 5 dias)"];
-  const metricRows = SITUATIONS.map((s) => [s.label, counts[s.level], `${numberBR(openRows.length ? counts[s.level] / openRows.length * 100 : 0)}%`]);
 
   return (
     <div className="p-6">
@@ -196,7 +195,26 @@ function AtendimentoPage() {
       {printAt && (
         <ReportPrint title="Relatório de Atendimento" school={schoolLabel} filters={filters} summary={summary}
           printedBy={perms?.fullName ?? ""} printedAt={printAt}
-          extra={<><SmallTable title="Totais por atendente" columns={totalCols} rows={totalRows} /><SmallTable title="Atualizações dos cartões em aberto" columns={["Situação", "Cartões", "Percentual"]} rows={metricRows} /><p>Média sem atualização: {average}</p></>}
+          extra={<>
+            <SmallTable title="Totais por atendente" columns={totalCols} rows={totalRows} />
+            <section className="mb-4 break-inside-avoid" aria-label="Atualizações dos cartões">
+              <div className="mb-2 flex items-center justify-between gap-2 font-semibold">
+                <span>Atualizações dos cartões</span><span>{openRows.length} cartões em aberto</span>
+              </div>
+              <div className="grid grid-cols-4 gap-3">
+                {SITUATIONS.map((s) => (
+                  <div key={s.level} className={`flex min-h-24 flex-col justify-between rounded-lg border p-3 ${s.style}`}>
+                    <span className="font-semibold">{s.label}</span>
+                    <div className="flex items-baseline justify-between gap-2"><strong className="text-2xl">{counts[s.level]}</strong><span>{numberBR(openRows.length ? counts[s.level] / openRows.length * 100 : 0)}%</span></div>
+                    <span>{s.range}</span>
+                  </div>
+                ))}
+                <div className="flex min-h-24 flex-col justify-between rounded-lg border border-border bg-muted/30 p-3 text-foreground">
+                  <span className="font-semibold">Média sem atualização</span><strong className="text-2xl">{average}</strong><span>Cartões em aberto</span>
+                </div>
+              </div>
+            </section>
+          </>}
           columns={["Cliente", "Escola", "Funil", "Etapa", "Atendente", "Status", "Pendência", "Tarefas atrasadas", "Última atualização"]}
           rows={rows.map((r) => [r.client, r.school, r.funnel, r.stage, r.attendant, STATUS[r.status], r.restricted ? "Sim" : "", r.overdue || "", r.freshness?.title ?? ""])} />
       )}

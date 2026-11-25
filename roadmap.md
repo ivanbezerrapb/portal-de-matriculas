@@ -1,6 +1,7 @@
 # Roadmap — Sistema de Formulários por Escola
 
 ## Indicadores de atualização — Atendimento
+- [x] Incluir os quatro indicadores visuais no PDF; valores testados e impressão A4 conferida visualmente com dados de teste, sem cortes ou sobreposições.
 - [x] Adicionar indicadores de cartões abertos, filtros, última atualização e parados por atendente.
 - [x] Validar indicadores e filtros na tela com testes automatizados (96 testes passaram).
 - [ ] Conferir o relatório com sessão do banco externo: sessão temporária do ambiente retorna ao login e não permite acessar Atendimento.
