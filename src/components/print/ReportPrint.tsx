@@ -1,12 +1,15 @@
 import { createPortal } from "react-dom";
 import type { ReactNode } from "react";
 import logo from "@/assets/grupo-inter-logo.png.asset.json";
+import { usePrintDocumentTitle } from "./usePrintDocumentTitle";
 
 /** Relatório genérico A4 deitado (mesmo visual da impressão das listas). */
 export function ReportPrint({ title, school, filters, summary, columns, rows, printedBy, printedAt, extra }: {
   title: string; school: string; filters: string[]; summary: string; columns: string[]; rows: (string | number)[][];
   printedBy: string; printedAt: string; extra?: ReactNode;
 }) {
+  const documentTitle = `${title} — ${school}`;
+  usePrintDocumentTitle(documentTitle);
   if (typeof document === "undefined") return null;
   return createPortal(
     <div id="list-report">
@@ -29,7 +32,7 @@ export function ReportPrint({ title, school, filters, summary, columns, rows, pr
         <img src={logo.url} alt="Grupo Intereducacional" style={{ height: 34 }} />
         <div>Impresso em {printedAt}{printedBy ? ` por ${printedBy}` : ""}</div>
       </div>
-      <h1 style={{ fontSize: 22, fontWeight: 800, margin: "0 0 2px", color: "#2b2a6b" }}>{title} — {school}</h1>
+      <h1 style={{ fontSize: 22, fontWeight: 800, margin: "0 0 2px", color: "#2b2a6b" }}>{documentTitle}</h1>
       <div style={{ marginBottom: 8 }}>
         <strong>Filtros:</strong> {filters.length ? filters.join(" · ") : "Nenhum"} — <strong>{summary}</strong>
       </div>

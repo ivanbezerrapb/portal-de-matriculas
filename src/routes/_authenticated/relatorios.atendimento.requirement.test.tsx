@@ -34,6 +34,33 @@ async function openReport() {
   await screen.findByText("Parado");
 }
 
+describe("O nome do documento segue o título do relatório", () => {
+  it("O gestor imprime Atendimento do Centro com o nome Relatório de Atendimento — Centro", async () => {
+    await openReport();
+    let printedTitle = "";
+    vi.spyOn(window, "print").mockImplementation(() => {
+      window.dispatchEvent(new Event("beforeprint"));
+      printedTitle = document.title;
+      window.dispatchEvent(new Event("afterprint"));
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Imprimir" }));
+    await vi.waitFor(() => expect(printedTitle).toBe("Relatório de Atendimento — Centro"));
+  });
+  it("O gestor fecha a impressão e o nome original da tela é restaurado", async () => {
+    document.title = "Atendimento — Portal";
+    await openReport();
+    let printedTitle = "";
+    vi.spyOn(window, "print").mockImplementation(() => {
+      window.dispatchEvent(new Event("beforeprint"));
+      printedTitle = document.title;
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Imprimir" }));
+    await vi.waitFor(() => expect(printedTitle).toBe("Relatório de Atendimento — Centro"));
+    window.dispatchEvent(new Event("afterprint"));
+    expect(document.title).toBe("Atendimento — Portal");
+  });
+});
+
 describe("Os indicadores de atualização consideram apenas cartões em aberto", () => {
   it("O gestor imprime os indicadores com os mesmos totais, percentuais e média exibidos na tela", async () => {
     await openReport();

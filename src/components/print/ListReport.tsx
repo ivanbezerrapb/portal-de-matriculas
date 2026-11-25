@@ -1,5 +1,6 @@
 import { createPortal } from "react-dom";
 import logo from "@/assets/grupo-inter-logo.png.asset.json";
+import { usePrintDocumentTitle } from "./usePrintDocumentTitle";
 
 export type ListReportRow = {
   id: string; publicId: string; responsible: string; school: string; children: string;
@@ -15,6 +16,7 @@ export function ListReport({ title, school, listType, filters, rows, printedBy, 
   title: string; school: string; listType: "visitantes" | "leads"; filters: string[]; rows: ListReportRow[];
   printedBy: string; printedAt: string;
 }) {
+  usePrintDocumentTitle(school ? `${title} — ${school}` : title);
   if (typeof document === "undefined") return null;
   const statusLabel = listType === "leads" ? "Check-in" : "Matrícula";
   const total = enrolledTotal(rows);
