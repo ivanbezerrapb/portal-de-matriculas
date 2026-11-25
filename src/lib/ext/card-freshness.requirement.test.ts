@@ -5,8 +5,8 @@ const NOW = Date.parse("2026-11-25T18:00:00Z");
 const HOUR = 3_600_000;
 const DAY = 86_400_000;
 
-describe("Cartões parados há mais de 5 dias ficam em alerta vermelho", () => {
-  it("Mostra atualização recente em tom positivo quando o cartão foi atualizado há até 2 dias", () => {
+describe("Cartões parados a partir de 8 dias ficam em alerta vermelho", () => {
+  it("Mostra atualização recente em tom positivo quando o cartão foi atualizado há até 3 dias", () => {
     const agora = describeCardFreshness(new Date(NOW - 20_000).toISOString(), { now: NOW, status: "open" });
     expect(agora?.level).toBe("fresh");
     expect(agora?.label).toBe("Atualizado agora");
@@ -15,26 +15,26 @@ describe("Cartões parados há mais de 5 dias ficam em alerta vermelho", () => {
     expect(horas?.level).toBe("fresh");
     expect(horas?.label).toBe("Atualizado há 4h");
 
-    const doisDias = describeCardFreshness(new Date(NOW - 2 * DAY).toISOString(), { now: NOW, status: "open" });
+    const doisDias = describeCardFreshness(new Date(NOW - 3 * DAY).toISOString(), { now: NOW, status: "open" });
     expect(doisDias?.level).toBe("fresh");
-    expect(doisDias?.label).toBe("Atualizado há 2 dias");
+    expect(doisDias?.label).toBe("Atualizado há 3 dias");
   });
 
-  it("Mostra destaque de atenção entre 3 e 5 dias sem atualização", () => {
-    const tresDias = describeCardFreshness(new Date(NOW - 3 * DAY).toISOString(), { now: NOW, status: "open" });
+  it("Mostra destaque de atenção entre 4 e 7 dias sem atualização", () => {
+    const tresDias = describeCardFreshness(new Date(NOW - 4 * DAY).toISOString(), { now: NOW, status: "open" });
     expect(tresDias?.level).toBe("warning");
-    expect(tresDias?.label).toBe("Atualizado há 3 dias");
+    expect(tresDias?.label).toBe("Atualizado há 4 dias");
 
-    const cincoDias = describeCardFreshness(new Date(NOW - 5 * DAY).toISOString(), { now: NOW, status: "open" });
+    const cincoDias = describeCardFreshness(new Date(NOW - 7 * DAY).toISOString(), { now: NOW, status: "open" });
     expect(cincoDias?.level).toBe("warning");
-    expect(cincoDias?.label).toBe("Atualizado há 5 dias");
+    expect(cincoDias?.label).toBe("Atualizado há 7 dias");
   });
 
-  it("Destaca em alerta vermelho quando o cartão em aberto passa de 5 dias sem atualização", () => {
-    const seisDias = describeCardFreshness(new Date(NOW - 6 * DAY).toISOString(), { now: NOW, status: "open" });
+  it("Destaca em alerta vermelho quando o cartão em aberto chega a 8 dias sem atualização", () => {
+    const seisDias = describeCardFreshness(new Date(NOW - 8 * DAY).toISOString(), { now: NOW, status: "open" });
     expect(seisDias?.level).toBe("stale");
-    expect(seisDias?.label).toBe("Sem atualização há 6 dias");
-    expect(seisDias?.title).toContain("19/11/2026");
+    expect(seisDias?.label).toBe("Sem atualização há 8 dias");
+    expect(seisDias?.title).toContain("17/11/2026");
 
     const dozeDias = describeCardFreshness(new Date(NOW - 12 * DAY).toISOString(), { now: NOW, status: "open" });
     expect(dozeDias?.level).toBe("stale");

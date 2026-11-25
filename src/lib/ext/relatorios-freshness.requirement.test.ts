@@ -38,7 +38,7 @@ beforeEach(() => {
   tables["opportunities"] = [{ id: "c1", name: "Contato", school_id: "s1", funnel_id: "f1", status: "open", created_at: "2026-11-01T12:00:00Z", updated_at: "2026-11-10T12:00:00Z", submissions: { updated_at: "2026-11-12T12:00:00Z" } }];
 });
 
-describe("Cartões parados há mais de 5 dias ficam em alerta vermelho", () => {
+describe("Cartões parados a partir de 8 dias ficam em alerta vermelho", () => {
   it("O gestor recebe a data da anotação mais recente no relatório mesmo quando o cartão tem uma data antiga", async () => {
     tables["crm_notes"] = [{ opportunity_id: "c1", created_at: "2026-11-24T12:00:00Z" }];
     const result = await attendanceReport({ data: {} });

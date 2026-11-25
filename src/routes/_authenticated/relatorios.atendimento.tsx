@@ -28,9 +28,9 @@ const STATUS = { open: "Aberto", won: "Ganho", lost: "Perdido" } as const;
 const br = (d: string) => d.split("-").reverse().join("/");
 type Situation = Exclude<FreshnessLevel, "neutral">;
 const SITUATIONS: { level: Situation; label: string; range: string; style: string }[] = [
-  { level: "fresh", label: "Em dia", range: "Até 2 dias", style: "border-success/30 bg-success/10 text-success-foreground" },
-  { level: "warning", label: "Em atenção", range: "3 a 5 dias", style: "border-warning/30 bg-warning/10 text-warning-foreground" },
-  { level: "stale", label: "Críticos / Parados", range: "Mais de 5 dias", style: "border-destructive/30 bg-destructive/10 text-destructive" },
+  { level: "fresh", label: "Em dia", range: "Até 3 dias", style: "border-success/30 bg-success/10 text-success-foreground" },
+  { level: "warning", label: "Em atenção", range: "4 a 7 dias", style: "border-warning/30 bg-warning/10 text-warning-foreground" },
+  { level: "stale", label: "Críticos / Parados", range: "8 dias ou mais", style: "border-destructive/30 bg-destructive/10 text-destructive" },
 ];
 const BADGE_STYLE: Record<FreshnessLevel, string> = {
   fresh: "bg-success/10 text-success-foreground", warning: "bg-warning/10 text-warning-foreground",
@@ -97,7 +97,7 @@ function AtendimentoPage() {
   ].filter(Boolean) as string[];
   const summary = `${rows.length} cartão${rows.length === 1 ? "" : "es"}`;
   const totalRows = totals.map((t) => [t.attendant, t.cards, t.open, t.won, t.lost, t.pending, t.overdue, staleByAttendant.get(t.attendant) ?? 0]);
-  const totalCols = ["Atendente", "Cartões", "Abertos", "Ganhos", "Perdidos", "Com pendência", "Com tarefa atrasada", "Parados (> 5 dias)"];
+  const totalCols = ["Atendente", "Cartões", "Abertos", "Ganhos", "Perdidos", "Com pendência", "Com tarefa atrasada", "Parados (8 dias ou mais)"];
 
   return (
     <div className="p-6">

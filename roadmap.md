@@ -1,6 +1,7 @@
 # Roadmap — Sistema de Formulários por Escola
 
 ## Indicadores de atualização — Atendimento
+- [x] Padronizar Pipeline, Atendimento e PDF: verde até 3 dias, amarelo de 4 a 7 dias, vermelho a partir de 8 dias; 25 testes passaram, incluindo limites, filtros e impressão.
 - [x] Incluir os quatro indicadores visuais no PDF; valores testados e impressão A4 conferida visualmente com dados de teste, sem cortes ou sobreposições.
 - [x] Adicionar indicadores de cartões abertos, filtros, última atualização e parados por atendente.
 - [x] Validar indicadores e filtros na tela com testes automatizados (96 testes passaram).

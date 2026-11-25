@@ -1,7 +1,7 @@
 // Cálculo de tempo desde a última atualização de um cartão do Pipeline.
 
-export const FRESH_MAX_DAYS = 2;
-export const STALE_ALERT_DAYS = 5;
+export const FRESH_MAX_DAYS = 3;
+export const STALE_ALERT_DAYS = 7;
 
 const MINUTE_MS = 60_000;
 const HOUR_MS = 3_600_000;
@@ -47,7 +47,7 @@ function formatExactDateTime(ms: number): string {
 }
 
 // Classifica o tempo decorrido desde a última atualização do cartão:
-// até 2 dias = recente; 3 a 5 dias = atenção; mais de 5 dias = alerta vermelho.
+// até 3 dias = recente; 4 a 7 dias = atenção; 8 dias ou mais = alerta vermelho.
 export function describeCardFreshness(
   lastUpdatedAt: string | null | undefined,
   options?: { now?: number; status?: string },

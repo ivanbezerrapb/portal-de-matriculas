@@ -25,7 +25,7 @@ const row = (id: string, days: number, status: "open" | "won" | "lost" = "open",
 });
 beforeEach(() => {
   vi.spyOn(Date, "now").mockReturnValue(NOW);
-  report.mockResolvedValue([row("Recente", 2), row("Atenção", 4), row("Parado", 6), row("Ganho antigo", 20, "won"), row("Perdido antigo", 20, "lost")]);
+  report.mockResolvedValue([row("Recente", 3), row("Atenção", 7), row("Parado", 8), row("Ganho antigo", 20, "won"), row("Perdido antigo", 20, "lost")]);
 });
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 async function openReport() {
@@ -72,7 +72,7 @@ describe("Os indicadores de atualização consideram apenas cartões em aberto",
     expect(output).toHaveTextContent("Em atenção");
     expect(output).toHaveTextContent("Críticos / Parados");
     expect(output.textContent?.match(/33,3%/g)).toHaveLength(3);
-    expect(output).toHaveTextContent(/Média sem atualização:?\s*4 dias/);
+    expect(output).toHaveTextContent(/Média sem atualização:?\s*6 dias/);
     const qaPath = process.env["ATTENDANCE_PRINT_QA"];
     if (qaPath) writeFileSync(qaPath, output.outerHTML);
   });
@@ -84,9 +84,9 @@ describe("Os indicadores de atualização consideram apenas cartões em aberto",
       expect(within(metric).getByText("33,3%")).toBeInTheDocument();
     }
   });
-  it("O gestor vê a média de quatro dias calculada somente sobre os cartões em aberto", async () => {
+  it("O gestor vê a média de seis dias calculada somente sobre os cartões em aberto", async () => {
     await openReport();
-    expect(within(screen.getByTestId("average-update")).getByText("4 dias")).toBeInTheDocument();
+    expect(within(screen.getByTestId("average-update")).getByText("6 dias")).toBeInTheDocument();
   });
   it("O gestor vê indicadores zerados quando não existem cartões em aberto", async () => {
     report.mockResolvedValue([row("Ganho antigo", 20, "won")]);
@@ -99,7 +99,7 @@ describe("Os indicadores de atualização consideram apenas cartões em aberto",
 });
 
 describe("Os indicadores de situação filtram a lista de cartões do Atendimento", () => {
-  it("O gestor seleciona Críticos e vê apenas o cartão aberto parado há seis dias", async () => {
+  it("O gestor seleciona Críticos e vê apenas o cartão aberto parado há oito dias", async () => {
     await openReport();
     fireEvent.click(screen.getByRole("button", { name: /Críticos/ }));
     expect(screen.getByText("Parado")).toBeInTheDocument();
@@ -107,14 +107,14 @@ describe("Os indicadores de situação filtram a lista de cartões do Atendiment
     expect(screen.queryByText("Ganho antigo")).not.toBeInTheDocument();
     expect(screen.queryByText("Perdido antigo")).not.toBeInTheDocument();
   });
-  it("O gestor seleciona Em atenção e vê apenas o cartão aberto sem atualização há quatro dias", async () => {
+  it("O gestor seleciona Em atenção e vê apenas o cartão aberto sem atualização há sete dias", async () => {
     await openReport();
     fireEvent.click(screen.getByRole("button", { name: /Em atenção/ }));
     expect(screen.getByText("Atenção")).toBeInTheDocument();
     expect(screen.queryByText("Parado")).not.toBeInTheDocument();
     expect(screen.queryByText("Recente")).not.toBeInTheDocument();
   });
-  it("O gestor seleciona Em dia e vê apenas o cartão atualizado há dois dias", async () => {
+  it("O gestor seleciona Em dia e vê apenas o cartão atualizado há três dias", async () => {
     await openReport();
     fireEvent.click(screen.getByRole("button", { name: /Em dia/ }));
     expect(screen.getByText("Recente")).toBeInTheDocument();
@@ -130,17 +130,30 @@ describe("Os indicadores de situação filtram a lista de cartões do Atendiment
   });
 });
 
-describe("Cartões parados há mais de 5 dias ficam em alerta vermelho", () => {
+describe("Cartões parados a partir de 8 dias ficam em alerta vermelho", () => {
+  it.each([
+    [3, /Em dia/],
+    [4, /Em atenção/],
+    [7, /Em atenção/],
+    [8, /Críticos/],
+  ])("O gestor filtra um cartão sem atualização há %i dias pela situação correspondente", async (days, label) => {
+    report.mockResolvedValue([row("Parado", days)]);
+    await openReport();
+    const metric = screen.getByRole("button", { name: label });
+    expect(within(metric).getByText("1")).toBeInTheDocument();
+    fireEvent.click(metric);
+    expect(within(screen.getByRole("table", { name: "Cartões" })).getByText("Parado")).toBeInTheDocument();
+  });
   it("O gestor vê o tempo da atualização mais recente no relatório, não a data de criação", async () => {
     await openReport();
     const card = screen.getByText("Parado").closest("tr");
     if (!card) throw new Error("Cartão não encontrado");
-    expect(within(card).getByText("Sem atualização há 6 dias")).toBeInTheDocument();
+    expect(within(card).getByText("Sem atualização há 8 dias")).toBeInTheDocument();
   });
   it("O gestor vê um cartão parado para o atendente, sem contar os cartões encerrados antigos", async () => {
     await openReport();
     const table = screen.getByRole("table", { name: "Totais por atendente" });
-    expect(within(table).getByRole("columnheader", { name: "Parados (> 5 dias)" })).toBeInTheDocument();
+    expect(within(table).getByRole("columnheader", { name: "Parados (8 dias ou mais)" })).toBeInTheDocument();
     const total = within(table).getByText("Atendente A").closest("tr");
     if (!total) throw new Error("Atendente não encontrado");
     expect(total.lastElementChild).toHaveTextContent("1");
