@@ -146,7 +146,10 @@ function AtendimentoPage() {
           </Card>
           <section aria-labelledby="updates-title" className="mt-6 border-y border-border py-5">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-              <h2 id="updates-title" className="font-semibold text-foreground">Atualizações dos cartões</h2>
+              <div>
+                <h2 id="updates-title" className="font-semibold text-foreground">Atualizações dos cartões</h2>
+                <p className="text-sm text-muted-foreground">Considera apenas os cartões em aberto — ganhos e perdidos ficam fora.</p>
+              </div>
               <span className="text-sm text-muted-foreground">{openRows.length} cartões em aberto</span>
             </div>
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -201,6 +204,7 @@ function AtendimentoPage() {
               <div className="mb-2 flex items-center justify-between gap-2 font-semibold">
                 <span>Atualizações dos cartões</span><span>{openRows.length} cartões em aberto</span>
               </div>
+              <p className="mb-2 text-xs">Considera apenas os cartões em aberto — ganhos e perdidos ficam fora.</p>
               <div className="grid grid-cols-4 gap-3">
                 {SITUATIONS.map((s) => (
                   <div key={s.level} className={`flex min-h-24 flex-col justify-between rounded-lg border p-3 ${s.style}`}>
